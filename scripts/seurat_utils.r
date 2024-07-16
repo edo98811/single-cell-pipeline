@@ -1,0 +1,2706 @@
+# Author: Edoardo Filippi
+# mail: efilippi@uni-mainz.de
+
+#### MARKER ANALYSIS ####
+
+# Heatmap and dotplot
+many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters=NA, assay="RNA",
+                   cluster_column="harmony_clusters", name ="", markers=NA,
+                   extension_plot=".png", maxn_genes=100, n_genes=25, maxn_genes_per_plot=100) {
+  
+  # Check arguments
+  if (TRUE) {
+  if (!inherits(seurat_object, "Seurat")) {
+    stop("seurat_object must be a Seurat object")
+  }
+  
+  if (!is.character(which) 
+      || !all(which %in% c("dotplot", "heatmap"))) {
+    stop("which argument must be a character vector containing 'dotplot' and/or 'heatmap'")
+  }
+  
+  if (!is.na(clusters) 
+      || (!is.integer(clusters) && !is.vector(markers))) {
+    stop("clusters argument must be an integer")
+  }
+  
+  if (!is.character(assay)) {
+    stop("assay argument must be a string")
+  }
+  
+  if (!is.character(cluster_column)) {
+    stop("cluster_column argument must be a string (or int)")
+  }
+  
+  if (!is.character(name)) {
+    stop("name argument must be a character")
+  }
+  
+  if (!is.na(markers) 
+      || (!is.character(markers) && !is.vector(markers))
+      || (!is.integer(clusters) && !is.vector(markers))) {
+    stop("markers argument must be a character vector or NA")
+  }
+
+  if (!is.character(extension_plot)) {
+    stop("extension_plot argument must be a string")
+  }
+  
+  if (!is.numeric(maxn_genes) || maxn_genes <= 0) {
+    stop("maxn_genes argument must be a positive numeric value")
+  }
+  
+  if (!is.numeric(n_genes) || n_genes <= 0) {
+    stop("n_genes argument must be a positive numeric value")
+  }
+  
+  if (!is.numeric(maxn_genes_per_plot) || maxn_genes_per_plot <= 0) {
+    stop("maxn_genes_per_plot argument must be a positive numeric value")
+  }
+  }
+
+  # Dependencies
+  check_packages(c("openxlsx", "Seurat"))
+  
+  # Messages
+  cat("Plotting (heatmap)  \n")
+  message(paste0("Parameters: which: ", paste(which, collapse = ", "),
+                 " - clusters: ", clusters,
+                 " - assay: ", assay,
+                 " - cluster_column: ", cluster_column,
+                 " - name: ", name,
+                 " - markers: ", paste(markers, collapse = ", ")))
+  
+
+  # Set up output dir, make it second level if the name is an absolute path 
+  if (grepl("^[A-Za-z]:/", name))
+    output_dir <- set_up_output(paste0(name, "heatmap/")) 
+  else   
+    output_dir <- set_up_output(paste0(output_folder, "plot_heatmap_", name, "/"))
+  
+  # Arguments check
+  if (!is.na(clusters)[[1]] && is.vector(clusters)) {message("clusters provided") ; clusters <- as.character(clusters)} # Nota -> Na is considered vector of length 1
+  else clusters <-  as.character(unique(seurat_object@meta.data[[cluster_column]]))
+  if (!is.vector(which) || !is.character(which)) stop(paste0("Error: the variable which must be a vector with the desired plot names"))
+  if (!is.na(markers)[[1]]) compute_markers <- FALSE
+  else compute_markers <- TRUE
+  
+  # Definition of function used to return a list of markers correctly formatted
+  find_markers_local <- function() {
+    
+    # Initialize emty list where the lists of markers will be kept
+    cluster_markers <- list()
+    
+    # Iterate through all the clusters and compute the markers
+    for (cluster_number in clusters) {
+      cluster_markers[[cluster_number]] <- FindMarkers(new_seurat_object, ident.1 = cluster_number, 
+                                                       ident.2 = clusters[!(clusters == cluster_number)])
+      message(paste0("markers computed for cluster: ", cluster_number))
+    }
+    
+    # create a dataframe that contains the n_genes top markers per cluster, oly keeping the ones present in variable features
+    markers_df <- as.data.frame(lapply(cluster_markers, function(markers_df_for_cluster) {
+      markers_df_for_cluster <- markers_df_for_cluster[order(markers_df_for_cluster$avg_log2FC),]
+      
+      # Select the top 25 markers, after having checked that they are present in the variable features
+      top_markers <- row.names(markers_df_for_cluster) %>%
+        .[. %in% rownames(seurat_object@assays[[assay]]$scale.data)] %>%
+        .[1:n_genes]
+      # return(top_markers)
+
+    })
+    )
+    
+    # Linearise the dataframe
+    markers_vector <- unlist(c(markers_df), use.names = FALSE)
+    
+    return(markers_vector)
+  }
+  
+  # Loops thrugh the which argument and plots all the ones that are needed using the selected method 
+  for (which_element in which){
+    
+    if (which_element == "dotplot") {
+      n_genes = 5
+      
+      # Create new seurat object
+      new_seurat_object <- create_object_from_cluster_id(seurat_object, clusters, assay=assay,
+                                                         clusters_column=cluster_column, save=FALSE, new_idents=cluster_column)
+      # Old code
+      if(FALSE) {
+        new_seurat_object <- CreateSeuratObject(seurat_object[[assay]],
+                                                assay = "RNA",
+                                                meta.data = seurat_object@meta.data)
+        Idents(new_seurat_object) <- cluster_column
+      }
+      
+      # Compute the markers to plot if needed
+      if (compute_markers) markers <- find_markers_local(n_genes)
+      
+      # Create a DotPlot
+      save_plot(DotPlot(
+        new_seurat_object,
+        features = unique(markers),
+        group.by = cluster_column,
+        idents = clusters,
+        cols = c( "white", "blue"),
+        dot.scale = 3 
+      ), paste0(output_dir, "dotplot", extension_plot), x = 20, y = 5)
+    } 
+    if (which_element =="heatmap") {
+      
+      # Create new seurat object
+      new_seurat_object <- create_object_from_cluster_id(seurat_object, clusters, assay=assay,
+                                                         clusters_column=cluster_column, save=FALSE, new_idents=cluster_column)
+      
+      # Compute the markers to plot if needed, otherwise filter to keep the ones that are in the variable features
+      if (compute_markers) markers_filtered <- find_markers_local()
+      else       
+        markers_filtered <- unique(markers) %>%
+        .[. %in% rownames(seurat_object@assays[[assay]]$scale.data)]  %>%
+        .[1:maxn_genes]
+
+      # To avoid that te maxgenes per plot parameter is smaller than th number of genes (throws an error)
+      if (maxn_genes_per_plot > length(markers_filtered)) 
+        maxn_genes_per_plot <- length(markers_filtered)
+      
+      # Loop to create the heatmaps
+      for (i in seq(1, length(markers_filtered), by = maxn_genes_per_plot)) {
+        
+        subset_markers_filtered <- markers_filtered[i:min(i+maxn_genes_per_plot, length(markers_filtered))]
+        
+        # Create a heatmap
+        save_plot(DoHeatmap(
+          new_seurat_object,
+          features = subset_markers_filtered,
+          group.by = cluster_column,
+          slot = "scale.data", # scale data contains only the variable features 
+          disp.min = 0 # to modify
+        ) + scale_fill_gradientn(colors = c("powderblue","white", "red")), 
+        paste0(output_dir, "heatmap_", i, "_", min(i + maxn_genes_per_plot - 1, length(markers_filtered)), extension_plot), x = 15, y = 20)
+        
+      }
+      # Create a heatmap
+      # save_plot(DoHeatmap(
+      #  new_seurat_object,
+      #  features = markers_filtered,
+      #  group.by = cluster_column,
+      #  slot = "scale.data", # scale data contains only the variable features 
+      #  disp.min = 0 # to modify
+      # ) + scale_fill_gradientn(colors = c("powderblue","white", "red")), paste0(output_dir, "heatmap", extension_plot), x = 15, y = 20)
+      # r colors: https://www.datanovia.com/en/blog/awesome-list-of-657-r-color-names/
+      
+      # Save plotted features in a dataframe
+      write.xlsx(as.data.frame(markers_filtered), file = paste0(output_dir, "markers.xlsx" ), sheetName = "marker_genes", append=TRUE)
+      message(paste0("results saved in: ",output_dir, "markers.xlsx"))
+      
+    }
+    if (which_element =="barplot") {
+      n_genes = 50
+      
+      # Create new seurat object
+      new_seurat_object <- create_object_from_cluster_id(seurat_object, clusters, assay=assay,
+                                                         clusters_column=cluster_column, save=FALSE, new_idents=cluster_column)
+      
+      # Compute the markers to plot if needed
+      if (compute_markers) markers <- find_markers_local(n_genes)
+      
+      barplot(t(as.matrix(df$Value)), beside = TRUE, col = rainbow(length(unique(df$Cluster))),
+              names.arg = unique(df$Cluster), xlab = "Cluster", ylab = "Expression Value",
+              main = "Grouped Bar Plot by Cluster")
+      
+      # Create a DotPlot
+      save_plot(DoHeatmap(
+        new_seurat_object,
+        features = unique(markers),
+        group.by = cluster_column 
+      ), paste0(output_dir, "_barplot", extension_plot), x = 12, y = 12)
+    }
+  }
+  
+}
+
+# Function to find differentially expressed markers and plot feature plot
+find_and_plot_markers <- function(seurat_object, cluster_id="all", reduction_name="pca", 
+                                  save_data=TRUE, cluster_column="",
+                                  name="", assay = "RNA", method = "default",
+                                  subset_id="control", o2=NA, condition="PD",
+                                  nothreshold=FALSE,
+                                  control="non_PD", condition_column="subject_pathology",
+                                  extension_plot=".png") {
+  
+  # Dependencies
+  check_packages(c("openxlsx", "Seurat"))
+  
+  # Set up output dir
+  output_dir <- set_up_output(paste0(output_folder, "markers_", name, "/"))
+  
+  # Setting parameters
+  if (cluster_column != '' && cluster_column %in% names(seurat_object@meta.data)) Idents(seurat_object) <- cluster_column
+  else if (cluster_column != '' && !(cluster_column %in% names(seurat_object@meta.data))) 
+    stop("invalid idents column selected")
+  
+  # Find differentially expressed markers with the specified method
+  if (method == "microglia_only") {
+    microglia = c("0", "1", "2")
+    message("running for microglia")
+    markers <- FindMarkers(seurat_object, ident.1 = cluster_id, ident.2 = microglia[!(microglia == cluster_id)])
+  } else if (method == "condition"){
+    message("running for condition")
+    if (nothreshold) 
+      markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column,
+                             logfc.threshold = 0, min.pct = 0) #,  test.use="DESeq2")
+    else 
+      markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column) #,  test.use="DESeq2")
+  } else if (method == "condition_vf"){
+    message("running for condition")
+    if (nothreshold) 
+      markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column,
+                             logfc.threshold = 0, min.pct = 0, 
+                             slot = "scale.data", features = row.names(seurat_object_microglia@assays[[assay]]$scale.data)) #,  test.use="DESeq2")
+    else 
+      markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column, 
+                             slot = "scale.data", features = row.names(seurat_object_microglia@assays[[assay]]$scale.data)) #,  test.use="DESeq2")
+    
+  } else if (method == "condition_and_clusters" && !is.na(subset_id)){
+    message("running for condition and clusters")
+    markers <- FindMarkers(seurat_object, ident.1 = control, group.by = condition_column,
+                           subset.ident = cluster_id)#, test.use="DESeq2")
+  } else if (method == "condition_and_clusters_vf" && !is.na(subset_id)){
+    message("running for condition and clusters")
+    markers <- FindMarkers(seurat_object, ident.1 = control, group.by = condition_column,
+                           subset.ident = cluster_id, 
+                           slot = "scale.data", features = row.names(seurat_object_microglia@assays[[assay]]$scale.data))#, test.use="DESeq2")
+  } else if (method == "default"){
+    markers <- FindMarkers(seurat_object, ident.1 = cluster_id)
+  } else if (method == "default_vf"){
+    markers <- FindMarkers(seurat_object, ident.1 = cluster_id, 
+                           slot = "scale.data", features = row.names(seurat_object_microglia@assays[[assay]]$scale.data)) 
+  } else if (method == "default_LR"){
+    markers <- FindMarkers(seurat_object, ident.1 = cluster_id, test.use="LR")
+  } else if (method == "condition_DESeq2"){
+    message("running for condition with DESeq2")
+    
+    # Delete the features that have an expression of 0 everywhere, (hwo is it possile????) rowsumns on the condition > 0, if rowsums is 0 then there are no cells that satisfy it
+    seurat_object <- subset(seurat_object, features = rownames(seurat_object@assays$RNA$data)[rowSums(seurat_object@assays$RNA$data > 0) > 0])
+    
+    if (nothreshold) 
+      markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column,
+                             logfc.threshold = 0, min.pct = 0, test.use="DESeq2")
+    else 
+      markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column,test.use="DESeq2")
+    
+  } else if (method == "condition_and_clusters_DESeq2" && !is.na(subset_id)){
+    message("running for condition and clusters with DESeq2")
+    seurat_object <- subset(seurat_object, features = rownames(seurat_object@assays$RNA$data)[rowSums(seurat_object@assays$RNA$data > 0) > 0])
+    
+    markers <- FindMarkers(seurat_object, ident.1 = control, group.by = condition_column,
+                           subset.ident = cluster_id, test.use="DESeq2")
+  } else {
+    stop("no condition met")
+  }
+  
+  # Select the top 9 markers
+  top_markers <- markers[1:9, ]
+  
+  # Extract marker gene names
+  marker_genes <- rownames(top_markers)
+  
+  if (save_data) {
+    if (!dir.exists(output_dir)) dir.create(output_dir)
+    
+    markers_excel <- markers# [1:1000, ]
+    markers_excel$gene <- rownames(markers_excel)
+    
+    if (method =="default" || method == "microglia_only") {
+      
+      # Check if the group is numeric (for some reason if it is numeric it adds a g at the end)
+      if (is.na(as.numeric(cluster_id))) expr <-
+          AggregateExpression(object = seurat_object)[[assay]][, cluster_id]
+      else       expr <- 
+          AggregateExpression(object = 
+                                seurat_object)[[assay]][, paste0("g",as.character(cluster_id))]
+      
+      # Add the average expression column
+      markers_excel <- cbind(markers_excel, "average expression" = 
+                               expr[names(expr) %in% row.names(markers_excel)])
+    }
+    
+    write.xlsx(markers_excel, file = paste0(output_dir, "expressed_markers_", cluster_id, "_", name, ".xlsx" ), sheetName = "marker_genes", append=TRUE)
+    message(paste0("results saved in: ",output_dir, "expressed_markers_", cluster_id, ".xlsx"))
+  }
+
+  return()
+  # Create a feature plot for the top markers
+  if (!is.na(o2)) save_plot(FeaturePlot(o2, features = marker_genes, cols = c('lightgrey','blue'),
+                                        reduction=reduction_name),#  min.cutoff="q15"),
+                            paste0(output_dir, "feature_plot", cluster_id, extension_plot), x=10, y=10)#
+  else save_plot(FeaturePlot(seurat_object, features = marker_genes, cols = c('lightgrey','blue'),
+                             reduction=reduction_name),#  min.cutoff="q15"),
+                 paste0(output_dir, "feature_plot_", cluster_id, extension_plot), x=10, y=10)
+  
+}
+
+# Plot a selection of markers from a df (saved in different columns)
+plot_markers_from_df <- function(seurat_object, markers_location, reduction_name="umap_microglia_harmony_reduction", name ="",
+                                 many_plot=TRUE, feature_plot=FALSE, message="results", extension_plot=".png",
+                                 heatmap_by_column=FALSE, cluster_column="microglia_clusters", subplot_n=9, 
+                                 max_feature_plots=11, max_genes_many_plots = 100,
+                                 column_list=FALSE) {
+  
+  
+  # Messages 
+  cat("Plotting markers from given df... \n")
+  message(paste0("Parameters: - reduction_name: ", reduction_name,
+                 " - markers_location: ", markers_location,
+                 " - name: ", name,
+                 " - many_plot: ", many_plot,   # makes the heatmap
+                 " - feature_plot: ", feature_plot,
+                 " - extension_plot: ", extension_plot,
+                 " - heatmap_by_column: ", heatmap_by_column,  # creates a different heatmap for each column 
+                 " - cluster_column: ", cluster_column,
+                 " - subplot_n: ", subplot_n,
+                 " - max_feature_plots: ", max_feature_plots,
+                 " - max_genes_many_plots: ", max_genes_many_plots))
+  
+  # Package management
+  check_packages(c("readxl", "dplyr", "Seurat", "gridExtra", "openxlsx", "Matrix","ggplot2"))
+
+  # Set up output dir
+  output_dir <- set_up_output(paste0(output_folder, "plot_markers_from_df_", name, "/"))
+  
+  # Load the markers
+  markers_df <- read_excel(markers_location)
+  
+  # Saves the relative plots (either using many plots and a heatmap or the feature plots)
+  if (feature_plot){
+    for (column in names(markers_df)) {
+      
+      # Skip if no data is present
+      if (is.character(column_list) && !any(column %in% column_list)) {message("skipping: ", column); next}
+      
+      # Extract the features that are present in the seurat object for each column
+      features <- markers_df %>%
+        pull(column) %>%
+        .[. %in% rownames(seurat_object)] 
+      
+      # Message
+      message("Source: ", column, " - Features: ", paste(features, collapse = ", "))
+      
+      # Iterate thorugh the featres in batches of subplot_n and plot (max 11 plots)
+      if (length(features) == 0) {message("skipping, not enough features"); next}
+      lapply(seq(1, min(length(features), subplot_n*max_feature_plots), by = subplot_n), function(start_index){
+        end_index <- min(start_index + subplot_n-1, length(features))
+        save_plot(FeaturePlot(seurat_object, features = features[start_index:end_index],
+                              cols = c('lightgrey','blue'),
+                              reduction=reduction_name),
+                  paste0(output_dir, "feature_plot_", column, "_", 
+                         start_index, "_", end_index, 
+                         extension_plot)
+                  , x=10, y=10) 
+      })
+    }
+  }
+  
+  
+  # Heatmap
+  if (many_plot) {
+    if (heatmap_by_column || is.character(column_list)) {
+      
+      # Iterate through the columns
+      for (column in names(markers_df)) {
+        
+        # Skip if no data is present
+        if (is.character(column_list) && !any(column %in% column_list)) {message("skipping: ", column); next}
+        
+        # Extract the features that are present in the seurat object for each column
+        features <- markers_df %>%
+          pull(column) %>%
+          .[. %in% rownames(seurat_object)] 
+        
+        # Create the heatmap, plots at most max_genes_many_plots genes
+        many_plots(seurat_object_microglia, which=c("heatmap"), assay="RNA",
+                   cluster_column=cluster_column, name = paste0(output_dir, column), markers=features,
+                   maxn_genes = max_genes_many_plots)
+      }
+    } else {
+      
+      # Selects all the features that are also present in the object
+      features <- unlist(c(markers_df), use.names = FALSE) %>%
+        .[. %in% rownames(seurat_object)]
+      
+      # Create the heatmap, plots at most max_genes_many_plots genes
+      many_plots(seurat_object_microglia, which=c("heatmap"), assay="RNA",
+                 cluster_column=cluster_column, name = output_dir, markers=features,
+                 maxn_genes = max_genes_many_plots)
+      
+    }
+  }
+}
+
+# Volcano plot from gene table
+volcano_plot <- function(markers_dir, count_threshold=0, extension_plot=".png") {
+  
+  # Check packages
+  check_packages(c("EnhancedVolcano", "readxl", "tools"))
+
+  # Set up output dir
+  output_dir <- set_up_output(paste0(output_folder, "markers_", markers_dir, "/"), message)
+
+  # List excel files
+  excel_files <- list.files(output_dir, pattern = "\\.xlsx$", full.names = TRUE) # TODO: add correct pattern (take only marksers tables)
+  
+  # Plot volcano for all
+  for (excel_file in excel_files) {
+    
+    # Load source
+    source <- as.data.frame(read_excel(excel_file))
+    
+    # Filter dataframe
+    source <- source[source$pct.1 > count_threshold & source$pct.2 > count_threshold,]
+    
+    # Create dataframe to plot
+    source_df <- source[,c("avg_log2FC", "p_val_adj")]
+    rownames(source_df) <- unlist(source["gene"])
+
+    # Save plot
+    save_plot(EnhancedVolcano(source_df,
+                              lab = rownames(source_df),
+                              x = "avg_log2FC",
+                              y = "p_val_adj") + 
+                labs(subtitle = file_path_sans_ext(basename(excel_file))),
+              paste0(output_dir, "volcano_plot_", file_path_sans_ext(basename(excel_file)), as.character(count_threshold), "", extension_plot), x=10, y=10)
+  }
+}
+
+# Save a gene expression table for selected gene list
+gene_table <- function(seurat_object, gene_list, message="resutls of gene analysis", name="gabriel",
+                       assay="RNA", method="subjects", name2="", cluster_column="microglia_clusters") {
+  # Dependencies
+  check_packages(c("Seurat", "openxlsx", "readxl"))
+  
+  # Set up output dir
+  output_dir <- set_up_output(paste0(output_folder, "specific_gene_analysis_", name2, "/"), message)
+  
+  # Initialize df
+  Idents(seurat_object) <- cluster_column
+  row_names <- gene_list
+  col_names <- c(as.character(unique(Idents(seurat_object))))
+  df <- as.data.frame(matrix(NA, nrow = length(row_names), ncol = length(col_names),
+                             dimnames = list(row_names, col_names)))
+  features <- intersect(row.names(seurat_object@assays[[assay]]$data), gene_list)
+  
+  # Aggregate expression
+  expr <- AggregateExpression(object = seurat_object, features = features)[[assay]]
+  df[features,] <- expr[features,]
+  
+  # Initialize df
+  Idents(seurat_object) <- "subject_pathology"
+  col_names <- c(as.character(unique(Idents(seurat_object))))
+  df[, col_names] <- NA
+  
+  # Diff expression and adding to a table
+  for (group in col_names){
+    if (sum(seurat_object@meta.data$subject_pathology == group) < 3) next
+    markers <- FindMarkers(seurat_object, ident.1 = group, features = features,
+                           logfc.threshold = 0, min.pct = 0)
+    log2FC_column <- as.vector(markers$avg_log2FC)
+    names(log2FC_column) <- row.names(markers)
+    
+    df[features, group] <- log2FC_column[features] # can i add it also in another way??
+  }
+  
+  # Save df
+  df <- cbind(row.names(df), df)
+  colnames(df)[1] <- "gene"
+  write.xlsx(df, file = paste0(output_dir, method, name, "_analysis.xlsx"))
+}
+
+violin_plot <- function(seurat_object, gene_list, name="", n_min=3,
+                        markers_analysisGPD="", markers_analysisPD="", message="results", extension_plot=".png") {
+  
+  # Dependencies
+  check_packages(c("Seurat", "ggplot2", "gridExtra", "purrr", "Matrix", "readxl"))
+  
+  # Set up output dir
+  output_dir <- set_up_output(paste0(output_folder, "violin_plots_", name, "/"), message)
+  
+  # Subset count matrix to include only needed genes
+  count_matrix <- Matrix(GetAssay(seurat_object, assay ="RNA")$data, sparse=TRUE)
+  count_matrix <- t(count_matrix[row.names(count_matrix) %in% gene_list,])
+  # TODO: convert in sparse matrix?
+  sorting_dataframe <- seurat_object@meta.data$subject_pathology
+
+  # Load DEGs table
+  if (!markers_analysisPD == '') {
+    message(paste0("loading... ", output_folder, "markers_", markers_analysisPD, 
+                   "/expressed_markers_all_", markers_analysisPD, ".xlxs"))
+    markers_tablePD <- read_excel(paste0(output_folder, "markers_", markers_analysisPD, 
+                                    "/expressed_markers_all_", markers_analysisPD, ".xlsx"))
+
+    message(paste0("loading... ", output_folder, "markers_", markers_analysisGPD, 
+                           "/expressed_markers_all_", markers_analysisGPD, ".xlxs"))
+    markers_tableGPD <- read_excel(paste0(output_folder, "markers_", markers_analysisGPD, 
+                                    "/expressed_markers_all_", markers_analysisGPD, ".xlsx"))
+  }
+  else message("no DEGs table given")
+
+  # Iterate through the genes and create violin-plot
+  walk2(data.frame(count_matrix), colnames(count_matrix), function(expr_list, gene) {
+
+    # Matching with condition 
+    expr_df <- data.frame(cbind(expr_list, sorting_dataframe))
+    c1 <- nrow(expr_df)
+    expr_df <- expr_df[expr_df$expr_list > 0, ]
+    c2 <- nrow(expr_df)
+    expr_df$expr_list <- as.numeric(expr_df$expr_list)
+    expr_df$sorting_dataframe <- factor(expr_df$sorting_dataframe, levels=c("PD", "genetic_PD", "non_PD"))
+    
+    # Prepare text
+    if (!markers_analysisPD == '') {
+      
+      # Read values
+      qvaluePD <- format(as.numeric(markers_tablePD[markers_tablePD$gene == gene, "p_val_adj"], scientific = TRUE, digits = 4))
+      qvalueGPD <- format(as.numeric(markers_tableGPD[markers_tableGPD$gene == gene, "p_val_adj"], scientific = TRUE, digits = 4))
+      log2fcPD <- format(as.numeric(markers_tablePD[markers_tablePD$gene == gene, "avg_log2FC"], scientific = TRUE, digits = 4))
+      log2fcGPD <- format(as.numeric(markers_tableGPD[markers_tableGPD$gene == gene, "avg_log2FC"], scientific = TRUE, digits = 4))
+      
+      # Prepare text
+      text <- paste0("cells which show expression: ",c2 ,"/", c1, "\n",
+                     "genetic PD adj_pvalue: ",qvalueGPD , " - log2FC: " ,log2fcGPD, "\n",
+                     "PD         adj_pvalue: ",qvaluePD ," - log2FC: " ,log2fcPD)
+      # message(text)
+    }
+    else 
+      text <- paste0("cells which show expression: ",c2 ,"/", c1)
+    
+    # Create violin plot
+    if (c2 > n_min) 
+      save_plot(ggplot(expr_df, aes(x = sorting_dataframe, y = expr_list, colour = sorting_dataframe)) +#, fill=sorting_dataframe)) +
+                  geom_violin(alpha=0.2) + geom_jitter(alpha = 0.8, size=0.2) + # scale_fill_manual(values = c("red", "blue", "green")) +
+                  labs(x = NULL, y = "Expression Value") +
+                  ggtitle(paste0("Violin Plot for ", gene)) + 
+                  # theme(plot.margin = margin(b=1.5, unit="cm")) +
+                  # labs(caption = str_wrap(text, width = 60)) +
+                  labs(caption = text) +
+                  theme(legend.position="none"),
+                paste0(output_dir, "volin_plot_", gene, extension_plot))
+    else message(gene, " expressed in too little cells (<", n_min, ")")
+
+  })
+}
+
+# Saves a table with the average expression vales of the data
+avg_expression <- function(seurat_object, gene_list, name="") {
+  
+  # Dependencies
+  check_packages(c("Seurat", "ggplot2", "gridExtra", "purrr", "Matrix", "readxl"))
+  
+  # Destination Folder
+  output_dir <- set_up_output(paste0(output_folder, "avg_expression_", name, "/"), message)
+  
+  # Extract count matrix
+  count_matrix <- Matrix(GetAssay(seurat_object, assay ="RNA")$data, sparse=TRUE)
+  count_matrix <- data.frame(count_matrix[row.names(count_matrix) %in% gene_list,])
+  
+  # saves the gene list as dataframes and assigns rownames
+  means <- as.data.frame(gene_list)
+  row.names(means) <- gene_list
+  
+  # Iterate though the different conditions and compute means
+  # TODO: use apply?
+  for (pathology in unique(seurat_object@meta.data$subject_pathology)) {
+    cells <- row.names(seurat_object@meta.data[seurat_object@meta.data$subject_pathology == pathology,])
+
+    means <- cbind(means, as.data.frame(rowMeans(count_matrix[,colnames(count_matrix) %in% cells])))
+    names(means)[length(means)] <- pathology
+  }
+
+  # Save excel
+  write.xlsx(means, file = paste0(output_dir, "means_", name, ".xlsx" ))
+  message(paste0("results saved in: ",output_dir, "means_", name, ".xlsx"))
+}
+  
+#### CLUSTERING ####
+
+# Performs clustering, selecting the number of dimensons to consider based on a threshold on the standard deviation, and the visualization, the results of the visualization are passed as parameters
+clustering <- function(seurat_object, reduction="pca", 
+                       dimensions=15, desired_resolution=0.6, save=FALSE, column_name="seurat_clusters"){
+  
+  # Message
+  cat("Clustering.... \n")
+  message(paste0("Parameters: dimensions used for clustering: ", dimensions,
+                 " - reduction used: ", reduction))
+  
+  # build the graph
+  seurat_object <- FindNeighbors(seurat_object, reduction = reduction, dims = 1:dimensions, verbose=FALSE)
+  # graph.name assiged according to: https://github.com/satijalab/seurat/issues/2995
+  
+  # Message
+  message("Graph computed")
+  message(paste0("running FindClusters, graph used:", seurat_object[[reduction]]@assay.used, "_snn",
+                 " - saved in metadata column: ", column_name))
+  
+  # Compute the clusters
+  seurat_object <- FindClusters(seurat_object, resolution = desired_resolution, 
+                                cluster.name=column_name, 
+                                graph.name = paste0(seurat_object[[reduction]]@assay.used, "_snn"), verbos=FALSE)
+  
+  # Delete seurat_clusters column if created by mistake
+  if (column_name != "seurat_clusters")  seurat_object$seurat_clusters <- NULL 
+  
+  # Saving the object if needed
+  if (save) saveRDS(seurat_object, file = paste0(output_folder, "after_clustering.rds"))
+  message("Clustering done")
+  
+  return(seurat_object)
+}
+
+# Visualization, given a reduction to use and the de1sired stdeviation to select the desired number of features 
+visualization_UMAP <- function(seurat_object, reduction_name="umap_",
+                                          reduction="pca", dimensions=16, 
+                                          cluster_column="seurat_clusters",
+                                          plots=NA, save=FALSE, 
+                                          run_UMAP=TRUE, name = "", 
+                                          message="results", extension_plot=".png",
+                                          daniela=FALSE){
+  
+  # Setting plot names
+  if (is.na(name)) name = reduction_name
+  if (is.na(plots)) {
+    plots <- c(
+      paste0(name, "_by_pathology", extension_plot),
+      paste0(name, "_clusters", extension_plot),
+      paste0(name, "_split_pathology", extension_plot),
+      paste0(name, "_by_subject", extension_plot)
+    )
+  }
+  
+  # Setting up output directory + info
+  output_dir <- paste0(output_folder, "plots_dim_red_", name, "/")
+  # update_text_file(output_dir, message)
+  if (!dir.exists(output_dir)) dir.create(output_dir)
+  
+  # Function info
+  cat(paste0("Visualisation and UMAP... \n"))
+  
+  message(paste0("Parameters: run UMAP: ", run_UMAP,
+                 " - dimensions used: ", dimensions,
+                 " - reduction used: ", reduction,
+                 " - reduction name saved: ", reduction_name,
+                 " - save: ", save,
+                 " - name: ", name))
+  
+  # UMAP
+  if (run_UMAP) seurat_object <- RunUMAP(seurat_object, dims = 1:dimensions, reduction = reduction, 
+                                         reduction.name = reduction_name, verbose=FALSE)
+  
+  # Visualisation
+  # TODO: delete daniela or/ and add some other way of controlling plots
+  if (daniela){
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = "Condition"), paste0(output_dir, plots[1]))
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = cluster_column, label=TRUE),  paste0(output_dir, plots[2]))
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, split.by = "Condition"), paste0(output_dir, plots[3]), x=14, y=7)
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = "Sample", label=TRUE), paste0(output_dir, plots[4]))
+  } else {
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = "subject_pathology"), paste0(output_dir, plots[1]))
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = cluster_column, label=TRUE) + theme(legend.position="none"),  paste0(output_dir, plots[2]))
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, split.by = "subject_pathology"), paste0(output_dir, plots[3]), x=14, y=7)
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = "subject", label=TRUE) + theme(legend.position="none"), paste0(output_dir, plots[4]))
+  }
+  
+  # Save the seurat object if requested
+  if (save) {
+    saveRDS(seurat_object, file = paste0(output_folder, "after_cluster_visualization.rds"))
+    message(paste0("seurat object saved in ´", paste0(output_folder, "after_cluster_visualization.rds")))}
+  
+  return(seurat_object)
+}
+#### SEURAT OBJECTS MANIPULATION #####
+
+# Find the files that respect a pattern in a root directory and returns the info
+preparation_for_data_loading <- function(root, pattern, path_to_patient_info){
+  
+  # location of files and creation of objects 
+  count_matrix_files <- find_matching_directories(root, pattern)
+  subjects_info <- find_conditions(path_to_patient_info)
+  message(subjects_info)
+  
+  return (list(count_matrix_files = count_matrix_files, subjects_info = subjects_info))
+}
+
+# Loads seurat objects given paths to them, and path to a suject info data file to update te methadata
+seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info, save=FALSE,
+                                               normalization=FALSE, message="results"){
+
+
+  # Setting up output dir 
+  output_dir <- set_up_output(paste0(output_folder, "quality_control/"), message)
+  
+  # Define function and needed objects
+  seurat_objects <- list()
+  plot_doublets <- function(plot, points) {
+    # https://github.com/satijalab/seurat/blob/master/R/visualization.R
+
+    # Funzione che serve per recuperare i punti 
+    GetXYAesthetics <- function(plot, geom = 'GeomPoint', plot.first = TRUE) {
+      geoms <- sapply(
+        X = plot$layers,
+        FUN = function(layer) {
+          return(class(x = layer$geom)[1])
+        }
+      )
+      # handle case where raster is set to True
+      if (geom == "GeomPoint" && "GeomScattermore" %in% geoms){
+        geom <- "GeomScattermore"
+      }
+      geoms <- which(x = geoms == geom)
+      if (length(x = geoms) == 0) {
+        stop("Cannot find a geom of class ", geom)
+      }
+      geoms <- min(geoms)
+      if (plot.first) {
+        # x <- as.character(x = plot$mapping$x %||% plot$layers[[geoms]]$mapping$x)[2]
+        x <- as_label(x = plot$mapping$x %||% plot$layers[[geoms]]$mapping$x)
+        # y <- as.character(x = plot$mapping$y %||% plot$layers[[geoms]]$mapping$y)[2]
+        y <- as_label(x = plot$mapping$y %||% plot$layers[[geoms]]$mapping$y)
+      } else {
+        x <- as_label(x = plot$layers[[geoms]]$mapping$x %||% plot$mapping$x)
+        y <- as_label(x = plot$layers[[geoms]]$mapping$y %||% plot$mapping$y)
+      }
+      return(list('x' = x, 'y' = y))
+    }
+    xynames <- GetXYAesthetics(plot = plot)
+    
+    
+    label.data <- plot$data[points, ]
+    # label.data$labels <- labels
+    # Per fre gli scatter usano una funzione anche da loro definita che si chiama SingleCorPlot
+    # secondo me dovrebe essere possibile ottenere lo stesso risultato semplicemente con geom scatter
+
+    plot <- plot + geom_point( #https://ggplot2.tidyverse.org/reference/geom_point.html
+      mapping = aes_string(x = xynames$x, y = xynames$y),
+      data = label.data,  
+      colour = "blue")
+    
+    # da LabelPoints
+    # plot <- plot + geom_text_repel(
+    #  mapping = aes_string(x = xynames$x, y = xynames$y, label = 'labels'),
+    #  data = label.data)
+    
+    return(plot)
+  }
+    
+  # Main iteration
+  for (file_path in count_matrix_files) {
+    
+    # Subject info
+    object_name <- remove_parts(file_path)
+    pathology <- subjects_info[subjects_info$subject == object_name, "condition"]
+    message(paste0("loading ", object_name, " pathology: ", pathology))
+    
+    # functions definition (here to defne them in the right environment)
+    doublet_finder <- function(seurat_object) {
+      
+      # remotes::install_github('chris-mcginnis-ucsf/DoubletFinder')
+      library("DoubletFinder")
+      
+      # Source -> https://github.com/chris-mcginnis-ucsf/DoubletFinder
+      ## Pre-process Seurat object (standard) --------------------------------------------------------------------------------------
+      seurat_object <- NormalizeData(seurat_object)
+      seurat_object <- FindVariableFeatures(seurat_object, selection.method = "vst", nfeatures = 2000)
+      seurat_object <- ScaleData(seurat_object)
+      seurat_object <- RunPCA(seurat_object)
+      seurat_object <- RunUMAP(seurat_object, dims = 1:10)
+      seurat_object <- FindNeighbors(seurat_object, dims = 1:10)
+      seurat_object <- FindClusters(seurat_object, resolution = 0.5)
+      
+      ## Fit linear model for expected number of doublets--------------------------------------------------------------------------------------
+      num_cells <- c(1000, 2000, 3000, 4000, 5000)
+      doublet_rate <- c(0.008, 0.016, 0.023, 0.031, 0.039)
+      linear_model <- lm(doublet_rate ~ num_cells)
+      perc_doublet <- predict(linear_model, newdata = data.frame(num_cells = nrow(seurat_object@meta.data)))
+      
+      ## pK Identification (no ground-truth) ---------------------------------------------------------------------------------------
+      # sweep.res.list_ <- paramSweep(seurat_object, PCs = 1:10, sct = FALSE)
+      # sweep.stats_ <- summarizeSweep(sweep.res.list_, GT = FALSE)
+      # bcmvn_ <- find.pK(sweep.stats)
+      
+      ## Homotypic Doublet Proportion Estimate -------------------------------------------------------------------------------------
+      homotypic.prop <- modelHomotypic(seurat_object@meta.data$seurat_clusters)           ## ex: annotations <- seurat_object@meta.data$ClusteringResults
+      nExp_poi <- round(perc_doublet*nrow(seurat_object@meta.data))                       ## Assuming 7.5% doublet formation rate - tailor for your dataset
+      nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+      
+      ## Run DoubletFinder with varying classification stringencies ----------------------------------------------------------------
+      seurat_object <- doubletFinder(seurat_object, PCs = 1:10, pN = 0.25, pK = 0.09, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
+      
+      ## Save Plots ---------------------------------------------------------------------------------------------------------------
+      if (!dir.exists(paste0(output_dir, "/exdimred/"))) dir.create(paste0(output_dir, "/exdimred/"))
+      save_plot(DimPlot(seurat_object, group.by = "seurat_clusters"),
+                paste0(output_dir, "/exdimred/" ,object_name ,"", extension_plot))
+      
+      if (!dir.exists(paste0(output_dir, "/exdimred_doublets/"))) dir.create(paste0(output_dir, "/exdimred_doublets/"))
+      save_plot(DimPlot(seurat_object, group.by = names(seurat_object@meta.data)[ncol(seurat_object@meta.data)]),
+                paste0(output_dir, "exdimred_doublets/" ,object_name ,"", extension_plot))
+      
+      # Scatter plot
+      if (!dir.exists(paste0(output_dir, "/scatter_doublets/"))) dir.create(paste0(output_dir, "/scatter_doublets/"))
+      
+      return(seurat_object@meta.data)
+    }
+    
+    empty_drops <- function(seurat_object){
+      
+      e.out <- emptyDrops(counts(celescope_data), lower=100, test.ambient=TRUE)
+      
+    }
+    
+    # Call functions for quality control
+    cell_removal <- function(seurat_object, method="DoubletFinder") {
+      
+      if(method=="fixed_percentage") {
+        seurat_object <- subset(seurat_object, subset = nFeature_RNA < n_features)
+      }
+      if(method=="fixed_value") {
+        seurat_object <- subset(seurat_object, subset = nFeature_RNA < n_features)
+      }
+      if(method=="model_percentage") {
+        num_cells <- c(1000, 2000, 3000, 4000, 5000)
+        doublet_rate <- c(0.008, 0.016, 0.023, 0.031, 0.039)
+        linear_model <- lm(doublet_rate ~ num_cells)
+        perc_doublet <- predict(linear_model, newdata = data.frame(num_cells = nrow(seurat_object@meta.data)))
+        n_features <- quantile(df$column_name, probs = perc_doublet, na.rm = TRUE)
+        seurat_object <- subset(seurat_object, subset = nFeature_RNA < n_features)
+      }
+      if(method=="DoubletFinder") {
+        
+        
+        metadata_df <- doublet_finder(seurat_object)
+        
+        cells_to_keep <- rownames(
+          metadata_df[
+            metadata_df[
+              ,ncol(metadata_df)
+            ] == "Singlet",])
+        
+        cells_to_discard <- rownames(
+          metadata_df[
+            metadata_df[
+              ,ncol(metadata_df) # Takes last column
+            ] == "Doublet",]) # selects rownames when the value in the last column equals to doublet
+        
+        save_plot(
+          plot_doublets(
+            plot = FeatureScatter(
+              seurat_object, 
+              feature1 = "nCount_RNA", 
+              feature2 = "percent.mt"), 
+            points = cells_to_discard),           
+          plotname = paste0(output_dir,"scatter_doublets/", 
+                            object_name, 
+                            "_features_scatter_mt_plot", extension_plot),
+          x=10, y=7)
+        
+        save_plot(
+          plot_doublets(
+            plot = FeatureScatter(
+              seurat_object, 
+              feature1 = "nCount_RNA", 
+              feature2 = "nFeature_RNA"), 
+            points = cells_to_discard),           
+          plotname = paste0(output_dir,"scatter_doublets/", 
+                            object_name, 
+                            "_features_scatter_plot", extension_plot),
+          x=10, y=7)
+        
+        seurat_object <- subset(seurat_object, cells = cells_to_keep)
+      }
+      
+      return(seurat_object)
+    }
+
+    # Load the data
+    celescope_data <- Read10X(data.dir = file_path)
+    seurat_object <- CreateSeuratObject(counts = celescope_data)
+    
+    # add metadata
+    seurat_object$subject_pathology <- pathology
+    
+    # Calculate percentage mithocondrial
+    seurat_object$percent.mt <- PercentageFeatureSet(seurat_object, 
+                                                     pattern = "^MT-")
+    # Scatter plot
+    save_plot(FeatureScatter(seurat_object, feature1 = "nCount_RNA", 
+                             feature2 = "percent.mt") +
+                FeatureScatter(seurat_object, feature1 = "nCount_RNA", 
+                               feature2 = "nFeature_RNA"),
+              paste0(output_dir, object_name, "_features_scatter_plot", extension_plot), x=10, y=7)
+    
+    # Violin plot
+    save_plot(VlnPlot(seurat_object, 
+                      features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
+                      ncol = 3), 
+              paste0(output_dir, object_name, "_features_violin_plot", extension_plot))
+    
+    # Originale: 5% mt, >200, <2500 nFeatures
+    # Subset seurat object according to quality filters
+
+    seurat_object <- subset(seurat_object, subset = nFeature_RNA > 200 & percent.mt < 10, # avevo usato 5 o 10 in % mt?
+                            features = rownames(seurat_object@assays$RNA$counts)[rowSums(seurat_object@assays$RNA$counts > 0) > 3]) 
+
+    # With doublet finder or other method
+    serurat_object <- cell_removal(seurat_object)
+                            
+    # Normalization 
+    if (normalization) seurat_object <- NormalizeData(seurat_object, verbose = FALSE)
+    
+    # Adding to seurat_objects list
+    cat(paste0(object_name, " loaded, normalized and quality control performed! \n"))
+    seurat_objects <- c(seurat_objects, seurat_object)
+    
+  }
+  
+  # Saving seurat object if necessary
+  if (save) {
+    message("saving seurat oject...")
+    saveRDS(seurat_objects, file = paste0(output_folder, "after_loading.rds"))
+    message("saved in: ", paste0(output_folder, "after_loading.rds"))
+  }
+  return(seurat_objects)
+}
+
+# Starting from a list of seurat objects merges them without any further processing
+merge_seurat_objects <- function(seurat_objects, subjects_info, save=FALSE){
+  
+  # merge seurat objects
+  cat("Merging seurat objects... \n")
+  merged_seurat <- merge(x = seurat_objects[[1]], y = seurat_objects[-1], 
+                         add.cell.ids = subjects_info)
+  
+  # message
+  cat(paste0(length(seurat_objects), " seurat objects merged! \n"))
+  
+  # Save if necessary
+  if (save) saveRDS(merged_seurat, file = paste0(output_folder, "after_merging.rds"))
+  return(merged_seurat)
+}
+
+# To create metadata according to the object information
+create_metadata <- function(seurat_object, option = 1, save=TRUE){
+  # TODO: make the column have factors
+  
+  # Message
+  cat("Creating seurat object metadata... \n")
+  
+  # Retrieves the sample values
+  sample_values <- rownames(seurat_object@meta.data)
+  
+  # Splitting the values based on the underscore character
+  split_values <- strsplit(sample_values, "_")
+  
+  # Extracting subject and barcode separately
+  subject <- sapply(split_values, function(x) paste0(x[1], "_", x[2]))
+  barcode <- sapply(split_values, function(x) x[length(x)])
+  
+  # Creating a data frame with the separated values
+  seurat_object@meta.data$subject <- subject
+  seurat_object@meta.data$barcode <- barcode
+  
+  # Saves the object if needed
+  if (save) saveRDS(seurat_object, file = paste0(output_folder, "after_loading.rds"))
+  
+  message("Done")
+  return(seurat_object)
+}
+
+# To subset seurat object
+create_object_from_cluster_id <- function(seurat_object, clusters, assay="RNA", clusters_column="seurat_clusters", 
+                                          save=FALSE, filename ="subset_of_object.rds", new_idents=NA, 
+                                          variable_features=FALSE) {
+  
+  # Check arguments
+  if(!is.vector(clusters)) stop("clusters must be a vector")
+  if(is.na(new_idents)) new_idents = "seurat_clusters"
+  
+  # Install packages
+  check_packages(c("readxl", "dplyr", "Seurat", "purrr", "openxlsx", "Matrix","ggplot2"))
+  
+  # Set corrrect identity column
+  Idents(seurat_object) <- clusters_column
+  subset_seurat_object <- subset(seurat_object, idents = clusters)
+  # https://stackoverflow.com/questions/71542822/conditional-subsetting-of-seurat-object/72888084#72888084?newreg=32dfabd1d23c470d95a7cb56ff7933ae
+  
+  # Variable feature if needed
+  if  (variable_features) seurat_object <- FindVariableFeatures(seurat_object, selection.method  = "vst", 
+                                                                nfeatures = 2000, verbose = FALSE)
+  # Save and exit
+  if (save) saveRDS(subset_seurat_object, file = paste0(output_folder, filename))
+  message("subset created")
+  return(subset_seurat_object)
+}
+# To create the plots that can be used in a paper
+plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "numberofcell_pie_chart", 
+                                                     "numberofcell_barplot_subject", "numberofcell_pie_chart_subject",
+                                                     "numberofcell_pie_chart_cluster_subject", "numberofcell_pie_chart_cluster_pathology"), 
+                            genes_to_plot=c(""), cluster_column ="microglia_clusters", extension_plot=".png", name ="", assay = "RNA") {
+  
+  # Set up output dir
+  output_dir <- set_up_output(paste0(output_folder, "plots_misc_", name, "/"), message)
+  
+  # update_text_file(output_dir, message)
+  if (!dir.exists(output_dir)) dir.create(output_dir)
+  
+  # Function definition to plot the pie plots
+  pie_function <- function(name, subset_to_plot, categories_to_plot) {
+    
+    for (subset in unique(seurat_object@meta.data[subset_to_plot])) {
+      
+      # Calculate the frequency of each level
+      level_counts <- table(seurat_object@meta.data[seurat_object@meta.data[subset_to_plot] == subset, categories_to_plot])
+      
+      # Create a data frame for ggplot
+      pie_data <- data.frame(Level = names(level_counts),
+                             Frequency = as.vector(level_counts))
+      # Create the cake plot
+      save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
+                  geom_bar(width = 1, stat = "identity") +
+                  coord_polar("y", start = 0) +
+                  labs(title = paste0("Cell types ", subset), fill = "Level") +
+                  theme_void() +
+                  theme(legend.position = "right"),
+                paste0(output_dir, name, "_pie_", subset_to_plot, extension_plot))
+      
+    }
+    
+  }
+  
+  # TODO: da fare function definiton for barplots
+  bar_function <- function(name, bars, filling) {
+    
+    # Calculate the frequency of each level (for each cluster each subject)
+    level_counts <- table(seurat_object@meta.data[[cluster_column]])
+    subjects <- unique(seurat_object@meta.data$subject)
+    names(subjects) <-  subjects
+    
+    # Etract cell type
+    cell_types <- unique(seurat_object@meta.data[[cluster_column]])
+    names(cell_types) <- cell_types
+    level_counts <- lapply(cell_types, function(x){
+      
+      counts <- lapply(subjects, function(y){
+        
+        subject_counts <- nrow(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == x & seurat_object@meta.data$subject == y,])
+        
+        return(subject_counts)
+      }) 
+      
+      return(counts)
+    })
+    frequency <- unlist(level_counts)
+    
+    # Create a data frame for ggplot
+    pie_data <- data.frame(Bars = str_split_i(names(frequency), "\\.", 1),
+                           Filling = str_split_i(names(frequency), "\\.", 2),
+                           Frequency = as.vector(frequency))
+    
+    # Create the bar plot
+    save_plot(ggplot(pie_data, aes(x = Bars, y = Frequency, fill = Filling)) +
+                geom_bar(width = 1, stat = "identity", position = "fill") +
+                labs(title = "Cell types", fill = "Subject") +
+                theme_classic() +
+                # scale_x_discrete(label = unique(pie_data$Cell)) +
+                coord_flip() +
+                theme(legend.position = "right"),
+              paste0(output_dir, "barchart_subjects", extension_plot))
+    
+  }
+  
+  # Pie chart
+  if ("numberofcell_pie_chart" %in% which) pie_function("pathology", "subject_pathology", cluster_column)
+  # Cluster on legend, data from one subject
+  if ("numberofcell_pie_chart_subject" %in% which) pie_function("subject", "subject", cluster_column)
+  # Subject on legend, data from one cluster
+  if ("numberofcell_pie_chart_cluster_subject" %in% which) pie_function("cluster_subject", cluster_column,"subject")
+  # Pathology on legend, data from one cluster
+  if ("numberofcell_pie_chart_cluster_pathology" %in% which) pie_function("cluster_subject_pathology", cluster_column, "subject_pathology")
+
+  
+  # Feature plots (to add)
+  if ("feature_plot" %in% which) {
+    
+    # Create a list to store individual FeaturePlots
+    plot_list <- list()
+    
+    # Create FeaturePlots for each gene
+    for (gene in genes_to_plot) {
+      plot <- FeaturePlot(seurat_obj, features = gene, pt.size = 0.5, cols = "red")
+      plot_list[[gene]] <- plot
+    }
+    save_plot(CombinePlots(plots = plot_list, ncol = 1), paste0(output_dir, "featureplot", extension_plot))
+    
+  }
+  # Pie charts deprecated
+  if (FALSE) {
+    if ("numberofcell_pie_chart" %in% which) {
+      
+      for (pathology in unique(seurat_object@meta.data$subject_pathology)) {
+        
+        # Calculate the frequency of each level
+        level_counts <- table(seurat_object@meta.data[seurat_object@meta.data$subject_pathology == pathology, cluster_column])
+        
+        # Create a data frame for ggplot
+        pie_data <- data.frame(Level = names(level_counts),
+                               Frequency = as.vector(level_counts))
+  
+        # Create the cake plot
+       save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
+          geom_bar(width = 1, stat = "identity") +
+          coord_polar("y", start = 0) +
+          labs(title = paste0("Cell types ", pathology), fill = "Level") +
+          theme_void() +
+          theme(legend.position = "right"),
+          paste0(output_dir, pathology, "_pie", extension_plot))
+        
+      }
+  
+    }
+    # Cluster on legend, data from one subject
+    if ("numberofcell_pie_chart_subject" %in% which) {
+      
+      # One plot for each iteration (data coming from...)
+      for (subject in unique(seurat_object@meta.data$subject)) {
+        
+        # Calculate the frequency of each level (... on legend)
+        level_counts <- table(seurat_object@meta.data[seurat_object@meta.data$subject == subject, cluster_column])
+        
+        # Create a data frame for ggplot
+        pie_data <- data.frame(Level = names(level_counts),
+                               Frequency = as.vector(level_counts))
+        
+        # Create the cake plot
+        save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
+                    geom_bar(width = 1, stat = "identity") +
+                    coord_polar("y", start = 0) +
+                    labs(title = paste0("Cell types ", subject), fill = "Level") +
+                    theme_void() +
+                    theme(legend.position = "right"),
+                  paste0(output_dir, subject, "_pie_subjects", extension_plot))
+        
+      }
+      
+    }
+    # Subject on legend, data from one cluster
+    if ("numberofcell_pie_chart_cluster_subject" %in% which) {
+      
+      for (cluster in unique(seurat_object@meta.data[[cluster_column]])) {
+        
+        # Calculate the frequency of each level
+        level_counts <- table(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == cluster, "subject"])
+  
+        # Create a data frame for ggplot
+        pie_data <- data.frame(Level = names(level_counts),
+                               Frequency = as.vector(level_counts))
+        
+        # Create the cake plot
+        save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
+                    geom_bar(width = 1, stat = "identity") +
+                    coord_polar("y", start = 0) +
+                    labs(title = paste0("Cell types ", cluster), fill = "Level") +
+                    theme_void() +
+                    theme(legend.position = "right"),
+                  paste0(output_dir, cluster, "_pie_subjects", extension_plot))
+        
+      }
+    
+    }
+    # Pathology on legend, data from one cluster
+    if ("numberofcell_pie_chart_cluster_pathology" %in% which) {
+      
+      # One plot for each iteration (data coming from...)
+      for (cluster in unique(seurat_object@meta.data[[cluster_column]])) {
+        
+        # Calculate the frequency of each level (... on legend)
+        level_counts <- table(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == cluster, "subject_pathology"])
+  
+        # Create a data frame for ggplot
+        pie_data <- data.frame(Level = names(level_counts),
+                               Frequency = as.vector(level_counts))
+        
+        # Create the cake plot
+        save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
+                    geom_bar(width = 1, stat = "identity") +
+                    coord_polar("y", start = 0) +
+                    labs(title = paste0("Cell types ", cluster), fill = "Level") +
+                    theme_void() +
+                    theme(legend.position = "right"),
+                  paste0(output_dir, cluster, "_pie_pathology", extension_plot))
+        
+      }
+    }
+  }
+  # TODO: Pathology on legend, data from counts of one gene
+  if ("numberofcell_pie_chart_gene_pathology" %in% which) {
+    
+    stop("numberofcell_pie_chart_gene_pathology not implemented")
+    # One plot for each iteration (data coming from...)
+    for (gene in genes_to_plot) {
+      
+      # if the gene total expression is 0 and it exists
+      if (
+        !(gene %in% rownames(seurat_object@assays[[assay]]$data)) 
+        &&
+        rowSums(t(seurat_object@assays[[assay]]$data[gene,])) == 0
+      ) 
+        next
+      
+      # Iterate thrugh the pathologies to count how much that gene appears in each pathology
+      # cant be an abs value because number o subjects for each path is different, it must be avg
+      # problem: there are a lot fo nonzero elemtns, the mean does not work, the um does not work what can I use, if i can even use something)
+      for (pathology in seurat_object@meta.data$subject_pathology) {
+        
+        # Calculate the frequency of each level (... on legend)
+        gene_counts <- mean(seurat_object@assays[[assay]]$data[ 
+          gene, # rownames -> genes
+          rownames(seurat_object@meta.data[seurat_object@meta.data$subject_pathology == pathology,]) # columnames -> cells
+        ])
+      }
+      
+      # Create a data frame for ggplot
+      pie_data <- data.frame(Level = names(level_counts),
+                             Frequency = as.vector(level_counts))
+      
+      # Create the cake plot
+      save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
+                  geom_bar(width = 1, stat = "identity") +
+                  coord_polar("y", start = 0) +
+                  labs(title = paste0("Cell types ", cluster), fill = "Level") +
+                  theme_void() +
+                  theme(legend.position = "right"),
+                paste0(output_dir, cluster, "_pie_pathology", extension_plot))
+      
+    }
+  }
+  
+  if ("numberofcell_pie_chart_cluster_pathology" %in% which) {
+    
+    for (cluster in unique(seurat_object@meta.data[[cluster_column]])) {
+      
+      # Calculate the frequency of each level
+      level_counts <- table(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == cluster, "subject_pathology"])
+      
+      # Create a data frame for ggplot
+      pie_data <- data.frame(Level = names(level_counts),
+                             Frequency = as.vector(level_counts))
+      
+      # Create the cake plot
+      save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
+                  geom_bar(width = 1, stat = "identity") +
+                  coord_polar("y", start = 0) +
+                  labs(title = paste0("Cell types ", cluster), fill = "Level") +
+                  theme_void() +
+                  theme(legend.position = "right"),
+                paste0(output_dir, cluster, "_pie_pathology", extension_plot))
+      
+    }
+    
+  }
+  # Bar plot
+  if ("numberofcell_barplot" %in% which) {
+    
+    # Calculate the frequency of each level
+    level_counts <- table(seurat_object@meta.data[[cluster_column]])
+    pathologies <- unique(seurat_object@meta.data$subject_pathology)
+    names(pathologies) <-  pathologies
+    
+    # Etract cell type
+    cell_types <- unique(seurat_object@meta.data[[cluster_column]])
+    names(cell_types) <- cell_types
+    level_counts <- lapply(cell_types, function(x){
+      
+      counts <- lapply(pathologies, function(y){
+
+        pathology_counts <- nrow(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == x & seurat_object@meta.data$subject_pathology == y,])
+        
+        return(pathology_counts)
+      }) 
+      
+      return(counts)
+    })
+    frequency <- unlist(level_counts)
+    
+    # Create a data frame for ggplot
+    pie_data <- data.frame(Cell_type = str_split_i(names(frequency), "\\.", 1),
+                           Pathology = str_split_i(names(frequency), "\\.", 2),
+                           Frequency = as.vector(frequency))
+    
+    # Create the bar plot
+    save_plot(ggplot(pie_data, aes(x = Cell_type, y = Frequency, fill = Pathology)) +
+                geom_bar(width = 1, stat = "identity", position = "fill") +
+                labs(title = "Cell types", fill = "Pathology") +
+                theme_classic() +
+                # scale_x_discrete(label = unique(pie_data$Cell)) +
+                coord_flip() +
+                theme(legend.position = "right"),
+              paste0(output_dir, "barchart", extension_plot))
+
+  
+  }
+  # Bar plot by subject
+  if ("numberofcell_barplot_subject" %in% which) {
+    
+    
+    # Calculate the frequency of each level (for each cluster each subject)
+    level_counts <- table(seurat_object@meta.data[[cluster_column]])
+    subjects <- unique(seurat_object@meta.data$subject)
+    names(subjects) <-  subjects
+    
+    # Etract cell type
+    cell_types <- unique(seurat_object@meta.data[[cluster_column]])
+    names(cell_types) <- cell_types
+    level_counts <- lapply(cell_types, function(x){
+      
+      counts <- lapply(subjects, function(y){
+        
+        subject_counts <- nrow(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == x & seurat_object@meta.data$subject == y,])
+        
+        return(subject_counts)
+      }) 
+      
+      return(counts)
+    })
+    frequency <- unlist(level_counts)
+    
+    # Create a data frame for ggplot
+    pie_data <- data.frame(Cell_type = str_split_i(names(frequency), "\\.", 1),
+                           Subject = str_split_i(names(frequency), "\\.", 2),
+                           Frequency = as.vector(frequency))
+    
+    # Create the bar plot
+    save_plot(ggplot(pie_data, aes(x = Cell_type, y = Frequency, fill = Subject)) +
+                geom_bar(width = 1, stat = "identity", position = "fill") +
+                labs(title = "Cell types", fill = "Subject") +
+                theme_classic() +
+                # scale_x_discrete(label = unique(pie_data$Cell)) +
+                coord_flip() +
+                theme(legend.position = "right"),
+              paste0(output_dir, "barchart_subjects", extension_plot))
+    
+    
+  }
+  # TODO: Dot plot
+  if ("dotplot_plot" %in% which) {
+    
+  }
+
+}
+#### PCA and INTEGRATION ####
+
+# Standard preprocessing pipeline (normalize, feature selection variable features, scale data)
+preprocessing_and_scaling <- function(seurat_object, save=FALSE, vf_plot=TRUE, normalization=TRUE,
+                                       variable_features=TRUE, scaling=TRUE, check.for.norm=TRUE){
+  
+  # TODO: rendere questa funzione generic?
+  # If the input is a list of objects and not a single object
+  if (is.list(seurat_object)){
+    cat("Runing preprocessing on list, normalization and variable features... \n")
+
+    for (i in 1:length(seurat_object)){
+      
+      # normalization, feature selection and scaling
+      seurat_object[[i]] <- NormalizeData(seurat_object[[i]])
+      seurat_object[[i]] <- FindVariableFeatures(seurat_object[[i]], selection.method = "vst", 
+                                                 nfeatures = 2000, verbose = FALSE)
+      
+    }
+    return (seurat_object)
+    
+  } 
+  
+  # If it is a single object
+  else {
+    cat("Runing preprocessing, normalization and variable features \n")
+    
+    # info message
+    message(paste0("Parameters: normalization: ", normalization,
+                 " - variable features: ", variable_features,
+                 " - scaling: ", scaling,
+                 " - variable features plot: ", vf_plot,
+                 " - save seurat object: ", save))
+    
+    # Normalization, feature selection and scaling
+    if (normalization) seurat_object <- NormalizeData(seurat_object, verbose = FALSE)
+    if (variable_features) seurat_object <- FindVariableFeatures(seurat_object, selection.method  = "vst", 
+                                                                 nfeatures = 2000, verbose = FALSE)
+
+    if (!check.for.norm) LayerData(seurat_object, assay= "counts", layer = 'data') <-  
+        GetAssayData(object = seurat_object, assay="counts", layer = 'counts')
+    
+    if (scaling) seurat_object <- ScaleData(seurat_object)#, check.for.norm=check.for.norm)
+    
+    if (vf_plot) save_plot(LabelPoints(VariableFeaturePlot(seurat_object),
+                                    points = head(VariableFeatures(seurat_object)),
+                                    repel = TRUE), 
+                        paste0(output_folder, "quality_control/VariableFeaturePlot", extension_plot))
+    
+    # Save object
+    if (save) saveRDS(seurat_object, file = paste0(output_folder, "after_normalization_and_varfeatures.rds"))
+    
+    return(seurat_object)
+  }
+  
+}
+
+# Runs pca and elbow plot if needed
+run_pca <- function(seurat_object, plot=FALSE, save=FALSE, assay="default", reduction_name="pca", extension_plot=".png"){
+  
+  # Parameters
+  cat("Running PCA... \n")
+  message(paste0("reduction name: ", reduction_name,
+               " - assay: ", assay,
+               " - save plot: ", plot,
+               " - save: ", save))
+  
+  # Run PCA
+  if (assay == "default") seurat_object <- RunPCA(seurat_object, reduction.name=reduction_name, 
+                                                  reduction.key=reduction_name, verbose=TRUE)
+  else  seurat_object <- RunPCA(seurat_object, assay=assay, reduction.name=reduction_name, 
+                            reduction.key=reduction_name)
+  
+  # Save plots and object
+  if (plot) save_plot(ElbowPlot(seurat_object), paste0(output_folder, "elbow_plot_", assay, "_", reduction_name, extension_plot))
+  if (save) saveRDS(seurat_object, file = paste0(output_folder, "after_pca.rds"))
+  
+  return (seurat_object)
+}
+
+# Layer integration using seurat
+layer_integration <- function(seurat_object, save=FALSE, assay="RNA",
+                              new_reduction = "integrated.harmony", reduction_method = "harmony",
+                              make_default=FALSE,  orig_reduction = "pca", new_assay=NA) {
+  
+  # Messages
+  cat("Integrating layers...\n")
+  message(paste0("Parameters: new_assay: ", assay,
+                 " - new_reduction: ", new_reduction, 
+                 " - reduction_method: ", reduction_method,
+                 " - make_default: ", make_default,
+                 " - orig_reduction: ", orig_reduction,
+                 " - save: ", save))
+  
+  # Assign variables
+  if (is.na(new_assay)) new_assay <- assay
+  
+  # If the input is a list, then the object are merged with integratedata
+  if (is.list(seurat_object)){
+    cat("Runing integration on a list, normalization and variable features\n")
+    
+    anchors <- FindIntegrationAnchors(object.list = seurat_object)
+    seurat_object <- IntegrateData(anchorset = anchors, normalization.method = "LogNormalize",)
+    
+    return(seurat_object)
+  }
+  
+  # perform layer integration with selected method
+  if (reduction_method =="harmony_seurat") {
+    seurat_object  <- IntegrateLayers(
+      object = seurat_object , method = HarmonyIntegration,
+      orig.reduction = orig_reduction, new.reduction = new_reduction,
+      verbose = TRUE
+    )
+  } else if (reduction_method =="cca") {
+    seurat_object  <- IntegrateLayers(
+      object = seurat_object , method = CCAIntegration,
+      orig.reduction = orig_reduction, new.reduction = new_reduction,
+      verbose = FALSE
+    )
+  } else if (reduction_method =="jpca") {
+    seurat_object  <- IntegrateLayers(
+      object = seurat_object , method = JointPCAIntegration,
+      orig.reduction = orig_reduction, new.reduction = new_reduction,
+      verbose = FALSE
+    )
+  } else if (reduction_method =="rpca") {
+    seurat_object  <- IntegrateLayers(
+      object = seurat_object , method = RPCAIntegration,
+      orig.reduction = orig_reduction, new.reduction = new_reduction,
+      verbose = FALSE
+    )
+  }  else if (reduction_method =="harmony") {
+    check_packages("harmony")
+    seurat_object <- RunHarmony(seurat_object, 
+                                group.by.vars = c("subject"), 
+                                reduction = orig_reduction, assay.use = assay, 
+                                reduction.save = new_reduction)
+  } else {
+    stop("invalid parameter: reduction_method")
+  }
+  
+  # Save object if needed
+  if (save) saveRDS(seurat_object, file = paste0(output_folder, "after_layer_integration.rds"))
+  
+  return (seurat_object)
+}
+
+#### ANNOTATION ####
+
+scType_annotation <- function(seurat_object, assay="RNA", assignment_name="annotation_scType",
+                              reduction_name="umap_harmony", clusters_column="seurat_clusters", name ="") {
+  # Message
+  cat("Running scType annotation...\n")
+  message(paste0("Parameters: assay: ", assay,
+                 " - assignment_name: ", assignment_name, 
+                 " - reduction_name: ", reduction_name,
+                 " - clusters_column: ", clusters_column))
+  
+  # Dependencies
+  check_packages(c("dplyr","Seurat","HGNChelper","pbapply", "openxlsx"))
+  
+  # Create directory
+  output_dir <- paste0(output_folder, "annotation_scType/")
+  if (!dir.exists(output_dir)) dir.create(output_dir)
+  
+  
+  # Load gene set preparation function
+  source("https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/R/gene_sets_prepare.R")
+  # Load cell type annotation function
+  source("https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/R/sctype_score_.R")
+  
+  # DB file
+  db_ = "https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/ScTypeDB_full.xlsx";
+  tissue = "Brain" # e.g. Immune system,Pancreas,Liver,Eye,Kidney,Brain,Lung,Adrenal,Heart,Intestine,Muscle,Placenta,Spleen,Stomach,Thymus 
+  
+  # Prepare gene sets
+  gs_list = gene_sets_prepare(db_, tissue)
+  message("scType: data prepared")
+  
+  # Run scType
+  es.max <-  sctype_score(scRNAseqData = seurat_object[[assay]]$scale.data, scaled = TRUE, 
+                          gs = gs_list$gs_positive, gs2 = gs_list$gs_negative)
+  
+  # Merge by cluster
+  cL_resutls <-  do.call("rbind", lapply(unique(seurat_object@meta.data[[clusters_column]]), function(cl){
+    es.max.cl <-  sort(rowSums(es.max[ ,rownames(seurat_object@meta.data[seurat_object@meta.data[[clusters_column]]==cl, ])]), decreasing = !0)
+    head(data.frame(cluster = cl, type = names(es.max.cl), scores = es.max.cl, ncells = sum(seurat_object@meta.data[[clusters_column]]==cl)), 10)
+  }))
+  sctype_scores <-  cL_resutls %>% group_by(cluster) %>% top_n(n = 1, wt = scores)  
+  
+  # set low-confident (low ScType score) clusters to "unknown"
+  sctype_scores$type[as.numeric(as.character(sctype_scores$scores)) < sctype_scores$ncells/6] = "Unknown"
+  
+  # Save results in table
+  write.xlsx(sctype_scores, paste0(output_dir, name, "results.xlsx"), sheetName = "results", append=TRUE)
+  message(paste0("scType: annotation results saved in: ", output_dir))
+  
+  # Subset annotation results
+  cluster_mapping <- as.data.frame(sctype_scores[c("cluster", "type")])
+  # Copy metadata column
+  metadata_assignments <- seurat_object@meta.data[[clusters_column]]
+  
+  # Update metadata column and add again to the seurat object
+  matching_rows <- match(metadata_assignments, cluster_mapping[["cluster"]])
+  metadata_assignments <- cluster_mapping[["type"]][matching_rows]
+  seurat_object <- AddMetaData(
+    object = seurat_object,
+    metadata = metadata_assignments,
+    col.name = assignment_name
+  )
+  
+  message("scType: metadata udated")
+  
+  return(seurat_object)
+}
+
+
+# Correct an annotation. changing specific values of a column
+correct_annotation <- function(seurat_object, to_correct, annotation_column, 
+                               new_annotation_column=NA, cluster_column="seurat_clusters") {
+
+  # if new name not given create it by adding corrected to the annotation column
+  if (is.na(new_annotation_column)) new_annotation_column <- paste0(annotation_column, "_corrected")
+  
+  # copy te annotation column
+  correction <- as.character(seurat_object@meta.data[[annotation_column]])
+  
+  # modify the name according to the information to correct
+  for (item in names(to_correct)) {
+    correction[seurat_object@meta.data[[cluster_column]] == item] <- to_correct[[item]]
+  }
+  
+  # Add the new column to the seurat object
+  seurat_object <- AddMetaData(
+    object = seurat_object,
+    metadata = correction,
+    col.name = new_annotation_column
+  )
+  return(seurat_object)
+}
+
+#### OTHER ####
+
+# Perform trajectory analysis using monocle 3
+trajectory_analysis <- function(seurat_object, extension_plot=".png", name="test") {
+  
+  # Messages 
+  cat("Performing trajectory analysis with monocle... \n")
+  message(paste0("Parameters: name: ", name,
+                 " - extension_plot: ", extension_plot))
+  
+  # Dependencies
+  check_packages(c('BiocGenerics', 'DelayedArray', 'DelayedMatrixStats',
+                       'limma', 'lme4', 'S4Vectors', 'SingleCellExperiment',
+                       'SummarizedExperiment', 'batchelor', 'HDF5Array',
+                       'terra', 'ggrastr', 'devtools'))
+  # Monocle
+  devtools::install_github('cole-trapnell-lab/monocle3')
+  library(monocle3)
+  
+
+  # Set up output dir
+  output_dir <- set_up_output(paste0(output_folder, "monocle", name, "/"))
+  
+  # Other dependencies
+  check_packages(c('ggplot2', 'dplyr'))
+  
+  # Seuart wraper 
+  # devtools::install_github('satijalab/seurat-wrappers')
+  remotes::install_github('satijalab/seurat-wrappers@community-vignette')
+  
+  # Automatic object creation
+  # cds <- SeuratWrappers::as.cell_data_set(seurat_object)
+  
+  # Manual object creation
+  cds <- new_cell_data_set(seurat_object@assays$RNA$data,
+                              cell_metadata = seurat_object@meta.data)
+  
+  # Preprocessing
+  reducedDim(cds, type = "PCA") <- seurat_object@reductions$pca@cell.embeddings 
+  cds@reduce_dim_aux$prop_var_expl <- seurat_object@reductions$pca@stdev
+  cds@int_colData@listData$reducedDims$UMAP <- seurat_object@reductions$umap_microglia_harmony_reduction@cell.embeddings
+  
+  # Clustering 
+  cds <- cluster_cells(cds)
+  
+  # Save the plot of the identified clsters
+  save_plot(plot_cells(cds, show_trajectory_graph = FALSE), 
+            paste0(output_dir, "clustering", extension_plot))
+  
+  # Compute the connection graph
+  cds <- learn_graph(cds, use_partition = FALSE)
+  cds <- order_cells(cds)
+  
+  # Plot the results of the trajecotry analysis
+  save_plot(plot_cells(cds, color_cells_by = "pseudotime"), 
+            paste0(output_dir, "pseudotime_traj_graph", extension_plot))
+  save_plot(plot_cells(cds, color_cells_by = "pseudotime", show_trajectory_graph = FALSE), 
+            paste0(output_dir, "pseudotime", extension_plot))
+}
+
+# Analysis using the WGCNA package
+WGCNA_new <- function(seurat_object, name="test", WGCNA_file="bwnet.rds", which=c(""), save_net=TRUE,
+                  load_net=FALSE, soft_power=NA, hub_genes_threshod=c(0.3, 1),
+                  reduction_name="umap_microglia_harmony_reduction",
+                  subject_column="subject", subject_pathology_column="subject_pathology", extension_plot=".png", 
+                  markers_analysisPD = "microglia_control_vs_pd_nogenetic",
+                  markers_analysisGPD = "microglia_control_vs_geneticpd",
+                  module_of_interest=c("")) {
+  {
+    
+    # Check types of arguments
+    if (!inherits(seurat_object, "Seurat")) {
+      stop("seurat_object must be a Seurat object")
+    }
+    
+    if (!is.character(name)) {
+      stop("name argument must be a character")
+    }
+    
+    if (!is.character(WGCNA_file)) {
+      stop("WGCNA_file argument must be a character")
+    }
+    
+    if (!is.character(which) || !is.vector(which)) {
+      stop("which argument must be a character vector containingone or more of these values: heatmap, TOM, dendro, heatmapMRI, violin_plots, normalized_expr, module_trait, histogram_plot, significance_membership_scatter, corr_matrix")
+    }
+    
+    if (!is.logical(save_net)) {
+      stop("save_net argument must be a logical value")
+    }
+    
+    if (!is.logical(load_net)) {
+      stop("load_net argument must be a logical value")
+    }
+    
+    if (!is.na(soft_power) && !is.numeric(soft_power)) {
+      stop("soft_power argument must be a numeric value or NA")
+    }
+    
+    if (!is.numeric(hub_genes_threshod) || length(hub_genes_threshod) != 2) {
+      stop("hub_genes_threshod argument must be a numeric vector of length 2")
+    }
+    
+    if (!is.character(reduction_name)) {
+      stop("reduction_name argument must be a character")
+    }
+    
+    if (!is.character(subject_column)) {
+      stop("subject_column argument must be a character")
+    }
+    
+    if (!is.character(subject_pathology_column)) {
+      stop("subject_pathology_column argument must be a character")
+    }
+    
+    if (!is.character(extension_plot)) {
+      stop("extension_plot argument must be a character")
+    }
+    
+    if (!is.character(markers_analysisPD)) {
+      stop("markers_analysisPD argument must be a character")
+    }
+    
+    if (!is.character(markers_analysisGPD)) {
+      stop("markers_analysisGPD argument must be a character")
+    }
+    
+    if (!is.character(module_of_interest) || !is.vector(module_of_interest)) {
+      stop("module_of_interest argument must be a character vector")
+    }
+    
+  }
+  
+  cat("Running WGCNA...\n")
+  message(paste0("Parameters: name: ", name, 
+                 " - WGCNA_file: ", WGCNA_file, 
+                 " - save_net: ", save_net, 
+                 " - load_net: ", load_net, 
+                 " - soft_power: ", soft_power,
+                 " - which: ", paste(which, collapse = ", "),
+                 " - hub_genes_threshod: ", paste(hub_genes_threshod, collapse = ", "),
+                 " - reduction_name: ", reduction_name,
+                 " - subject_column: ", subject_column,
+                 " - subject_pathology_column: ", subject_pathology_column,
+                 " - markers_analysisPD: ", markers_analysisPD,
+                 " - markers_analysisGPD: ", markers_analysisGPD,
+                 " - module_of_interest: ", paste(module_of_interest, collapse = ", "),
+                 " - extension_plot: ", extension_plot))
+
+  # Dependencies
+  check_packages(c("Seurat", "WGCNA", "GEOquery", "tidyverse", "gridExtra","dplyr", "readxl", "openxlsx", "DESeq2", "ggpmisc"))
+  # remotes::install_github("kevinblighe/CorLevelPlot")
+  library(CorLevelPlot)
+  
+  # Set folders
+  output_dir <- set_up_output(paste0(output_folder, "WGCNA_", name, "/"), message)
+  
+  # idee per migliorare -> module df can be computed and kept
+  # finire other plots o migliorare
+  
+  # Close all opened graphic devices
+  graphics.off()
+  
+  # Main function
+  main <- function() {
+    
+    # Data preparation
+    column_data <- prepare_column_data()
+    norm.counts <- prepare_data(column_data)
+    
+    # Soft power
+    if(is.na(soft_power) & !load_net) soft_power <- 
+      soft_power_intuition(norm.counts)
+    
+    
+    # Matrix computation
+    if (load_net)
+      bwnet <- readRDS(paste0(output_dir, WGCNA_file))
+    else
+      bwnet <- matrix_computation(norm.counts, soft_power)
+
+    
+    # Plots and other functions
+    plot_functions(bwnet, norm.counts, column_data)
+    save_module_genes(bwnet, norm.counts, column_data) 
+  }
+  
+  # Prepare info on subjects
+  prepare_column_data <- function() {
+    
+    # Extract metadata from seurat object
+    meta.data <- seurat_object@meta.data
+    
+    # Create subject meta data
+    column_data <- data.frame(subject = unique(meta.data[[subject_column]]),
+                              row.names = unique(meta.data[[subject_column]]))
+    column_data$pathology <- lapply(unique(meta.data[[subject_column]]), 
+                                    function(x) unique(meta.data[meta.data[[subject_column]] == x,][[subject_pathology_column]]))
+    
+    return(column_data)
+  }
+  
+  # Prepare the count matrix
+  prepare_data <- function(column_data) {
+    
+    # Get data from seurat object (transpose to have genes on columns and cells on rows)
+    counts_data <- t(GetAssayData(object = seurat_object, assay="RNA", layer = 'counts'))
+    meta.data <- seurat_object@meta.data
+    
+    # Group counts by subject
+    subject_data <- data.frame(matrix(ncol = 0, nrow = length(colnames(counts_data))), row.names = colnames(counts_data))
+    for (subject in unique(meta.data[[subject_column]])) {
+      subject_data <- cbind(subject_data, colSums(counts_data[row.names(meta.data[meta.data[[subject_column]] == subject,]),]))
+      colnames(subject_data)[length(colnames(subject_data))] <- subject
+    }
+    
+    # Create dds and preprocessing + filtering (come giustifico questo input)
+    dds <- DESeqDataSetFromMatrix(countData = subject_data,
+                                  colData = column_data,
+                                  design = ~ 1) # not spcifying model 
+    
+    dds75 <- dds[rowSums(counts(dds) >= 15) >= nrow(column_data)*0.75,]
+    message("number of genes: ", nrow(dds75)) # 13284 genes
+    
+    # Perform variance stabilization
+    dds_norm <- vst(dds75, fitType='local')
+    
+    # Get normalized counts
+    norm.counts <- assay(dds_norm) %>% 
+      t() 
+    
+    return(norm.counts)
+  }
+  
+  # Make plots and intuition for WGCNA
+  soft_power_intuition <- function(norm.counts) {
+    power <- c(c(1:10), seq(from = 12, to = 50, by = 2))
+    
+    # Call the network topology analysis function
+    sft <- pickSoftThreshold(as.data.frame(norm.counts), # input -> rows - subj, cols - geneid
+                             powerVector = power,
+                             networkType = "signed",
+                             verbose = 5)
+    
+    
+    sft.data <- sft$fitIndices
+    
+    # Visualization to pick power
+    a1 <- ggplot(sft.data, aes(Power, SFT.R.sq, label = Power)) +
+      geom_point() +
+      geom_text(nudge_y = 0.1) +
+      geom_hline(yintercept = 0.8, color = 'red') +
+      labs(x = 'Power', y = 'Scale free topology model fit, signed R^2') +
+      theme_classic()
+    
+    
+    a2 <- ggplot(sft.data, aes(Power, mean.k., label = Power)) +
+      geom_point() +
+      geom_text(nudge_y = 0.1) +
+      labs(x = 'Power', y = 'Mean Connectivity') +
+      theme_classic()
+    
+    grid.arrange(a1, a2, nrow = 2)
+    
+    save_plot(grid.arrange(a1, a2, nrow = 2), paste0(output_dir, "networkinfo", extension_plot))
+    
+    # Ask for user input
+    cat("#### INPUT REQUESTED #### \n")
+    soft_power <- readline("Which power do you want to select? ")
+    soft_power <- as.numeric(unlist(strsplit(soft_power, ",")))
+    
+    # Return value
+    return(soft_power)
+  }
+  
+  # Compute WGCNA network matrix
+  matrix_computation <- function(norm.counts, soft_power) {
+    
+    
+    # convert matrix to numeric 
+    norm.counts[] <- sapply(norm.counts, as.numeric)
+    
+    # Create temp variable for cor (WGCNA uses a different one)
+    temp_cor <- cor
+    cor <- WGCNA::cor
+    
+    # memory estimate w.r.t blocksize
+    bwnet <- blockwiseModules(norm.counts,
+                              maxBlockSize = 12000, # 40000
+                              TOMType = "unsigned",
+                              saveTOMs = FALSE,
+                              power = soft_power,
+                              mergeCutHeight = 0.25,
+                              numericLabels = FALSE,
+                              randomSeed = 1234,
+                              verbose = 3)
+    
+    cor <- temp_cor
+    
+    # Save in file
+    if (save_net) saveRDS(bwnet, paste0(output_dir, WGCNA_file))
+    
+    # Return data
+    return(bwnet)
+  }
+  
+  # Function that contains all the plot functions
+  plot_functions <- function(bwnet, norm.counts, column_data) {
+    
+    # Per caricare la lista di markers dalla cartella, dovrebbe essere ok caricare anche senza
+    # fare in modo che funzioni per i clusters, magari pensare ad un mod di aggiungerlo, ma non priorita
+    load_log2fc <- function() {
+      
+      message(paste0("loading... ", output_folder, "markers_", markers_analysisPD, 
+                     "/expressed_markers_all_", markers_analysisPD, ".xlxs"))
+      markers_tablePD <- read_excel(paste0(output_folder, "markers_", markers_analysisPD, 
+                                           "/expressed_markers_all_", markers_analysisPD, ".xlsx"))
+      
+      message(paste0("loading... ", output_folder, "markers_", markers_analysisGPD, 
+                     "/expressed_markers_all_", markers_analysisGPD, ".xlxs"))
+      markers_tableGPD <- read_excel(paste0(output_folder, "markers_", markers_analysisGPD, 
+                                            "/expressed_markers_all_", markers_analysisGPD, ".xlsx"))
+      
+      return(list(GPD = column_to_rownames(as.data.frame(markers_tableGPD), var="gene"),
+                  PD = column_to_rownames(as.data.frame(markers_tablePD), var="gene")))
+    }
+
+    if ("heatmap" %in% which) {
+      
+      module_eigengenes <- bwnet$MEs 
+      
+      #traits_binary <- column_data %>%
+      #  mutate(across(pathology, ~ as.integer(. == levels(pathology))))
+      
+      traits_binary <- data.frame(lapply(unique(column_data$pathology), 
+                                         function(x) {as.numeric(column_data$pathology == x)}))
+      
+      colnames(traits_binary) <-  unique(column_data$pathology)
+      row.names(traits_binary) <- row.names(column_data)
+      
+      heatmap.data <- merge(module_eigengenes, traits_binary, by = 'row.names')
+      
+      # head(heatmap.data)
+      
+      heatmap.data <- heatmap.data %>% 
+        column_to_rownames(var = 'Row.names')
+      
+      # save correlation results
+      excel_filename <- paste0(output_dir, "trait_correlation_heatmap.xlsx")
+      if (file.exists(excel_filename)) file.remove(excel_filename)
+      res <- corAndPvalue(x = heatmap.data[,(length(heatmap.data)-2):length(heatmap.data)],
+                   y = heatmap.data[,1:(length(heatmap.data)-3)])
+      library(xlsx)
+      write.xlsx(as.data.frame(t(res$cor)), file=excel_filename, sheetName="corr", append=TRUE)
+      write.xlsx(as.data.frame(t(res$p)), file=excel_filename, sheetName="p.values", append=TRUE)
+      write.xlsx(as.data.frame(t(res$t)), file=excel_filename, sheetName="t.statistic", append=TRUE)
+      library(openxlsx)
+      
+      try(dev.off())
+      png(file=paste0(output_dir, "traits_correlation_heatmap", extension_plot))
+      
+      CorLevelPlot(heatmap.data,
+                   x = names(heatmap.data)[(length(heatmap.data)-2):length(heatmap.data)],
+                   y = names(heatmap.data)[1:(length(heatmap.data)-3)],
+                   col = c("blue1", "skyblue", "white", "pink", "red"))
+      dev.off()
+      
+      
+      message("plot saved in: ", output_dir, "traits_correlation_heatmap", extension_plot)
+    }
+    if ("TOM" %in% which) {
+      adjacency_matrix <- adjacency(norm.counts, power = soft_power, type = "signed")
+      TOM <-  1 - TOMsimilarity(adjacency_matrix)
+      saveRDS(TOM, paste0(output_dir, "TOM.rds"))
+      save_plot(TOMplot(TOM, bwnet$dendrograms[[1]]))
+      # 6B. Intramodular analysis: Identifying driver genes ---------------
+      
+      
+      #Calculating the module dissimilarity eigengenes
+      MEDiss = 1-cor(MEs)
+      
+      #Clustering the eigengenes modules
+      METree = hclust(as.dist(MEDiss), method = "average")
+      #Plotting the result
+      #sizeGrWindow(7, 6)
+      plot(METree, main = "Clustering of module eigengenes",
+           xlab = "", sub = "")
+      
+      
+      #Grouping the clusters from a cut-off
+      MEDissThres = 0.25
+      #Plotting a cut-off line
+      abline(h=MEDissThres, col = "red")
+    }
+    if ("dendro" %in% which) {   
+      
+      png(file=paste0(output_dir, "modules_dendrogram", extension_plot))
+      plotDendroAndColors(bwnet$dendrograms[[1]], cbind(bwnet$unmergedColors, bwnet$colors),
+                          c("unmerged", "merged"),
+                          dendroLabels = FALSE,
+                          addGuide = TRUE,
+                          hang= 0.03,
+                          guideHang = 0.05)
+      dev.off()
+      message("plot saved in: ", output_dir, "modules_dendrogram", extension_plot)
+      
+    }
+    if ("heatmapMRI" %in% which) {
+      
+      traits <- load_mri_data()
+      
+      
+      heatmap.data <- 
+        bwnet$MEs  %>%
+        merge(., traits, by = 'row.names') %>% 
+        column_to_rownames(var = 'Row.names')
+      
+      ## Heatmap ----
+      # Check its existence
+      excel_filename <- paste0(output_dir, "mri_correlation_heatmap.xlsx")
+      if (file.exists(excel_filename)) file.remove(excel_filename)
+      
+      res <- corAndPvalue(x = heatmap.data[,(length(heatmap.data)-2):length(heatmap.data)],
+                          y = heatmap.data[,1:(length(heatmap.data)-9)])
+      library(xlsx)
+      write.xlsx(as.data.frame(t(res$cor)), file=excel_filename, sheetName="corr", append=TRUE)
+      write.xlsx(as.data.frame(t(res$p)), file=excel_filename, sheetName="p.values", append=TRUE)
+      write.xlsx(as.data.frame(t(res$t)), file=excel_filename, sheetName="t.statistic", append=TRUE)
+      library(openxlsx)
+    
+      png(file=paste0(output_dir, "mri_correlation_heatmap", extension_plot))
+      CorLevelPlot(heatmap.data,
+                   x = names(heatmap.data)[(length(heatmap.data)-2):length(heatmap.data)],
+                   y = names(heatmap.data)[1:(length(heatmap.data)-9)],
+                   col = c("blue1", "skyblue", "white", "pink", "red"))
+      dev.off()
+      
+      message("plot saved in: ", output_dir, "mri_correlation_heatmap", extension_plot)
+      
+    }
+    # Create violin plots of the modules
+    if ("violin_plots" %in% which) {
+      
+      module_df <- data.frame(
+        gene_id = names(bwnet$colors),
+        colors = labels2colors(bwnet$colors)
+      )
+      
+      traits_binary <- data.frame(lapply(unique(column_data$pathology), 
+                                         function(x) {as.numeric(column_data$pathology == x)}))
+      colnames(traits_binary) <-  unique(column_data$pathology)
+      row.names(traits_binary) <- row.names(column_data)
+      
+      module.gene.mapping <- as.data.frame(bwnet$colors)
+      for (color in unique(module.gene.mapping[[1]])) {
+        
+        module_genes <- module.gene.mapping %>% 
+          filter(bwnet$colors == color) %>% 
+          rownames()
+        
+        norm.counts_subset <- norm.counts[, colnames(norm.counts) %in% module_genes]
+        
+        # Calculate the gene significance and associated p-values
+        # controllare qui come e stato fatto il testo eh (significance)
+        gene.signf.corr <- cor(norm.counts_subset, traits_binary, use = 'p')
+        gene.signf.corr.pvals <- corPvalueStudent(gene.signf.corr, nSamples)
+        
+        for (column in colnames(gene.signf.corr.pvals)) {
+          
+          genes <- gene.signf.corr.pvals %>% 
+            as.data.frame() %>% 
+            arrange(column) %>% 
+            head(10) %>% 
+            row.names()
+          
+          violin_plot(seurat_object, genes, name=paste0("WGCNA/test_2", color, column),
+                      markers_analysisPD = "microglia_control_vs_pd_nogenetic_all",
+                      markers_analysisGPD = "microglia_control_vs_geneticpd_all")
+          
+        }
+        
+        # Using the gene significance you can identify genes that have a high significance for trait of interest 
+        # Using the module membership measures you can identify genes with high module membership in interesting modules.
+      }
+    }
+    
+    if ("normalized_expr" %in% which){
+      message("normalized expression NOT IMPLEMENTED")
+      
+      next
+      
+      # pick out a few modules of interest here
+      modules_of_interest = c("green", "turquoise", "tan")
+      
+      # df of module colors
+      module_df <- data.frame(
+        gene_id = names(bwnet$colors),
+        colors = labels2colors(bwnet$colors)
+      )
+      
+      # Pull out list of genes in that module
+      submod = module_df %>%
+        subset(colors %in% modules_of_interest)
+      
+      row.names(module_df) <- module_df$gene_id
+      
+      subexpr = t(norm.counts[,submod$gene_id])
+      
+      submod_df = data.frame(subexpr) %>%
+        mutate(
+          gene_id = row.names(.)
+        ) %>%
+        pivot_longer(-gene_id) %>%
+        mutate(
+          module = module_df[gene_id,]$color
+        )
+      
+      submod_df %>% ggplot(., aes(x=name, y=value, group=gene_id)) +
+        geom_line(aes(color = module),
+                  alpha = 0.2) +
+        theme_bw() +
+        theme(
+          axis.text.x = element_text(angle = 90)
+        ) +
+        facet_grid(rows = vars(module)) +
+        labs(x = "subject",
+             y = "normalized expression") %>%
+        save_plot(., paste0(output_dir, "normalized_expression", extension_plot))
+      
+    } 
+    if ("module_trait" %in% which){
+      
+      message("module trait NOT implemented")
+      
+      next
+      
+      # Convert labels to colors for plotting
+      mergedColors = labels2colors(bwnet$colors)
+      
+      # Get Module Eigengenes per cluster
+      MEs0 <- moduleEigengenes(norm.counts, mergedColors)$eigengenes
+      
+      # Reorder modules so similar modules are next to each other
+      MEs0 <- orderMEs(MEs0)
+      module_order = names(MEs0) %>% gsub("ME","", .)
+      
+      # Add treatment names
+      MEs0$patient = row.names(MEs0)
+      
+      # tidy & plot data
+      mME = MEs0 %>%
+        pivot_longer(-patient) %>%
+        mutate(
+          name = gsub("ME", "", name),
+          name = factor(name, levels = module_order)
+        )
+      
+      mME %>% ggplot(.,aes(x=patient, y=name, fill=value)) +
+        geom_tile() +
+        theme_bw() +
+        scale_fill_gradient2(
+          low = "blue",
+          high = "red",
+          mid = "white",
+          midpoint = 0,
+          limit = c(-1,1)) +
+        theme(axis.text.x = element_text(angle=90)) +
+        labs(title = "Module-trait Relationships", y = "Modules", fill="corr")  %>%
+        save_plot(., paste0(output_dir, "Module-trait_rel", extension_plot))
+    } 
+    if ("histogram_plot" %in% which) {
+      
+      markers_list <- load_log2fc()
+      for (markers_name in names(markers_list)) {
+        
+        # markers <-  markers_list[[markers_name]] 
+        
+        # Creating merged dataset for plotting
+        plot_df <- merge(data.frame(bwnet$colors), markers_list[[markers_name]] , by="row.names", all=FALSE)
+        plot_df$abs_avg_log2FC <- abs(plot_df$avg_log2FC)
+        plot_df$bwnet.colors <- factor(plot_df$bwnet.colors)
+        
+        # Plot (with correct colors)
+        color_mapping <- setNames(c(levels(plot_df$bwnet.colors)), levels(plot_df$bwnet.colors))
+        save_plot(
+          ggplot(plot_df, aes(x=bwnet.colors, y=abs_avg_log2FC, color=bwnet.colors)) +
+            geom_boxplot() +
+            scale_color_manual(values = color_mapping),
+          paste0(output_dir, markers_name, "_boxplot", extension_plot))
+        
+        save_plot(
+          ggplot(plot_df, aes(x=bwnet.colors, y=avg_log2FC, color=bwnet.colors)) +
+            geom_violin(alpha=0.2) + geom_jitter(alpha = 0.8, size=0.2) + # scale_fill_manual(values = c("red", "blue", "green")) +
+            scale_color_manual(values = color_mapping),
+          paste0(output_dir, markers_name, "_violin", extension_plot))
+      }
+    }
+    if ("significance_membership_scatter" %in% which) {
+      
+      # Compute membershio measure
+      nSamples <- nrow(norm.counts)
+      module.membership.measure <- cor(norm.counts, bwnet$MEs, use = 'p') # ahh ho invertito e quindo ho una direzione divers
+      # module.membership.measure.pvals <- corPvalueStudent(module.membership.measure, nSamples)
+      
+      markers_list <- load_log2fc()
+      for (markers_name in names(markers_list)) {
+        
+        # Creating merged dataset for plotting (merge colors with expression values with membership measures)
+        plot_df <- column_to_rownames(
+          merge(data.frame(bwnet$colors), markers_list[[markers_name]], 
+                by="row.names", all=FALSE), 
+          var="Row.names")
+        plot_df <- column_to_rownames(
+          merge(plot_df, module.membership.measure, 
+                by="row.names", all=FALSE), 
+          var="Row.names")
+        
+        for(module in unique(bwnet$colors)) {
+          # markers <-  markers_list[[markers_name]] as
+          library("ggrepel")
+          
+          
+          # Pull out list of genes in that module
+          submod <- plot_df %>%
+            subset(plot_df$bwnet.colors %in% module)
+          message(module, " module size: ",nrow(submod))
+          
+          # membership score
+          module_membership_column <- paste0("ME", module)
+          
+          # Skip modules that are too small
+          if (nrow(submod) < 9) next
+          
+          # Function to visualize and plot genes that are higher than cutoff parameters
+          plot_hub_genes <- function(df) {
+            
+            FCcutoff <- hub_genes_threshod[[2]]
+            MMcutoff <- hub_genes_threshod[[1]]
+            
+            save_plot(ggplot(df, aes(x=.data[[module_membership_column]], y=.data[["avg_log2FC"]])) +
+                        geom_point(color=module, alpha= 0.5)  + 
+                        geom_smooth(method = "lm", se = FALSE, color = "black", formula = y ~ x) +
+                        stat_poly_eq(formula = y ~ x, aes(label = paste(after_stat(eq.label), after_stat(rr.label), sep = "~~~~")), 
+                                     parse = TRUE, size = 5, color = "black", label.x = "right", label.y = "top") + 
+                        theme_minimal() +
+                        
+                        geom_hline(yintercept = c(-FCcutoff, FCcutoff),
+                                   colour = "black") +
+                        
+                        geom_vline(xintercept = c(-MMcutoff, MMcutoff),
+                                   colour = "black") +
+                        
+                        geom_text_repel(
+                          data = subset(df,
+                                        abs(df[["avg_log2FC"]]) > FCcutoff &
+                                          abs(df[[module_membership_column]]) > MMcutoff),
+                          aes(label = row.names(subset(df,
+                                                       abs(df[["avg_log2FC"]]) > FCcutoff &
+                                                         abs(df[[module_membership_column]]) > MMcutoff))),
+                          xlim = c(NA, NA),
+                          ylim = c(NA, NA) 
+                          # add overlap
+                        ), paste0(output_dir, markers_name, "_scatter_hub/", module, "_scatter_plot", extension_plot))
+            
+            if (module %in% module_of_interest) {
+              hub_genes_list <-  row.names(subset(submod,
+                                                  abs(df[["avg_log2FC"]]) > FCcutoff &
+                                                    abs(df[[module_membership_column]]) > MMcutoff))
+              
+              #feature_plots(seurat_object_microglia, hub_genes_list, 
+              #              name = paste0("WGCNA_", name, "/feature_plot_hubgene_", 
+              #                            markers_name, "_", module, "/"),
+              #              reduction_name = reduction_name)
+              
+              write.xlsx(data.frame(hub_genes_list), paste0(output_dir,markers_name, module, "_hubgene.xlsx"))
+              
+              many_plots(seurat_object_microglia, which=c("dotplot", "heatmap"),
+                         cluster_column="microglia_clusters", 
+                         name=paste0("WGCNA_modules/", module, markers_name),
+                         markers=hub_genes_list)
+            }
+          }
+          
+          save_plot(
+            ggplot(submod, aes(x=.data[[module_membership_column]], y=.data[["avg_log2FC"]])) +
+              geom_point(color=module, alpha= 0.5)  + 
+              geom_smooth(method = "lm", se = FALSE, color = "black", formula = y ~ x) +
+              stat_poly_eq(formula = y ~ x, aes(label = paste(after_stat(eq.label), after_stat(rr.label), sep = "~~~~")), 
+                           parse = TRUE, size = 5, color = "black", label.x = "right", label.y = "top") + 
+              theme_minimal(),
+            paste0(output_dir, markers_name, "_scatter/", module, "_scatter_plot", extension_plot))
+          
+          save_plot(
+            ggplot(plot_df, aes(x=.data[[module_membership_column]], y=.data[["avg_log2FC"]])) +
+              geom_point(color=module, alpha= 0.5)  + 
+              geom_smooth(method = "lm", se = FALSE, formula = y ~ x, color = "black", fill = "white") +
+              stat_poly_eq(formula = y ~ x, aes(label = paste(after_stat(eq.label), after_stat(rr.label), sep = "~~~~")), 
+                           parse = TRUE, size = 5, color = "black", label.x = "right", label.y = "top") + 
+              theme_minimal(),
+            paste0(output_dir, markers_name, "_scatter_all/", module, "_scatter_plot", extension_plot))
+          
+          if("hub_genes" %in% which) plot_hub_genes(submod)
+          
+        }
+      }
+      
+      # plots[[module]] <- ggplot()
+    }
+    if ("corr_matrix" %in% which) {
+      # TODO: check if implemented
+      cor_matrix <- cor(bwnet$MEs)
+      # from gpt, to test: Install and load the necessary packages
+      # install.packages("gplots")
+      # library(gplots)
+      
+      # Define color palette
+      my_palette <- colorRampPalette(c("blue", "white", "red"))(n = 100)
+      
+      # Create the heatmap
+      
+      
+      png(file=paste0(output_dir, "modules_correlation_heatmap", extension_plot))
+      heatmap(cor_matrix)
+      dev.off()
+      message("plot saved in: ", output_dir, "modules_correlation_heatmap", extension_plot)
+    }
+  }
+  
+  # To save list of he module genes in excel files
+  save_module_genes <- function(bwnet, norm.counts, column_data) {
+    
+    # Compute module membership 
+    module.membership.measure <- cor(bwnet$MEs , norm.counts, use = 'p')
+    
+    # Create a df with modules
+    module_df <- data.frame(
+      gene_id = names(bwnet$colors),
+      colors = labels2colors(bwnet$colors),
+      row.names = names(bwnet$colors)
+    )
+    
+    # Create a df that contains the membership measure
+    module_df_membership <- column_to_rownames(
+      merge(data.frame(bwnet$colors), t(module.membership.measure), 
+            by="row.names", all=FALSE), 
+      var="Row.names")
+    module_df_membership$gene_id <- row.names(module_df_membership) # because otherwise the selection afterwards doesnt include rownames
+    
+    list_of_dfs <- list()
+    
+    for (module in unique(bwnet$colors)) {
+      
+      list_of_dfs[[module]] <- module_df_membership[,c("gene_id", paste0("ME", module))] %>%
+        subset(module_df_membership$bwnet.colors %in% module)
+      message(module, " module size: ",nrow(list_of_dfs[[module]]))
+      
+    }
+    # tranform this in for cycle
+    #list_of_dfs <- lapply(sort(unique(bwnet$colors)), function(x) {
+    #  data.frame(module_df_membership[bwnet$colors %in% x, c("gene_id", paste0("ME", x))])
+    #})
+    
+    #names(list_of_dfs) <- sort(unique(bwnet$colors))
+    
+    wb <- createWorkbook()
+    
+    # Loop through the list of dataframes
+    for (name in names(list_of_dfs)) {
+      
+      # Add dataframe to a new sheet in the Excel workbook
+      addWorksheet(wb, sheetName = name)
+      writeData(wb, sheet = name, x = list_of_dfs[[name]], colNames = FALSE)
+    }
+    
+    # Save the Excel workbook
+    saveWorkbook(wb, file = paste0(output_dir, "module_genes.xlsx"), overwrite = TRUE)
+    message("module genes saved in: ", paste0(output_dir, "module_genes.xlsx"))
+    
+    write.xlsx(table(bwnet$colors), paste0(output_dir, "module_recap.xlsx"))
+    message("module recap saved in: ", paste0(output_dir, "module_recap.xlsx"))
+    
+  }
+  
+  
+  allowWGCNAThreads()   
+  
+  # Main loop
+  main()
+  
+  
+  return(seurat_object)
+}
+
+cellchat_function <- function(seurat_object, cluster_column="microglia_clusters", 
+                              clusters_to_analyze=c(), subject_column="subject",
+                              name="test", save_object=TRUE, load_object=FALSE,
+                              obj_name = "cellchat_object.rds", extension_plot=".png") {
+  # Dependencies
+  check_packages(c("devtools", "Seurat"))
+  
+  #devtools::install_github("jinworks/CellChat")
+  #devtools::install_github("jokergoo/circlize")
+  #devtools::install_github("jokergoo/ComplexHeatmap")
+  #devtools::install_github('immunogenomics/presto')
+  library("CellChat")
+  library("patchwork")
+  options(stringsAsFactors = FALSE)
+  
+  # Set op output dir
+  output_dir <- set_up_output(paste0(output_folder, "cellchat_", name, "/"), message)
+  if (!dir.exists(paste0(output_dir, "circle_plots"))) dir.create(paste0(output_dir, "circle_plots"))
+  
+  # Setting up global objects
+  data.input <- NA
+  meta <- NA
+  cellchat <- NA # https://rdrr.io/github/sqjin/CellChat/man/CellChat-class.html
+  
+  ## Main ----
+  main <- function(){
+    prepare_data()
+    
+    if (load_object) cellchat <- readRDS(paste0(output_dir, obj_name))
+    else compute_cellchat()
+    
+    plot_results()
+  }
+  
+  ## Functions ----
+  prepare_data <- function() {
+    
+    # Preparing data
+    data.input <<- seurat_object[["RNA"]]$data 
+    Idents(seurat_object) <- cluster_column
+    
+    if ("0" %in% as.character(unique(seurat_object@meta.data[[cluster_column]]))) {
+      
+      new_idents <- as.character(
+        as.numeric(
+          levels(
+            seurat_object@meta.data[[cluster_column]]))
+        + 1)
+      
+      levels(seurat_object@meta.data[[cluster_column]]) <- new_idents
+    }
+
+    Idents(seurat_object) <- cluster_column
+    labels <- Idents(seurat_object)
+    
+    # Create a dataframe of the cell labels ()
+    meta <<- data.frame(labels = factor(as.character(labels)),
+                       samples = factor(seurat_object@meta.data[[subject_column]]), 
+                       row.names = names(labels)) 
+  }
+  
+  compute_cellchat <- function() {
+    
+    cellchat <- createCellChat(object = data.input, meta = meta, group.by = "labels")
+    CellChatDB <- CellChatDB.human 
+    
+    # For visual inspection
+    # showDatabaseCategory(CellChatDB)
+    # dplyr::glimpse(CellChatDB$interaction)
+    
+    # use a subset of CellChatDB for cell-cell communication analysis (important, which one?)
+    CellChatDB.use <- subsetDB(CellChatDB, search = "Secreted Signaling", key = "annotation") # use Secreted Signaling
+    # set the used database in the object
+    cellchat@DB <- CellChatDB.use
+    
+    # subset the expression data of signaling genes for saving computation cost
+    cellchat <- subsetData(cellchat) # This step is necessary even if using the whole database 
+    
+    # finds genes that are expressed in the dataset (subsetData)
+    # future::plan("multisession", workers = 4) # do parallel
+    cellchat <- identifyOverExpressedGenes(cellchat) # Identify over-expressed signaling genes associated with each cell group
+    cellchat <- identifyOverExpressedInteractions(cellchat) # Identify over-expressed ligand-receptor interactions (pairs) within the used CellChatDB
+
+    # project gene expression data onto PPI (Optional: when running it, USER should set `raw.use = FALSE` in the function `computeCommunProb()` in order to use the projected data)
+    # cellchat <- projectData(cellchat, PPI.human)
+    
+    # Compute communication 
+    cellchat <- computeCommunProb(cellchat, type = "triMean")
+    cellchat <- filterCommunication(cellchat, min.cells = 10)
+    cellchat <- computeCommunProbPathway(cellchat) # Compute the communication probability/strength between any interacting cell groups
+
+    # when everything is computed 
+    # I can also use assign instead of the parent env
+    # Calculate the aggregated network by counting the number of links or summarizing the communication probability
+    cellchat <- aggregateNet(cellchat) 
+    cellchat <- netAnalysis_computeCentrality(cellchat, slot.name = "netP")
+    
+    cellchat <<- cellchat
+    
+    if (save_object) saveRDS(cellchat, paste0(output_dir, obj_name))
+  }
+
+  plot_results <- function() {
+    
+    plot_function <- function(p_function, name) {
+      svg(file=paste0(output_dir, name, ".svg"))
+      
+      # Plot
+      p_function
+      dev.off()
+      message("plot saved in:", paste0(output_dir, name, "", extension_plot))
+    }
+    
+    
+    plots_group <-  function() {
+      
+      groupSize <- as.numeric(table(cellchat@idents))
+      
+      # Number of interactions
+      # Strength of interactions
+      png(file=paste0(output_dir, "number_of_interactions", extension_plot))
+      par(mfrow = c(1,2), xpd=TRUE)
+      # label edge and weight scale are for appearance 
+      # https://rdrr.io/github/sqjin/CellChat/man/netVisual_circle.html
+      netVisual_circle(cellchat@net$count, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Number of interactions")
+      netVisual_circle(cellchat@net$weight, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Interaction weights/strength")
+      dev.off()
+      
+      message("plot saved in:", paste0(output_dir, "number_of_interactions", extension_plot))
+      # png(file=paste0(output_dir, "interaction_strength", extension_plot))
+      
+      # dev.off()
+      
+      mat <- cellchat@net$weight
+      
+      
+      png(file=paste0(output_dir, "other_plot", extension_plot))
+      par(mfrow = c(3,4), xpd=TRUE)
+      for (i in 1:nrow(mat)) {
+        mat2 <- matrix(0, nrow = nrow(mat), ncol = ncol(mat), dimnames = dimnames(mat))
+        mat2[i, ] <- mat[i, ]
+        netVisual_circle(mat2, vertex.weight = groupSize, weight.scale = T, edge.weight.max = max(mat), title.name = rownames(mat)[i])
+      }
+      dev.off()
+      
+      message("plot saved in:", paste0(output_dir, "other_plot", extension_plot))
+      
+      for (pathway in cellchat@netP$pathways) {
+        pairLR.CXCL <- extractEnrichedLR(cellchat, signaling = pathways.show, geneLR.return = FALSE)
+        for (interaction_name in pairLR.CXCL) {
+          print(interaction_name)
+          print(paste0("circle_", pathway,"_", interaction_name))
+          plot_f(netVisual_individual(cellchat, signaling = pathways.show, pairLR.use = LR.show, layout = "circle"),
+                 paste0("circle_", pathway,"_", interaction_name))
+        }
+      }
+    }
+    
+    # plots_group()
+    
+    # signaling
+    # pairLR
+    # vertex.receiver
+    # sources.use
+    
+    if (FALSE) {
+      pathways.show <- cellchat@netP$pathways[[1]]
+      pairLR.CXCL <- extractEnrichedLR(cellchat, signaling = pathways.show, geneLR.return = FALSE)
+      LR.show <- pairLR.CXCL[1,]
+    }
+
+    # pathway
+    for (pathways.show in cellchat@netP$pathways) {
+
+      pairLR.CXCL <- extractEnrichedLR(cellchat, signaling = pathways.show, geneLR.return = FALSE)
+      
+      save_plot(netAnalysis_contribution(cellchat, signaling = pathways.show),
+                    paste0(output_dir, "contributions_", pathways.show, "", extension_plot))
+      
+      for (LR.show in pairLR.CXCL) {
+        
+        # LR show - ligand receptor
+        # pathway show ->
+        plot_function(netVisual_individual(cellchat, signaling = pathways.show, pairLR.use = LR.show, layout = "circle"),
+                      paste0("circle_plots/", pathways.show, "_", LR.show))
+        
+        #
+        #plot_function(netVisual_individual(cellchat, signaling = pathways.show, pairLR.use = LR.show, layout = "chord"),
+        #              paste0("chord_plot_", pathways.show, "_", LR.show))
+
+        #for (vertex.receiver in seq_along(levels(cellchat@idents))) {
+        # isnide this loop chord plots or circle plots
+        # plot_function(netVisual_aggregate(cellchat, signaling = pathways.show,  vertex.receiver = vertex.receiver), 
+        #              paste0("circle_plot_pathway_vertex_", pathways.show, "_", LR.show, "_", vertex.receiver,"", extension_plot))
+        #}
+        # outside bubble plot o heatmap 
+        
+        
+        #
+        # (1) show all the significant interactions (L-R pairs) from some cell groups (defined by 'sources.use') to other cell groups (defined by 'targets.use')
+        # sources use -> a vector giving the index or the name of source cell groups
+        # target use -> a vector giving the index or the name of target cell groups.
+        
+      } # questo va fatto per microglia 
+      
+      vertex.receiver <- seq(levels(cellchat@idents))
+      plot_function(netVisual_aggregate(cellchat, signaling = pathways.show,  vertex.receiver = vertex.receiver), 
+                    paste0("circle_plots/pathway_vertex_", pathways.show, "_", vertex.receiver))
+      plot_function(netVisual_aggregate(cellchat, signaling = pathways.show), 
+                    paste0("circle_plots/pathway_", pathways.show))
+
+      # 
+      # plot_function(netAnalysis_signalingRole_network(cellchat, signaling = pathways.show, width = 8, height = 2.5, font.size = 10),
+      #             paste0("heatmap_plot_", pathways.show))
+    }
+
+    save_plot(netVisual_bubble(cellchat, sources.use = seq(levels(cellchat@idents)), targets.use = seq(levels(cellchat@idents)), remove.isolate = FALSE),
+              paste0(output_dir, "bubble_plot", extension_plot))
+    
+      # poi per altro invece va fatto la stessa cosa, devo solo costruire solo 3 clusters, due microglia infiammata + oligo. oppure 
+
+    for (vertex.receiver in seq_along(levels(cellchat@idents))) {
+      # non riesco a capire cosa ci andrebbe come input
+      # save_plot(netVisual_hierarchy1(cellchat@data.signaling, vertex.receiver),
+      #          paste0(output_dir, "hierarchy_ident_", vertex.receiver, "", extension_plot))
+    }
+
+
+    
+    ht1 <- netAnalysis_signalingRole_heatmap(cellchat, pattern = "outgoing")
+    ht2 <- netAnalysis_signalingRole_heatmap(cellchat, pattern = "incoming")
+
+    plot_function(ht1 + ht2,
+                  "heatmap_signaling_role")
+    
+    # To see the connections between idents for all the pathways
+    # target use -> microglia
+    # sources use -> astrocytes  
+    
+    for (use in c(1,2,3,4,5)) {
+
+      plot_function(netVisual_chord_gene(cellchat, sources.use = use, targets.use = c(1:5),  small.gap = 1,
+                                         big.gap = 10),
+                    paste0("chord_gene_cluster_sources_",use,"_target_all"))
+      plot_function(netVisual_chord_gene(cellchat, sources.use = c(1:5), targets.use = use,  small.gap = 1,
+                                         big.gap = 10),
+                    paste0("chord_gene_cluster_sources_all_target_",use))
+    }
+    
+
+    if (FALSE) {
+      selectK(cellchat, pattern = "outgoing")
+      cellchat <- identifyCommunicationPatterns(cellchat, pattern = "outgoing", k = 5)
+      netAnalysis_river(cellchat, pattern = "outgoing")
+      
+      netAnalysis_river(cellchat, pattern = "outgoing")
+
+    }
+
+  }
+  ## Script ----
+
+  prepare_data()
+  
+  if (load_object) cellchat <- readRDS(paste0(output_dir, obj_name))
+  else compute_cellchat()
+  
+  plot_results()
+  
+  library("openxlsx")
+  write.xlsx(subsetCommunication(cellchat), paste0(output_dir, "interactions_dataframe.xlsx"))
+
+  
+  # cellChat <- createCellChat(object = seurat_object, group.by = "ident", assay = "RNA")
+  
+}

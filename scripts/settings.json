@@ -1,0 +1,63 @@
+{    
+    "clustering": {
+        "create_subset": false,
+        "cluster_column": "microglia_clusters",
+        "subset": [],
+        "clustering": false,
+        "rename_clusters": false,
+        "to_correct": [],
+        "name": "microglia",
+        "save": true,
+        "save_path": "C:/Users/Edoardo/Desktop/Seurat/new_pipeline_test_output/seurat_objects/default_obj_name.rds"
+    },
+    "enrichment": {
+        "markers_path": null,
+        "count_threshold": 0,
+        "wgcna_folder": false,
+        "wgcna_module": false,
+        "modules_significance_table": false,
+        "module_threshold": 500,
+        "wgcna_exclude": false,
+        "cluster": false,
+        "minGSsize": 3,
+        "maxGSsize": 800,
+        "organism": "9606",
+        "num_tries": 3,
+        "raw": false,
+        "extension_plot": ".png",
+        "scoring": "log2FC",
+        "n_gene_enrich": 300
+    },
+    "wgcna": {
+        "cluster": false,
+        "wgcna_file": "bwnet.rds",
+        "save_net": false,
+        "load_net": false,
+        "soft_power": false,
+        "subject_pathology_column": "subject_pathology",
+        "subject_column": "subject",
+        "extension_plot": ".png",
+        "markers_analysisPD": "microglia_control_vs_pd",
+        "markers_analysisGPD": "microglia_control_vs_pd",
+        "hub_gene_threshold": [0.3, 1],
+        "which": [],
+        "type": "unsigned",
+        "TOMType": "unsigned",
+        "mergeCutHeight": 0.25,
+        "minModuleSize": 100
+    },
+    "deg": {
+        "save_data": true,
+        "cluster_column": "microglia_clusters",
+        "assay": "RNA",
+        "method": "default",
+        "subset_id": "control",
+        "o2": "NA",
+        "condition": "PD",
+        "nothreshold": "false",
+        "control": "non_PD",
+        "condition_column": "subject_pathology",
+        "extension_plot": ".png",
+        "folder": false
+    }
+}

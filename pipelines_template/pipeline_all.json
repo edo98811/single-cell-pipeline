@@ -1,0 +1,78 @@
+{
+    "general": {
+      "microglia_object": "C:/Users/Edoardo/Desktop/Seurat/output_4/forPaperGSEA/microglia_end_of_analysis.rds",
+      "folder_destination": "C:/Users/Edoardo/Desktop/Seurat/new_pipeline_test_output/deg_test/"
+    },
+    "global_variables": {
+      "r": "harmony_reduction",
+      "c": "microglia_clusters",
+      "a": "RNA",
+      "umap": "umap_microglia_harmony_reduction",
+      "dstd": 1.5,
+      "d": 0.3,
+      "annotation": "microglia_clusters",
+      "corrected_annotation": "microglia_clusters_scType",
+      "extension_plot": ".png",
+      "settings_path": "scripts/new/settings.json"
+    },
+    "pipeline": {
+      "clustering": false,
+      "deg": true,
+      "wgcna": true,
+      "enrichment": true
+    },
+    "clustering": {
+      "rename_clusters": false,
+      "to_correct": []
+    },
+    "deg": {
+      "microglia_control_vs_pd": {
+        "method": "condition",
+        "condition": "PD"
+      },
+      "clusters": {
+        "cluster_column": "microglia_clusters",
+        "method": "default"
+      },
+      "clusters_control_vs_pd_clusters": {
+        "cluster_column": "microglia_clusters",
+        "method": "condition_and_clusters",
+        "condition": "PD"
+      },
+      "volcano1": {
+        "method": "volcano",
+        "folder": "microglia_control_vs_pd"
+      },
+      "many_plots": {
+        "cluster_column": "microglia_clusters"
+      }
+    },
+    "wgcna": {
+      "all": {
+        "cluster": null,
+        "soft_power": 14,
+        "which": ["heatmap", "heatmapMRI", "histogram_plot"],
+        "wgcna_file": "bwnet.rds",
+        "load_net": true
+      },
+      "cluster2": {
+        "cluster": 2,
+        "soft_power": 14,
+        "which": ["heatmap", "heatmapMRI", "histogram_plot"],
+        "wgcna_file": "bwnet.rds",
+        "load_net": true
+      }
+    },
+    "enrichment": {
+      "control_vs_pd": {
+        "markers_path": "markers_microglia_control_vs_pd"
+      },
+      "WGCNA_2": {
+        "markers_path": "markers_control_vs_pd_clusters",
+        "cluster": 2,
+        "wgcna_modules": ["red", "pink"],
+        "wgcna_folder": "WGCNA_cluster_2"
+      }
+    }
+  }
+

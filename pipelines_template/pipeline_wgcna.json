@@ -1,0 +1,109 @@
+{
+    "general": {
+      "microglia_object": "C:/Users/Edoardo/Desktop/Seurat/output_4/forPaperGSEA/microglia_end_of_analysis.rds",
+      "folder_destination": "C:/Users/Edoardo/Desktop/Seurat/new_pipeline_test_output/deg_test/"
+    },
+    "global_variables": {
+      "r": "harmony_reduction",
+      "c": "microglia_clusters",
+      "a": "RNA",
+      "umap": "umap_microglia_harmony_reduction",
+      "dstd": 1.5,
+      "d": 0.3,
+      "annotation": "microglia_clusters",
+      "corrected_annotation": "microglia_clusters_scType",
+      "extension_plot": ".png",
+      "settings_path": "scripts/new/settings.json"
+    },
+    "pipeline": {
+      "clustering": true,
+      "deg": false,
+      "enrichment": false,
+      "wgcna": false
+    },
+    "clustering": {
+      "create_subset": true,
+      "cluster_column": "subject",
+      "subset": ["PD_001", "PD_002", "PD_005", "PD_007", "PD_008", "PD_009", "PD_012", "PD_016", "PD_017"],
+      "rename_clusters": false,
+      "to_correct": [],
+      "save": true,
+      "save_path": "C:/Users/Edoardo/Desktop/Seurat/new_pipeline_test_output/seurat_objects/microglia_mri_subset.rds"
+    },
+    "deg": {
+      "clusters": {
+        "cluster_column": "microglia_clusters",
+        "method": "default",
+        "condition": "",
+        "nothreshold": false
+      },
+      "clusters_control_vs_pd_clusters": {
+        "cluster_column": "microglia_clusters",
+        "method": "condition_and_clusters",
+        "condition": "PD",
+        "nothreshold": false
+      },
+      "microglia_control_vs_pd": {
+        "method": "condition",
+        "condition": "PD",
+        "nothreshold": false
+      },
+      "volcano1": {
+        "method": "volcano",
+        "folder": "microglia_control_vs_pd"
+      },
+      "many_plots": {
+        "cluster_column": "microglia_clusters"
+      }
+    },
+    "enrichment": {
+      "name1": {
+        "markers_path": "",
+        "other_parameters": []
+      },
+      "name2": {
+        "markers_path": "",
+        "other_parameters": []
+      }
+    },
+    "wgcna": {
+      "all": {
+        "cluster": null,
+        "soft_power": 14,
+        "which": ["heatmap", "heatmapMRI", "histogram_plot"],
+        "WGCNA_file": "bwnet.rds",
+        "load_net": true
+      },
+      "cluster0": {
+        "cluster": 0,
+        "soft_power": 14,
+        "which": ["heatmap", "heatmapMRI", "histogram_plot"],
+        "WGCNA_file": "bwnet.rds",
+        "load_net": true
+      },
+      "cluster2": {
+        "cluster": 2,
+        "soft_power": 14,
+        "which": ["heatmap", "heatmapMRI", "histogram_plot"],
+        "WGCNA_file": "bwnet.rds",
+        "load_net": true
+      }
+    },
+    "enrichment_wgcna": {
+      "clusters_list": {
+        "all": {
+          "wgcna_modules": [],
+          "cluster": "",
+          "wgcna_folder": "",
+          "markers": ""
+        },
+        "cluster0": {
+          "wgcna_modules": [],
+          "cluster": "",
+          "wgcna_folder": "",
+          "markers": ""
+        }
+      }
+    }
+  }
+
