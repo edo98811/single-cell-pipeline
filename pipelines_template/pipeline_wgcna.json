@@ -13,7 +13,7 @@
       "annotation": "microglia_clusters",
       "corrected_annotation": "microglia_clusters_scType",
       "extension_plot": ".png",
-      "settings_path": "scripts/new/settings.json"
+      "settings_path": "setting_template/settings.json"
     },
     "pipeline": {
       "clustering": true,

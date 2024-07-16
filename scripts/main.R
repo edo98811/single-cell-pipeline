@@ -1,8 +1,8 @@
 source("scripts/new/init.r")
 source("scripts/new/helper_functions.r")
 
-main <- function(pipeline_file = "useful/pipeline_wgcna.json") {
-  source("scripts/new/pipelines.r")
+main <- function(pipeline_file = "pipeline_wgcna.json") {
+  source("scripts/new/pipelines.r", local = TRUE)
 
   pipeline <- load_settings(paste0("pipelines/", pipeline_file))
 
@@ -13,10 +13,6 @@ main <- function(pipeline_file = "useful/pipeline_wgcna.json") {
   if (pipeline$pipeline$deg)              deg(pipeline$global_variables, pipeline$deg)
   if (pipeline$pipeline$wgcna)            wgcna(pipeline$global_variables, pipeline$wgcna)
   if (pipeline$pipeline$enrichment)       enrichment(pipeline$global_variables, pipeline$enrichment)
-
-  # for (pipeline_number in seq(pipeline$pipeline)) {
-  #   main_with_switch(names(pipeline$pipeline)[pipeline_number], pipeline$pipeline[pipeline_number], pipeline$global_variables)
-  # }
 
 }
 
