@@ -5,7 +5,7 @@
 # source("scripts/new/wgcna.r")
 
 # here put a secret
-Sys.setenv(GITHUB_PAT = '')
+# Sys.setenv(GITHUB_PAT = '')
 
 # comandi utili per installare pacchetti se mi servon
 # rm(list=ls(all=TRUE)[sapply(mget(ls(all=TRUE)), class) == "data.frame"])

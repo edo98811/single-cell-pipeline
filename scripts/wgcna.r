@@ -1,8 +1,9 @@
 # Author: Edoardo Filippi 
 # mail: efilippi@uni-mainz.de
 
-
-# WGCNA analysis Arguments:
+#' @details To run the WGCNA on complex dta coming from a seurat oject
+# 
+# Arguments:
 #' @param  name
 #' @param  wgcna_file
 #' @param  save_net
@@ -20,8 +21,8 @@
 #' @return seurat_object
 
 
-# Analysis using the WGCNA package
-WGCNA_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", save_net = TRUE, 
+# Analysis using the wgcna package
+wgcna_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", save_net = TRUE, 
                         load_net = FALSE, soft_power = NA, ...) {
     {
 
@@ -46,31 +47,31 @@ WGCNA_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", s
             stop("load_net argument must be a logical value")
         }
 
-        if (!is.na(soft_power) && !is.numeric(soft_power)) {
-            stop("soft_power argument must be a numeric value or NA")
+        if (!isFALSE(soft_power) && !is.numeric(soft_power)) {
+            stop("soft_power argument must be a numeric value or FALSE")
         }
 
 
     }
 
-    cat("Running WGCNA...\n")
+    cat("Running wgcna...\n")
     message(paste0("Parameters: name: ", name, " - wgcna_file: ", wgcna_file, " - save_net: ",
         save_net, " - load_net: ", load_net, " - soft_power: ", soft_power))
 
     # Dependencies
-    # check_packages(c("Seurat", "WGCNA", "GEOquery", "tidyverse", "gridExtra", "dplyr",
+    # check_packages(c("Seurat", "wgcna", "GEOquery", "tidyverse", "gridExtra", "dplyr",
     #     "readxl", "openxlsx", "DESeq2", "ggpmisc"))
     library(magrittr)
 
     # Set folders
-    output_dir <- set_up_output(paste0(output_folder, "WGCNA_", name, "/"), message)
+    output_dir <- set_up_output(paste0(output_folder, "wgcna_", name, "/"), message)
 
     # Main loop Data preparation
     column_data <- prepare_column_data(seurat_object, ...)
     norm_counts <- prepare_data(seurat_object, column_data, ...)
 
     # Soft power
-    if (is.na(soft_power) & !load_net)
+    if (isFALSE(soft_power) & !load_net)
         soft_power <- soft_power_intuition(norm_counts, ...)
 
     # Matrix computation
@@ -78,7 +79,7 @@ WGCNA_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", s
     else bwnet <- matrix_computation(norm_counts, soft_power, save_net, output_dir, wgcna_file, ...)
 
     # Plots and other functions
-    source("scripts/new/wgcna_plots.r", local = TRUE)
+    source("scripts/wgcna_plots.r", local = TRUE)
     plot_functions(bwnet, norm_counts, column_data, output_dir, ...)
     save_module_genes(bwnet, norm_counts, column_data, output_dir)
 
@@ -89,11 +90,11 @@ WGCNA_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", s
 prepare_column_data <- function(seurat_object, subject_pathology_column = "subject_pathology", subject_column = "subject", ...) {
 
     # Extract metadata from seurat object
-    meta.data <- seurat_object@meta.data
+    lmeta_data <- seurat_object@lmeta_data
 
     # Create subject meta data
-    column_data <- data.frame(subject = unique(meta.data[[subject_column]]), row.names = unique(meta.data[[subject_column]]))
-    column_data$pathology <- lapply(unique(meta.data[[subject_column]]), function(x) unique(meta.data[meta.data[[subject_column]] ==
+    column_data <- data.frame(subject = unique(lmeta_data[[subject_column]]), row.names = unique(lmeta_data[[subject_column]]))
+    column_data$pathology <- lapply(unique(lmeta_data[[subject_column]]), function(x) unique(lmeta_data[lmeta_data[[subject_column]] ==
         x, ][[subject_pathology_column]]))
 
     return(column_data)
@@ -107,13 +108,13 @@ prepare_data <- function(seurat_object, column_data, subject_column = "subject",
     # Get data from seurat object (transpose to have genes on columns and cells
     # on rows)
     counts_data <- t(GetAssayData(object = seurat_object, assay = "RNA", layer = "counts"))
-    meta.data <- seurat_object@meta.data
+    lmeta_data <- seurat_object@lmeta_data
 
     # Group counts by subject
     subject_data <- data.frame(matrix(ncol = 0, nrow = length(colnames(counts_data))),
         row.names = colnames(counts_data))
-    for (subject in unique(meta.data[[subject_column]])) {
-        subject_data <- cbind(subject_data, colSums(counts_data[row.names(meta.data[meta.data[[subject_column]] ==
+    for (subject in unique(lmeta_data[[subject_column]])) {
+        subject_data <- cbind(subject_data, colSums(counts_data[row.names(lmeta_data[lmeta_data[[subject_column]] ==
             subject, ]), ]))
         colnames(subject_data)[length(colnames(subject_data))] <- subject
     }
@@ -135,7 +136,7 @@ prepare_data <- function(seurat_object, column_data, subject_column = "subject",
     return(norm_counts)
 }
     
-# Compute WGCNA network matrix
+# Compute wgcna network matrix
 matrix_computation <- function(norm_counts, soft_power, save_net, output_dir, wgcna_file, type = "unsigned", TOMType = "signed", minModuleSize = 0, mergeCutHeight = 0.25, ...) {
     
     library(WGCNA)
@@ -145,7 +146,7 @@ matrix_computation <- function(norm_counts, soft_power, save_net, output_dir, wg
     # convert matrix to numeric
     norm_counts[] <- sapply(norm_counts, as.numeric)
 
-    # Create temp variable for cor (WGCNA uses a different one)
+    # Create temp variable for cor (wgcna uses a different one)
     temp_cor <- cor
     cor <- WGCNA::cor
 
@@ -172,7 +173,7 @@ matrix_computation <- function(norm_counts, soft_power, save_net, output_dir, wg
     return(bwnet)
 }
   
-# Make plots and intuition for WGCNA
+# Make plots and intuition for wgcna
 soft_power_intuition <- function(norm_counts, extension_plot = ".png", ...) {
 
     library(WGCNA)
@@ -182,13 +183,13 @@ soft_power_intuition <- function(norm_counts, extension_plot = ".png", ...) {
     # geneid
     sft <- pickSoftThreshold(as.data.frame(norm_counts), powerVector = power, networkType = "signed",
         verbose = 5)
-    sft.data <- sft$fitIndices
+    sft_data <- sft$fitIndices
 
     # Visualization to pick power
-    a1 <- ggplot(sft.data, aes(Power, SFT.R.sq, label = Power)) + geom_point() +
+    a1 <- ggplot(sft_data, aes(Power, SFT.R.sq, label = Power)) + geom_point() +
         geom_text(nudge_y = 0.1) + geom_hline(yintercept = 0.8, color = "red") +
         labs(x = "Power", y = "Scale free topology model fit, signed R^2") + theme_classic()
-    a2 <- ggplot(sft.data, aes(Power, mean.k., label = Power)) + geom_point() + geom_text(nudge_y = 0.1) +
+    a2 <- ggplot(sft_data, aes(Power, mean.k., label = Power)) + geom_point() + geom_text(nudge_y = 0.1) +
         labs(x = "Power", y = "Mean Connectivity") + theme_classic()
     save_plot(grid.arrange(a1, a2, nrow = 2), paste0(output_dir, "networkinfo", extension_plot))
 

@@ -1,8 +1,8 @@
-source("scripts/new/init.r")
-source("scripts/new/helper_functions.r")
+source("scripts/init.r")
+source("scripts/helper_functions.r")
 
 main <- function(pipeline_file = "pipeline_wgcna.json") {
-  source("scripts/new/pipelines.r", local = TRUE)
+  source("scripts/pipelines.r", local = TRUE)
 
   pipeline <- load_settings(paste0("pipelines/", pipeline_file))
 
@@ -19,7 +19,7 @@ main <- function(pipeline_file = "pipeline_wgcna.json") {
 
 pipeline <-  "useful/pipeline_wgcna_subset.json"
 main(pipeline)
-pipeline <-  "useful/pipeline_wgcna_subset_run.json"
+pipeline <-  "pipeline_wgcna_subset_run.json"
 main(pipeline)
 pipeline <-  "useful/pipeline_enrich_wgcna_subset.json"
 main(pipeline)

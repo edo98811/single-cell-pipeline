@@ -1,7 +1,7 @@
 # Author: Edoardo Filippi
 # mail: efilippi@uni-mainz.de
 
-#' @details  Enrichment analysis analysis using one of the following methods: gsea, ora, panther, mniaa, enrichr, STRING
+#' @details  Enrichment analysis analysis using one of the following methods: gsea, ora, panther, enrichr
 #
 # Arguments:
 #' @param wgcna_folder
@@ -218,7 +218,7 @@ select_mdoules_to_enrich <- function(filename) {
 }
 
 # Main to be run for enrichment analysis
-run_enrichment <- function(which=c(""), output_dir, analysis_name, all_genes = c(""), subset = c(""), ...) {
+run_enrichment <- function(which = c(""), output_dir, analysis_name, all_genes = c(""), subset = c(""), ...) {
   
   # all_genes -> all the genes (a gene ranking output, so a numeric vector with the scores in which the names are the gene names)
   # subset -> used with ora and enrichr (enrichment analysis in which a threshold needs to be set and only a small number of genes used)

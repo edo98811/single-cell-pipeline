@@ -78,7 +78,7 @@ integration <- function(env_variables, clustering_settings) {
 
 clustering <- function(env_variables, clustering_settings){
 
-    source("scripts/new/seurat_utils.r", local = TRUE)
+    source("scripts/seurat_utils.r", local = TRUE)
     create_variables(env_variables)
       
     parameters <- .update_parameters(clustering_settings,  load_settings(settings_path)$clustering)
@@ -170,7 +170,7 @@ clustering <- function(env_variables, clustering_settings){
 
 deg <- function(env_variables, deg_settings) {
 
-    source("scripts/new/seurat_utils.r", local = TRUE)
+    source("scripts/seurat_utils.r", local = TRUE)
 
     create_variables(env_variables)
     default_parameters <- load_settings(settings_path)$deg
@@ -230,8 +230,8 @@ deg <- function(env_variables, deg_settings) {
 
 wgcna <- function(env_variables, wgcna_settings){
 
-    source("scripts/new/wgcna.r", local = TRUE)
-    source("scripts/new/seurat_utils.r", local = TRUE)  
+    source("scripts/wgcna.r", local = TRUE)
+    source("scripts/seurat_utils.r", local = TRUE)  
 
     create_variables(env_variables)
     default_parameters <- load_settings(settings_path)$wgcna
@@ -249,7 +249,7 @@ wgcna <- function(env_variables, wgcna_settings){
                                                                     clusters_column = c)
         } else seurat_object_subset <-seurat_object
                 
-        do.call(WGCNA_main, 
+        do.call(wgcna_main, 
                 c(list(seurat_object_subset, 
                 name = names(wgcna_settings)[wgcna]), 
                 parameters))
@@ -259,8 +259,8 @@ wgcna <- function(env_variables, wgcna_settings){
 
 enrichment <- function(env_variables, enrichment_settings){
 
-    source("scripts/new/enrichment.r", local = TRUE)
-    source("scripts/new/seurat_utils.r", local = TRUE)
+    source("scripts/enrichment.r", local = TRUE)
+    source("scripts/seurat_utils.r", local = TRUE)
 
     create_variables(env_variables)
     default_parameters <- load_settings(settings_path)$enrichment
@@ -292,8 +292,8 @@ enrichment <- function(env_variables, enrichment_settings){
 
 # enrichment_wgcna <- function(env_variables, enrichment_wgcna_settings){
 
-#     source("scripts/new/enrichment.r", local = TRUE)
-#     source("scripts/new/seurat_utils.r", local = TRUE)
+#     source("scripts/enrichment.r", local = TRUE)
+#     source("scripts/seurat_utils.r", local = TRUE)
 
 #     create_variables(env_variables)
   

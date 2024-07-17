@@ -10,6 +10,10 @@
 */
 !scripts/
 !pipelines_template/
+!settings_template/
+
+scripts/mri_others.r
+scripts/mri_old.r
 
 # History files
 .Rhistory
