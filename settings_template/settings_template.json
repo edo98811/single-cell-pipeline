@@ -44,7 +44,11 @@
         "type": "unsigned",
         "TOMType": "unsigned",
         "mergeCutHeight": 0.25,
-        "minModuleSize": 100
+        "minModuleSize": 100,
+        "wgcna_subjects": {},
+        "regions": ["superiorfrontal", "caudalmiddlefrontal", "rostralmiddlefrontal"],
+        "regions_plot": [],
+        "data_source_mri": "aparc"
     },
     "deg": {
         "save_data": true,

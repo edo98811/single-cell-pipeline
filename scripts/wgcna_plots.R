@@ -22,7 +22,7 @@ hub_genes_threshold = c(0.3, 1), which = c(""), cluster = FALSE, deg_to_use = "P
             "significance_log2fc_scatter" = significance_log2fc_scatter(bwnet, norm_counts, column_data, cluster, deg_to_use, extension_plot, ...),
             "correlation_avglog2fc_scatter" = correlation_avglog2fc_scatter(bwnet, norm_counts, column_data, cluster, deg_to_use, extension_plot, ...),
             "corr_matrix" = corr_matrix(bwnet, norm_counts, column_data),
-            "significance_membership_model" = significance_membership_model(bwnet, norm_counts, column_data),
+            "significance_membership_model" = significance_membership_model(bwnet, norm_counts, column_data, ...),
             stop("Invalid function name"))
     }
 }
@@ -49,7 +49,7 @@ heatmap_group <- function(bwnet, norm_counts, column_data) {
 heatmap_mri <- function(bwnet, norm_counts, column_data) {
     message("heatmap mri")
 
-    traits <- load_mri_traits(type = "mri")
+    traits <- load_mri_traits(type = "mri", ...)
     make_heatmap(bwnet, paste0(output_dir, "trait_correlation_heatmap_mri.xlsx"), traits)
 }
 
@@ -57,7 +57,7 @@ heatmap_mri <- function(bwnet, norm_counts, column_data) {
 heatmap_zscore <- function(bwnet, norm_counts, column_data) {
     message("heatmap zscore")
 
-    traits <- load_mri_traits(type = "zscore")
+    traits <- load_mri_traits(type = "zscore", ...)
     make_heatmap(bwnet, paste0(output_dir, "trait_correlation_heatmap_zscore.xlsx"), traits)
 
 }
@@ -193,7 +193,7 @@ histogram_plot <- function(bwnet, norm_counts, column_data, cluster, deg_to_use,
 histogram_plot_significance <- function(bwnet, norm_counts, column_data, extension_plot, ...) {
     message("histogram_plot significance")
 
-    gene_significance <- load_significance(norm_counts)
+    gene_significance <- load_significance(norm_counts, ...)
 
     plot_df <- merge(data.frame(bwnet$colors), gene_significance,
         by = "row.names", all = FALSE)
@@ -297,7 +297,7 @@ membership_log2fc_scatter <- function(bwnet, norm_counts, column_data, cluster, 
 significance_log2fc_scatter <- function(bwnet, norm_counts, column_data, cluster, deg_to_use, extension_plot, ...) {
     message("significance_log2fc_scatter")
 
-    gene_significance <- load_significance(norm_counts)
+    gene_significance <- load_significance(norm_counts, ...)
     deg_results <- load_log2fc_df(cluster, deg_to_use, ...)
     plot_df <- merge_dataframes(data.frame(bwnet$colors), deg_results, gene_significance)
     
@@ -341,7 +341,7 @@ significance_log2fc_scatter <- function(bwnet, norm_counts, column_data, cluster
 
 significance_membership_scatter <- function(bwnet, norm_counts, column_data, hub_genes_threshold, cluster, extension_plot, ...) {
    
-    gene_significance <- load_significance(norm_counts)
+    gene_significance <- load_significance(norm_counts, ...)
     module_membership_measure <- load_module_membership(bwnet, norm_counts) 
     plot_df <- merge_dataframes(data.frame(bwnet$colors), module_membership_measure, gene_significance)
 
@@ -420,7 +420,7 @@ significance_avglog2fc_scatter <- function(bwnet, norm_counts, column_data, clus
         return(mean(abs(submod$avg_log2FC)))
     }
         
-    traits <- load_mri_traits(type = "zscore")
+    traits <- load_mri_traits(type = "zscore", ...)
 
     heatmap_data <- bwnet$MEs %>%
         merge(traits, by = "row.names") %>%
@@ -490,11 +490,11 @@ message("corr_matrix")
     message("plot saved in: ", output_dir, "modules_correlation_heatmap", extension_plot)
 }
 
-significance_membership_model <- function(bwnet, norm_counts, column_data) {
+significance_membership_model <- function(bwnet, norm_counts, column_data, ...) {
     message("significance_membership_scatter")
 
     module_membership_measure <- load_module_membership(bwnet, norm_counts)  # ahh ho invertito e quindo ho una direzione divers
-    gene_significance <- load_significance(norm_counts)
+    gene_significance <- load_significance(norm_counts, ...)
     plot_df <- merge_dataframes(data.frame(bwnet$colors), gene_significance, module_membership_measure)
 
     for (column in c("superiorfrontal_thickness", "frontal_cortex_thickness")) {

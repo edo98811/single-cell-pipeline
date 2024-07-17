@@ -1,6 +1,8 @@
 # Author: Edoardo Filippi 
 # mail: efilippi@uni-mainz.de
 
+source("scripts/mri_utils.r", local = TRUE)
+
 # Load data for the mri needed for the wgcna function
 mri_for_wgcna <- function(data_source = "aparc", regions = c("superiorfrontal", "caudalmiddlefrontal", "rostralmiddlefrontal"),
     wgcna_subjects = list(PD_001 = "02_082", PD_002 = "02_084", PD_005 = "02_074", PD_007 = "02_096",
@@ -69,7 +71,7 @@ zscore_for_wgcna <- function(data_source = "aparc", regions = c("superiorfrontal
         })
     }
     corrected_data <- compute_zscore(data)
-    
+
     # zscore <- function(value, avg, std_dev) {
     #     score <- (value - avg) / std_dev
     # }

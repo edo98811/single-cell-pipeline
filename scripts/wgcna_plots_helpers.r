@@ -89,23 +89,32 @@ merge_dataframes <- function(data1, data2, data3){
 
 }
 
-load_mri_traits <- function(type = "zscore") {
+load_mri_traits <- function(wgcna_subjects = list(), regions = c(), type = "zscore", data_source_mri = "aparc", ...) {
 
+    # Check if either of the variables is empty and raise a warning if true
+    if (length(wgcna_subjects) == 0) {
+    warning("The wgcna_subjects list is empty.")
+    }
+
+    if (length(regions) == 0) {
+    warning("The regions vector is empty.")
+    }
+    
     # Compute membershio measure
     source("scripts/new/mri_analysis.r", local = TRUE)
 
     if (type == "zscore") {
-        traits <- zscore_for_wgcna()
+        traits <- zscore_for_wgcna(data_source_mri, wgcna_subjects, regions)
     } else if (type == "mri") {
-        traits <- traits <- mri_for_wgcna()
+        traits <- traits <- mri_for_wgcna(data_source_mri, wgcna_subjects, regions)
     } else stop("in wgcna plot load significance wrong load type")
 
     return(traits)
 }
 
-load_significance <- function (norm_counts, type= "zscore") {
+load_significance <- function (norm_counts, type = "zscore", ...) {
 
-    traits <- load_mri_traits(type = type)
+    traits <- load_mri_traits(type = type, ...)
 
     gene_significance <- cor(norm_counts, traits, use = "p")
 }
@@ -148,14 +157,14 @@ make_heatmap <- function(bwnet, excel_filename, traits) {
 
 # In case it is needed
 # all'interno c'e una variabile dipendente dall'environment di questa funzione (filename) (non posso usare questa funzione altrove)
-volcano_plot <- function(source, filename_in = force(filename), x_name = "NES", y_name="qvalue", 
-                        labels = "Description", FCthreshold=0.5, qthreshold=0.05) {
+volcano_plot <- function(source, filename_in = force(filename), x_name = "NES", y_name = "qvalue", 
+                        labels = "Description", FCthreshold = 0.5, qthreshold = 0.05) {
     
     # Check packages
     check_packages(c("EnhancedVolcano"))
     
     # Create dataframe to plot
-    if(class(source) == "gseaResult") {x_name = "qvalue"; y_name="NES"}
+    if (class(source) == "gseaResult") {x_name = "qvalue"; y_name="NES"}
     
     source_df <- source[,c(x_name, y_name)]
     rownames(source_df) <- source[[labels]]
