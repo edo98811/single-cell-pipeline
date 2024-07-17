@@ -4,10 +4,7 @@
 source("scripts/mri_utils.r", local = TRUE)
 
 # Load data for the mri needed for the wgcna function
-mri_for_wgcna <- function(data_source = "aparc", regions = c("superiorfrontal", "caudalmiddlefrontal", "rostralmiddlefrontal"),
-    wgcna_subjects = list(PD_001 = "02_082", PD_002 = "02_084", PD_005 = "02_074", PD_007 = "02_096",
-        PD_008 = "02_097", PD_009 = "02_105", PD_012 = "02_104", PD_016 = "02_108",
-        PD_017 = "02_115")) {
+mri_for_wgcna <- function(data_source = "aparc", regions = c(), wgcna_subjects = list()) {
     
     library(stringr)
 
@@ -42,10 +39,7 @@ mri_for_wgcna <- function(data_source = "aparc", regions = c("superiorfrontal", 
 }
 
 # Load data for the mri needed for the wgcna function
-zscore_for_wgcna <- function(data_source = "aparc", regions = c("superiorfrontal", "caudalmiddlefrontal", "rostralmiddlefrontal"),
-    wgcna_subjects = list(PD_001 = "02_082", PD_002 = "02_084", PD_005 = "02_074", PD_007 = "02_096",
-        PD_008 = "02_097", PD_009 = "02_105", PD_012 = "02_104", PD_016 = "02_108",
-        PD_017 = "02_115")) {
+zscore_for_wgcna <- function(data_source = "aparc", regions = c(), wgcna_subjects = list()) {
     
     library(stringr)
 

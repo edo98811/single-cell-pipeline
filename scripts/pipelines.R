@@ -1,7 +1,8 @@
-
+# To implement
 preprocessing <- function(env_variables, clustering_settings) {    
 }
 
+# To implemennt
 integration <- function(env_variables, clustering_settings) {
       
   ## Merge objects scaling, metadata, and pca ----
@@ -82,38 +83,7 @@ clustering <- function(env_variables, clustering_settings){
     create_variables(env_variables)
       
     parameters <- .update_parameters(clustering_settings,  load_settings(settings_path)$clustering)
-    
-    # if (clustering_settings$experiment) {
-
-    #     ds <- c(0.1, 0.3, 0.4, 0.6, 1, 1.5)
-    #     PCs <- c(5,10, 20, 30)
-    #     PCs <- c(16)
-        
-    #     output_folder <- define_output_folder("microglia_experiments")
-        
-    #     for (d in ds){
-    #         for (PC in PCs) {
-    #         runID = paste0("microglia_experiments/", d,"_",PC)
-    #         project_folder <- "C:/Users/Edoardo/Desktop/Seurat/"
-    #         output_folder <- define_output_folder(runID)
-    #         # Perform Clustering
-    #         seurat_object_t <- clustering(seurat_object, reduction=r, 
-    #                                         desired_resolution=d, dimension=PC,
-    #                                         save=FALSE, column_name = c)
-            
-    #         # Visualization
-    #         visualization_UMAP(seurat_object_t, 
-    #                                         reduction_name=paste0("umap_", r), reduction=r, 
-    #                                         cluster_column=c, dimension=PC,
-    #                                         save=FALSE)
-            
-            
-    #         many_plots(seurat_object_t, which=c("heatmap"), assay=a,
-    #                     cluster_column=c, name ="clusters")
-    #         rm(seurat_object_t)
-    #         }
-    #     } 
-    # } else {
+   
     if (parameters$create_subset) {
         if (length(parameters$subset) == 0) stop(" subsetting: invalit subset parameter")
         
@@ -121,45 +91,46 @@ clustering <- function(env_variables, clustering_settings){
                 parameters$subset, clusters_column = parameters$cluster_column),
                 envir = .GlobalEnv)
     }
+
     if (parameters$clustering) {
         PCs <- analyze_explained_variance(seurat_object, 
                                     dstd, 
                                     reduction_to_inspect = "pca")
                         # Perform Clustering
         seurat_object <- clustering(seurat_object, 
-                                    reduction=r, 
-                                    desired_resolution=d, 
-                                    dimension=PCs,
-                                    save=FALSE, 
+                                    reduction = r, 
+                                    desired_resolution = d, 
+                                    dimension = PCs,
+                                    save = FALSE, 
                                     column_name = c)
 
         seurat_object <- visualization_UMAP(seurat_object, 
-                                            reduction_name=umap, 
-                                            cluster_column=c, 
-                                            dimension=PCs,
-                                            save=FALSE, 
-                                            run_UMAP=FALSE, 
-                                            name=parameters$name,
-                                            extension_plot=extension_plot)
+                                            reduction_name = umap, 
+                                            cluster_column = c, 
+                                            dimension = PCs,
+                                            save = FALSE, 
+                                            run_UMAP = FALSE, 
+                                            name = parameters$name,
+                                            extension_plot = extension_plot)
     }
     if (parameters$rename_clusters) {
 
         seurat_object <- correct_annotation(seurat_object, 
                                         parameters$to_correct, 
                                         c, 
-                                        new_annotation_column=corrected_annotation, 
-                                        cluster_column=c)
+                                        new_annotation_column = corrected_annotation, 
+                                        cluster_column = c)
     
     
         seurat_object <- visualization_UMAP(seurat_object, 
-                                        reduction_name=umap, 
-                                        reduction=r, 
-                                        cluster_column=corrected_annotation, 
-                                        dimension=PCs,
-                                        save=FALSE, 
-                                        run_UMAP=FALSE, 
-                                        name=paste0(parameters$name, "corrected"),
-                                        extension_plot=extension_plot)
+                                        reduction_name = umap, 
+                                        reduction = r, 
+                                        cluster_column = corrected_annotation, 
+                                        dimension = PCs,
+                                        save = FALSE, 
+                                        run_UMAP = FALSE, 
+                                        name = paste0(parameters$name, "corrected"),
+                                        extension_plot = extension_plot)
     }    
 
     if (parameters$save) saveRDS(seurat_object, parameters$save_path)
@@ -275,49 +246,19 @@ enrichment <- function(env_variables, enrichment_settings){
                                     parameters[names(parameters) != "markers_path"]))
     }
 
-    if (FALSE){
-        perform_enrichment_analysis(output_folder, "markers_microglia_clusters_vf/", "microglia_clusters_vf")
-        perform_enrichment_analysis(output_folder, "markers_microglia_control_vs_pd_clusters_vf/", "microglia_control_vs_pd_clusters_vf")
-        perform_enrichment_analysis(output_folder, "markers_microglia_control_vs_pd_nogenetic_vf/", "microglia_control_vs_pd_nogenetic_vf")
-        perform_enrichment_analysis(output_folder, "markers_microglia_control_vs_pd_clusters_all/", "microglia_control_vs_pd_clusters_all")
-        perform_enrichment_analysis(output_folder, "markers_microglia_control_vs_geneticpd_all/", "microglia_control_vs_geneticpd_all")
-        perform_enrichment_analysis(output_folder, "markers_microglia_control_vs_pd_nogenetic_all/", "microglia_control_vs_pd_nogenetic_all")
-        perform_enrichment_analysis(output_folder, "markers_microglia_clusters/", "microglia_clusters")
-        perform_enrichment_analysis(output_folder, "markers_microglia_control_vs_pd_clusters/", "microglia_control_vs_pd_clusters")
-        perform_enrichment_analysis(output_folder, "markers_microglia_control_vs_geneticpd/", "microglia_control_vs_geneticpd")
-        perform_enrichment_analysis(output_folder, "markers_microglia_control_vs_pd_nogenetic/", "microglia_control_vs_pd_nogenetic")
-    }
-
 }
-
-# enrichment_wgcna <- function(env_variables, enrichment_wgcna_settings){
-
-#     source("scripts/enrichment.r", local = TRUE)
-#     source("scripts/seurat_utils.r", local = TRUE)
-
-#     create_variables(env_variables)
-  
-#     for (cluster in seq_along(enrichment_wgcna_settings)) {
-        
-#         parameters <- enrichment_wgcna_settings[cluster]
-
-#         enrichment_analysis(paste0("WGCNA/", names(enrichment_wgcna_settings)[cluster]),
-#                         parameters$markers_folder, 
-#                         WGCNA_folder=parameters$wgcna_folder, 
-#                         WGCNA_module=parameters$wgcna_modules, 
-#                         cluster=parameters$cluster)
-#     }
-# }
 
 .update_parameters <- function(parameters, default) {
 
     message("setting parameters")
     for (parameter in names(default)) {
+        
         # If the value is not present in the parameters given it is added from defaults
         if (!parameter %in% names(parameters)) {
 
             # If the default parameter is null stop the program (it is required)
             if (is.null(default[[parameter]])) stop(parameter, " required parameter")
+
             # Else add it 
             parameters[[parameter]] <- default[[parameter]]
         }

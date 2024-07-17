@@ -2,7 +2,7 @@
 # mail: efilippi@uni-mainz.de
 
 # Define the info to load
-create_data_description <- function(regions = c( "superiorfrontal", "caudalmiddlefrontal", "rostralmiddlefrontal")) {
+create_data_description <- function(regions) {
 
     return(
         list(
@@ -150,7 +150,7 @@ read_samseg_file <- function(file_path) {
         # Remove the leading '# Measure ' and the trailing ', mm^3'
         line <- str_trim(lines[i])
         line <- str_remove(line, "^# Measure ")
-        parts <- str_split(line, ",\\s*", simplify = TRUE)
+        parts <- str_split(line, ",//s*", simplify = TRUE)
 
         # Extract region name and measure
         region_name <- parts[1]
@@ -165,11 +165,11 @@ read_samseg_file <- function(file_path) {
 }
 
 # Load the mrirestuls informations
-load_data_aparc <- function(source, columns) {
+load_data_aparc <- function(columns, source_files = "C:/Users/Edoardo/Desktop/Seurat/input/stats_file_redo") {
 
     # save all the regions data in a single dataframe
     data_all <- do.call("cbind", lapply(names(columns), function(file) {
-        read.table(file = paste0(data_folder, "stats_file_redo/", file), header = TRUE,
+        read.table(file = paste0(source_files, file), header = TRUE,
             row.names = 1)
     }))
 
