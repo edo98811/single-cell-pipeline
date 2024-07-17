@@ -1,3 +1,7 @@
+# Author: Edoardo Filippi 
+# mail: efilippi@uni-mainz.de
+
+
 # To implement
 preprocessing <- function(env_variables, clustering_settings) {    
 }
@@ -252,7 +256,7 @@ enrichment <- function(env_variables, enrichment_settings){
 
     message("setting parameters")
     for (parameter in names(default)) {
-        
+
         # If the value is not present in the parameters given it is added from defaults
         if (!parameter %in% names(parameters)) {
 

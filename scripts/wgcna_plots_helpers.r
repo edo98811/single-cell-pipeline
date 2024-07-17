@@ -1,3 +1,6 @@
+# Author: Edoardo Filippi 
+# mail: efilippi@uni-mainz.de
+
 
 write_on_excel <- function(sheet_name, data, wb = NULL, mode = "pvalue") {
 
