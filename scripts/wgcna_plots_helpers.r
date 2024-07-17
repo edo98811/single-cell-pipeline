@@ -165,11 +165,14 @@ volcano_plot <- function(source, filename_in = force(filename), x_name = "NES", 
     check_packages(c("EnhancedVolcano"))
     
     # Create dataframe to plot
-    if (class(source) == "gseaResult") {x_name = "qvalue"; y_name = "NES"}
+    if (class(source) == "gseaResult") {
+        x_name <- "qvalue" 
+        y_name <- "NES"
+        }
     
-    source_df <- source[,c(x_name, y_name)]
+    source_df <- source[, c(x_name, y_name)]
     rownames(source_df) <- source[[labels]]
-    if (!nrow(source[source[[y_name]] < qthreshold,])) qthreshold <- source[[y_name]][[ridge_n]]
+    if (!nrow(source[source[[y_name]] < qthreshold, ])) qthreshold <- source[[y_name]][[ridge_n]]
 
     # Volcano plot
     EnhancedVolcano(source_df,
@@ -178,5 +181,5 @@ volcano_plot <- function(source, filename_in = force(filename), x_name = "NES", 
                     y = y_name,     
                     pCutoff = qthreshold,
                     fc_cutoff = fc_threshold) + 
-    labs(subtitle = filename_in) + xlab(x_name) + ylab(paste0("log10 ",y_name)) + theme(legend.position="none")
+    labs(subtitle = filename_in) + xlab(x_name) + ylab(paste0("log10 ", y_name)) + theme(legend.position = "none")
 }
