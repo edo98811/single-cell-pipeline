@@ -2,7 +2,7 @@
 # mail: efilippi@uni-mainz.de
 
 
-source("scripts/new/wgcna_plots_helpers.r", local = TRUE)
+source("scripts/wgcna_plots_helpers.r", local = TRUE)
 
 plot_functions <- function(bwnet, norm_counts, column_data, output_dir, extension_plot = ".png",
 reduction_name = "umap_microglia_harmony_reduction", module_of_interest = c(""),

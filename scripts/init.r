@@ -48,7 +48,8 @@ load_settings <- function(file_path) {
 }
 
 setup_globals <- function(folder = "microglia_correct") {
-
+    library(Seurat)
+    
     assign("project_folder", paste0(getwd(), "/"), envir = .GlobalEnv)
     assign("output_folder", folder, envir = .GlobalEnv)
 
@@ -56,7 +57,7 @@ setup_globals <- function(folder = "microglia_correct") {
         dir.create(folder, recursive = TRUE)
         message("Directory created: ", folder)
     }
-    
+
     assign("data_folder", paste0(get("project_folder", envir = .GlobalEnv), "input/"), envir = .GlobalEnv)
     assign("pattern", "filtered_feature_bc_matrix", envir = .GlobalEnv)
     assign("patient_info", "input/info_subj.txt", envir = .GlobalEnv)

@@ -72,7 +72,7 @@ wgcna_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", s
 
     # Soft power
     if (isFALSE(soft_power) & !load_net)
-        soft_power <- soft_power_intuition(norm_counts, ...)
+        soft_power <- soft_power_intuition(norm_counts, output_dir, ...)
 
     # Matrix computation
     if (load_net) bwnet <- readRDS(paste0(output_dir, wgcna_file)) 
@@ -90,11 +90,11 @@ wgcna_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", s
 prepare_column_data <- function(seurat_object, subject_pathology_column = "subject_pathology", subject_column = "subject", ...) {
 
     # Extract metadata from seurat object
-    lmeta_data <- seurat_object@lmeta_data
+    meta_data <- seurat_object@meta.data
 
     # Create subject meta data
-    column_data <- data.frame(subject = unique(lmeta_data[[subject_column]]), row.names = unique(lmeta_data[[subject_column]]))
-    column_data$pathology <- lapply(unique(lmeta_data[[subject_column]]), function(x) unique(lmeta_data[lmeta_data[[subject_column]] ==
+    column_data <- data.frame(subject = unique(meta_data[[subject_column]]), row.names = unique(meta_data[[subject_column]]))
+    column_data$pathology <- lapply(unique(meta_data[[subject_column]]), function(x) unique(meta_data[meta_data[[subject_column]] ==
         x, ][[subject_pathology_column]]))
 
     return(column_data)
@@ -108,13 +108,13 @@ prepare_data <- function(seurat_object, column_data, subject_column = "subject",
     # Get data from seurat object (transpose to have genes on columns and cells
     # on rows)
     counts_data <- t(GetAssayData(object = seurat_object, assay = "RNA", layer = "counts"))
-    lmeta_data <- seurat_object@lmeta_data
+    meta_data <- seurat_object@meta.data
 
     # Group counts by subject
     subject_data <- data.frame(matrix(ncol = 0, nrow = length(colnames(counts_data))),
         row.names = colnames(counts_data))
-    for (subject in unique(lmeta_data[[subject_column]])) {
-        subject_data <- cbind(subject_data, colSums(counts_data[row.names(lmeta_data[lmeta_data[[subject_column]] ==
+    for (subject in unique(meta_data[[subject_column]])) {
+        subject_data <- cbind(subject_data, colSums(counts_data[row.names(meta_data[meta_data[[subject_column]] ==
             subject, ]), ]))
         colnames(subject_data)[length(colnames(subject_data))] <- subject
     }
@@ -174,9 +174,12 @@ matrix_computation <- function(norm_counts, soft_power, save_net, output_dir, wg
 }
   
 # Make plots and intuition for wgcna
-soft_power_intuition <- function(norm_counts, extension_plot = ".png", ...) {
+soft_power_intuition <- function(norm_counts, output_dir, extension_plot = ".png", ...) {
 
     library(WGCNA)
+    library(ggplot2)
+    library(gridExtra)
+
     power <- c(c(1:10), seq(from = 12, to = 50, by = 2))
 
     # Call the network topology analysis function input -> rows - subj, cols -

@@ -1,4 +1,4 @@
-#### settings 
+# settings 
 
 This document provides an overview of the configuration parameters used in the pipeline. Each section and parameter is briefly described below. The setting file must contain all the default parameters (so that in the pipeline files you need to specify only the ones that change). 
 A required parameter is assined to null in the settings file, if the null parameters in settings are not assigned in the pipeline files an error is thrown.
