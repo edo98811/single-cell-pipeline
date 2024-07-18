@@ -24,43 +24,19 @@
 # Analysis using the wgcna package
 wgcna_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", save_net = TRUE, 
                         load_net = FALSE, soft_power = NA, ...) {
-    {
 
-        # Check types of arguments
-        if (!inherits(seurat_object, "Seurat")) {
-            stop("seurat_object must be a Seurat object")
-        }
-
-        if (!is.character(name)) {
-            stop("name argument must be a character")
-        }
-
-        if (!is.character(wgcna_file)) {
-            stop("wgcna_file argument must be a character")
-        }
-
-        if (!is.logical(save_net)) {
-            stop("save_net argument must be a logical value")
-        }
-
-        if (!is.logical(load_net)) {
-            stop("load_net argument must be a logical value")
-        }
-
-        if (!isFALSE(soft_power) && !is.numeric(soft_power)) {
-            stop("soft_power argument must be a numeric value or FALSE")
-        }
-
-
-    }
+    # Check types of arguments
+    if (!inherits(seurat_object, "Seurat")) stop("seurat_object must be a Seurat object")
+    if (!is.character(name)) stop("name argument must be a character")
+    if (!is.character(wgcna_file)) stop("wgcna_file argument must be a character")
+    if (!is.logical(save_net)) stop("save_net argument must be a logical value")
+    if (!is.logical(load_net)) stop("load_net argument must be a logical value")
+    if (!isFALSE(soft_power) && !is.numeric(soft_power)) stop("soft_power argument must be a numeric value or FALSE")
 
     cat("Running wgcna...\n")
     message(paste0("Parameters: name: ", name, " - wgcna_file: ", wgcna_file, " - save_net: ",
         save_net, " - load_net: ", load_net, " - soft_power: ", soft_power))
 
-    # Dependencies
-    # check_packages(c("Seurat", "wgcna", "GEOquery", "tidyverse", "gridExtra", "dplyr",
-    #     "readxl", "openxlsx", "DESeq2", "ggpmisc"))
     library(magrittr)
 
     # Set folders
@@ -105,8 +81,7 @@ prepare_data <- function(seurat_object, column_data, subject_column = "subject",
 
     library(DESeq2)
 
-    # Get data from seurat object (transpose to have genes on columns and cells
-    # on rows)
+    # Get data from seurat object (transpose to have genes on columns and cells on rows)
     counts_data <- t(GetAssayData(object = seurat_object, assay = "RNA", layer = "counts"))
     meta_data <- seurat_object@meta.data
 
@@ -182,8 +157,7 @@ soft_power_intuition <- function(norm_counts, output_dir, extension_plot = ".png
 
     power <- c(c(1:10), seq(from = 12, to = 50, by = 2))
 
-    # Call the network topology analysis function input -> rows - subj, cols -
-    # geneid
+    # Call the network topology analysis function input -> rows - subj, cols - geneid
     sft <- pickSoftThreshold(as.data.frame(norm_counts), powerVector = power, networkType = "signed",
         verbose = 5)
     sft_data <- sft$fitIndices
@@ -203,43 +177,6 @@ soft_power_intuition <- function(norm_counts, output_dir, extension_plot = ".png
 
     # Return value
     return(soft_power)
-}
-
-# Per caricare la lista di markers dalla cartella, dovrebbe essere ok caricare
-# anche senza fare in modo che funzioni per i clusters, magari pensare ad un
-# mod di aggiungerlo, ma non priorita
-load_log2fc_old <- function(
-    markers_analysisPD = "microglia_control_vs_pd_nogenetic",
-    markers_analysisGPD = "microglia_control_vs_geneticpd", 
-    cluster = FALSE, ...) {
-
-    library("openxlsx")
-    library("tibble")
-    
-    if (isFALSE(cluster)) {
-        message(paste0("loading... ", output_folder, "markers_", markers_analysisPD,
-            "/expressed_markers_all_", markers_analysisPD, ".xlxs"))
-        markers_tablePD <- read.xlsx(paste0(output_folder, "markers_", markers_analysisPD,
-            "/expressed_markers_all_", markers_analysisPD, ".xlsx"))
-
-        message(paste0("loading... ", output_folder, "markers_", markers_analysisGPD,
-            "/expressed_markers_all_", markers_analysisGPD, ".xlxs"))
-        markers_tableGPD <- read.xlsx(paste0(output_folder, "markers_", markers_analysisGPD,
-            "/expressed_markers_all_", markers_analysisGPD, ".xlsx"))
-    } else {
-        message(paste0("loading... ", output_folder, "markers_", markers_analysisPD,
-            "/expressed_markers_", cluster, "_", markers_analysisPD, ".xlxs"))
-        markers_tablePD <- read.xlsx(paste0(output_folder, "markers_", markers_analysisPD,
-            "/expressed_markers_", cluster, "_", markers_analysisPD, ".xlsx"))
-
-        message(paste0("loading... ", output_folder, "markers_", markers_analysisGPD,
-            "/expressed_markers_", cluster, "_", markers_analysisGPD, ".xlxs"))
-        markers_tableGPD <- read.xlsx(paste0(output_folder, "markers_", markers_analysisGPD,
-            "/expressed_markers_", cluster, "_", markers_analysisGPD, ".xlsx"))
-    }
-    
-    return(list(GPD = column_to_rownames(as.data.frame(markers_tableGPD), var = "gene"),
-        PD = column_to_rownames(as.data.frame(markers_tablePD), var = "gene")))
 }
 
 # To save list of he module genes in excel files
@@ -268,23 +205,12 @@ save_module_genes <- function(bwnet, norm_counts, column_data, output_dir) {
         message(module, " module size: ", nrow(list_of_dfs[[module]]))
 
     }
-    # tranform this in for cycle list_of_dfs <-
-    # lapply(sort(unique(bwnet$colors)), function(x) {
-    # data.frame(module_df_membership[bwnet$colors %in% x, c('gene_id',
-    # paste0('ME', x))]) })
-
-    # names(list_of_dfs) <- sort(unique(bwnet$colors))
-
     wb <- openxlsx::createWorkbook()
 
     # Loop through the list of dataframes
     for (name in names(list_of_dfs)) {
-
-        # Add dataframe to a new sheet in the Excel workbook
-        openxlsx::addWorksheet(wb, sheetName = name) # openxlsx
-        # sheet <- createSheet(wb, sheetName = name)
-        openxlsx::writeData(wb, sheet = name, x = list_of_dfs[[name]], colNames = FALSE) # openxlsx
-        # addDataFrame(list_of_dfs[[name]], sheet, row.names = FALSE)
+        openxlsx::addWorksheet(wb, sheetName = name) 
+        openxlsx::writeData(wb, sheet = name, x = list_of_dfs[[name]], colNames = FALSE) 
     }
 
     # Save the Excel workbook

@@ -8,9 +8,8 @@ plot_functions <- function(bwnet, norm_counts, column_data, output_dir, extensio
 reduction_name = "umap_microglia_harmony_reduction", module_of_interest = c(""),
 hub_genes_threshold = c(0.3, 1), which = c(""), cluster = FALSE, deg_to_use = "PD", ...) {
     
-    if (!is.character(which) || !is.vector(which)) {}
-        # stop("which argument must be a character vector containingone or more of these values: 
-        # heatmap, TOM, dendro, heatmapMRI, violin_plots, normalized_expr, module_trait, histogram_plot, significance_membership_scatter, corr_matrix")
+    if (!is.character(which) || !is.vector(which)) stop("which argument must be a character vector")
+
     
     for (function_name in which) {
         switch(function_name,
@@ -27,7 +26,7 @@ hub_genes_threshold = c(0.3, 1), which = c(""), cluster = FALSE, deg_to_use = "P
             "correlation_avglog2fc_scatter" = correlation_avglog2fc_scatter(bwnet, norm_counts, column_data, cluster, deg_to_use, extension_plot, ...),
             "corr_matrix" = corr_matrix(bwnet, norm_counts, column_data),
             "significance_membership_model" = significance_membership_model(bwnet, norm_counts, column_data, ...),
-            stop("Invalid function name"))
+            warning(function_name, ": Invalid function name"))
     }
 }
 
@@ -131,7 +130,7 @@ violin_plots <- function(bwnet, norm_counts, column_data, extension_plot) {
         gene_signf_corr_pvals <- corPvalueStudent(gene_signf_corr, n_samples)
 
         # For each module creates te violin plots for the 10 genes with the highest correlation to the traits?
-        # TODO: ceck + source
+        # TODO: check + source
         for (column in colnames(gene_signf_corr_pvals)) {
 
             genes <- gene_signf_corr_pvals %>%
@@ -174,8 +173,8 @@ histogram_plot <- function(bwnet, norm_counts, column_data, cluster, deg_to_use,
                 + geom_boxplot()
                 + scale_color_manual(values = color_mapping) 
                 + theme(
-                legend.position = "none",            # Remove the legend
-                axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate x-axis labels
+                legend.position = "none",      
+                axis.text.x = element_text(angle = 45, hjust = 1)  
                 )
         , paste0(output_dir,deg_to_use, "_boxplot", extension_plot))
 
@@ -186,8 +185,8 @@ histogram_plot <- function(bwnet, norm_counts, column_data, cluster, deg_to_use,
                 + geom_jitter(alpha = 0.8, size = 0.2) 
                 + scale_color_manual(values = color_mapping) 
                 + theme(
-                legend.position = "none",            # Remove the legend
-                axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate x-axis labels
+                legend.position = "none",           
+                axis.text.x = element_text(angle = 45, hjust = 1) 
                 ),
         paste0(output_dir, deg_to_use, "_violin", extension_plot))
 
@@ -361,10 +360,6 @@ significance_membership_scatter <- function(bwnet, norm_counts, column_data, hub
         submod[[module_membership_column_abs]] <- abs(submod[[module_membership_column]])
         plot_df[[module_membership_column_abs]] <- abs(plot_df[[module_membership_column]])
 
-        # Skip modules that are too small
-        # if (nrow(submod) < 9)
-        #    next
-
         for (column in c("superiorfrontal_thickness", "frontal_cortex_thickness")) {
 
             save_plot(ggplot(submod, aes(x = .data[[module_membership_column]],
@@ -473,10 +468,9 @@ corr_matrix <- function(bwnet, norm_counts, column_data) {
 message("corr_matrix")
 
     library(openxlsx)
+
     # TODO: check if implemented
     cor_matrix <- cor(bwnet$MEs)
-    # from gpt, to test: Install and load the necessary packages
-    # install.packages('gplots') library(gplots)
 
 
     wb <- write_on_excel("correllation", as.data.frame(cor_matrix))
@@ -485,9 +479,7 @@ message("corr_matrix")
     # Define color palette
     my_palette <- colorRampPalette(c("blue", "white", "red"))(n = 100)
 
-    # Create the heatmap
-
-
+    # Heatmap
     png(file = paste0(output_dir, "modules_correlation_heatmap", extension_plot))
     heatmap(cor_matrix)
     dev.off()

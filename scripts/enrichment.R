@@ -30,46 +30,18 @@ enrichment_analysis <- function(name, markers_path,
                                 module_threshold = 500, wgcna_exclude = FALSE,
                                 wgcna_module = FALSE, modules_significance_table = FALSE, 
                                 cluster = FALSE, ...) {
-  # tutorial followed: (to add)
+  # source followed: (to add)
   # go options: BP, CC, MF, ALL
-  if (FALSE) { 
-    # Check types of arguments
-    # if (!inherits(seurat_object, "Seurat")) {
-    #   stop("seurat_object must be a Seurat object")
-    # }
-    
-    if (!is.character(name) || length(name) != 1) {
-      stop("name argument must be a single character string")
-    }
-    
-    if (!is.character(markers_path) || length(markers_path) != 1) {
-      stop("markers_path argument must be a single character string")
-    }
-    
-    if (!is.integer(count_threshold) || length(count_threshold) != 1) {
-      stop("count_threshold argument must be a single numeric value")
-    }
-    
-    # if (!(is.logical(wgcna_exclude) && isFALSE(wgcna_exclude)) || !is.character(wgcna_folder)) {
-    #   stop("wgcna_folder argument must be a single character string")
-    # }
-    
-    if (!is.integer(module_threshold) || length(module_threshold) != 1) {
-      stop("module_threshold argument must be a single numeric value")
-    }
 
-    if (!((is.logical(wgcna_exclude) && isFALSE(wgcna_exclude)) || is.character(wgcna_exclude))) { # negative (is false) or (is character)
-      stop("wgcna_exclude argument must be either FALSE or a character vector")
-    }
+  # Check types of arguments
+  if (!is.character(name) || length(name) != 1) stop("name argument must be a single character string")
+  if (!is.character(markers_path) || length(markers_path) != 1) stop("markers_path argument must be a single character string")
+  if (!is.integer(count_threshold) || length(count_threshold) != 1) stop("count_threshold argument must be a single numeric value")
+  if (!is.integer(module_threshold) || length(module_threshold) != 1) stop("module_threshold argument must be a single numeric value")
+  if (!((is.logical(wgcna_exclude) && isFALSE(wgcna_exclude)) || is.character(wgcna_exclude))) stop("wgcna_exclude argument must be either FALSE or a character vector")
+  if (!((is.logical(wgcna_module) && isFALSE(wgcna_module)) || is.character(wgcna_module))) stop("wgcna_module argument must be either FALSE or a character vector")
+  if (!((is.logical(cluster) && isFALSE(cluster)) || is.numeric(cluster))) stop("cluster argument must be either FALSE or a numerical vector or single numerical value")
 
-    if (!((is.logical(wgcna_module) && isFALSE(wgcna_module)) || is.character(wgcna_module))) {
-      stop("wgcna_module argument must be either FALSE or a character vector")
-    }
-    
-    if (!((is.logical(cluster) && isFALSE(cluster)) || is.numeric(cluster))) {
-      stop("cluster argument must be either FALSE or a numerical vector or single numerical value")
-    }
-  }
   
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "GSEA_", name, "/"), message)
@@ -88,15 +60,11 @@ enrichment_analysis <- function(name, markers_path,
   # Check useful packages
   check_packages(c("Seurat", "tools"))
 
-  if (!isFALSE(modules_significance_table) || !isFALSE(wgcna_folder)) wgcna_module <- select_mdoules_to_enrich(filename = paste0(output_folder, wgcna_folder, modules_significance_table))
+  if (!isFALSE(modules_significance_table) || !isFALSE(wgcna_folder)) wgcna_module <- .select_mdoules_to_enrich(filename = paste0(output_folder, wgcna_folder, modules_significance_table))
   
   # List excel files
   excel_files <- list.files(paste0(output_folder, markers_path), pattern = "\\.xlsx$", full.names = TRUE)
   if (length(excel_files) == 0) stop(paste0("No excel files found in directory ", paste0(output_folder, markers_path)))
-  
-  # Apply a filtering on the seurat object expression in this is lower than 15
-  # TODO: source
-  # seurat_object <- prepare_data(seurat_object)
   
   # Loop through each Excel file, define needed objects
   for (file in excel_files) {
@@ -115,7 +83,7 @@ enrichment_analysis <- function(name, markers_path,
     gene_rankings <- prepare_genes(file, count_threshold, ...)
     
     # Enrichment by wgcna module (enter in it if wgcna exclude is empty, if it is not default to it)
-    if(is.character(wgcna_folder) && nchar(wgcna_folder) > 1 && !is.character(wgcna_exclude))  {
+    if (is.character(wgcna_folder) && nchar(wgcna_folder) > 1 && !is.character(wgcna_exclude))  {
       
       # Messages
       message("Running enrichment by wgcna module")
@@ -210,11 +178,6 @@ enrichment_analysis <- function(name, markers_path,
     }
   }
   
-}
-
-select_mdoules_to_enrich <- function(filename) {
-  data <- openxlsx::read.xlsx(filename, rowNames = TRUE)
-  filtered_data <- rownames(data[data$Pr...t.. < 0.05, ])
 }
 
 # Main to be run for enrichment analysis
@@ -504,7 +467,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
   # Check useful packages
   check_packages(c("enrichplot", "DOSE", "svglite"))
   
-  ## Function definition ----
+  ## Function definitions ----
   ridgeplot <- function(x, show_category=ridge_n, fill="NES",
                         core_enrichment = TRUE, label_format = 30, qthreshold_in=force(qthreshold)) {
     
@@ -573,8 +536,9 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
       xlab(NULL) + ylab(NULL) +  theme_dose()
   }
   
+  # Volcano plot
   # all'interno c'e una variabile dipendente dall'environment di questa funzione (filename) (non posso usare questa funzione altrove)
-  volcano_plot <- function(source, filename_in = force(filename), x_name = "NES", y_name = "qvalue", labels = "Description", fc_threshold=0.5) {
+  volcano_plot <- function(source, filename_in = force(filename), x_name = "NES", y_name = "qvalue", labels = "Description", fc_threshold = 0.5) {
     
     # Check packages
     check_packages(c("EnhancedVolcano"))
@@ -602,6 +566,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
       labs(subtitle = filename_in) + xlab(x_name) + ylab(paste0("log10 ", y_name)) + theme(legend.position = "none")
   }
   
+  # Heatmap
   heatplot <- function(x, show_category = 30,
                        label_format = 30, genes = c("")) {
     
@@ -639,6 +604,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
             axis.text.x=element_text(angle = 60, hjust = 1))
   }
   
+  # Upset plot
   upsetplot <- function(x, show_category = 30,
                         label_format = 30, genes = c("")) {
     check_packages(c("ggupset"))
@@ -679,6 +645,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
       xlab(NULL) + ylab(NULL) + scale_x_upset(order_by = "degree")
   }
   
+  # Horizontal barplot
   horizontal_barplot <- function(df, columns, pvalue = "pValue", color_limits = FALSE) {
     # Check if the columns argument is valid
     if (length(columns) != 3) {
@@ -715,10 +682,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
   
 
   ## plotting ----
-  # if (!dir.exists(paste0(output_dir, result_name))) dir.create(paste0(output_dir, result_name))
-  #save_plot(goplot(gse),
-  #           paste0(output_dir, "goplot_", result_name, extension_plot), x = 10, y = 12)
-  # Create dataframe to plot
+
   if (class(gse) == "gseaResult") {
     tryCatch({
       save_plot(dotplot(gse, show_category = 10, split = ".sign") + facet_grid(.~.sign),
@@ -735,15 +699,6 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
     })
   }
   
-  # if(class(gse) == "enrichResult") {
-  #   tryCatch({
-  #     save_plot(barplot(gse, show_category=20),
-  #               paste0(output_subdir, "dotplot_", filename, extension_plot), x = 10, y = 12)
-  #   }, error = function(e) {
-  #    message("An error occurred: \n", e)
-  #  })
-  # }
-  
   if (type == "ora" || class(gse) == "gseaResult") {
     tryCatch({
       
@@ -757,6 +712,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
       message("The plots could not be created, probably the enrichment didn't find anything significant, error: \n", e)
     })
   }
+  
   if (type == "ora") {
     tryCatch({
       save_plot(horizontal_barplot(as.data.frame(gse@result), c("pvalue", "Count", "Description")),
@@ -816,8 +772,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
       message("An error occurred (volcano):  \n", e)
     })
   }
-  #save_plot(cnetplot(gse, color.params = list(foldChange = gse@geneList)),
-  #          paste0(output_dir, "gnet_", result_name, extension_plot), x = 10, y = 10)
+
 }
 
 # Helper function: Prepare the seurat object for the enrichment analysis
@@ -834,11 +789,12 @@ prepare_data <- function(seurat_object) {
 # Helper function: to prepare the ordered gene list
 prepare_genes <- function(excel_file, count_threshold, scoring = "log2FC", ...) {
   
-  if (!is.character(scoring) || length(scoring) != 1 || !(scoring %in% c("log2FC", "spvalue", "paper"))) {
+  if (!is.character(scoring) || length(scoring) != 1 || !(scoring %in% c("log2FC", "spvalue", "paper"))) 
     stop("scoring argument must be a single character string and one of 'log2FC', 'spvalue', or 'paper'")
-  }
+
   
-  check_packages(c("readxl"))
+  library("readxl")
+
   # Read the Excel file and filter out low quality data
   data <- read_excel(excel_file)
   data <- data[data$pct.1 > count_threshold & data$pct.2 > count_threshold,]
@@ -876,3 +832,8 @@ select_genes_for_enrich <- function(gene_rankings, n_gene_enrich = 400, ...) {
   
 }
 
+# Helper function: to select which modules to enrich based on the previously fitted linear model pvalue
+.select_mdoules_to_enrich <- function(filename) {
+  data <- openxlsx::read.xlsx(filename, rowNames = TRUE)
+  filtered_data <- rownames(data[data$Pr...t.. < 0.05, ])
+}
