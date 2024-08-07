@@ -2,90 +2,127 @@
 # mail: efilippi@uni-mainz.de
 
 
-# To implement
-preprocessing <- function(env_variables, clustering_settings) {    
-    
+preprocessing <- function(env_variables, preprocessing_settings) {
+
+    source("scripts/seurat_utils.r", local = TRUE)
+    create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
+      
+    parameters <- .update_parameters(preprocessing_settings,  load_settings(settings_path)$preprocessing)
+
+    # Preparation of subjects info
+    data_preparation <- preparation_for_data_loading(data_folder, pattern, patient_info)
+
+    # Seurat object creation and quality control
+    seurat_objects <- seurat_objects_and_quality_control(data_preparation$count_matrix_files,
+                                                        data_preparation$subjects_info, save = TRUE,
+                                                        normalization = TRUE)
+
+    assign("seurat_objects", seurat_objects, envir = .GlobalEnv)
+
+    if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
 }
 
-# To implemennt
-integration <- function(env_variables, clustering_settings) {
+integration <- function(env_variables, integration_settings) {
+
+    source("scripts/seurat_utils.r", local = TRUE)
+
+    create_variables(env_variables)
+    create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
       
-  ## Merge objects scaling, metadata, and pca ----
-  # starting from a list of Seurat objects merges them 
-  seurat_object <- merge_seurat_objects(seurat_objects, data_preparation$subjects_info$subject, save=FALSE)
-  rm(seurat_objects)
-  
-  # Norm, Scaling, variable features
-  seurat_object <- preprocessing_and_scaling(seurat_object, save=FALSE, normalization=FALSE,
-                                             variable_features=TRUE, scaling=TRUE)
-  
-  # Prepare metadata
-  seurat_object <- create_metadata(seurat_object, save=FALSE)
-  
-  # Run PCA before layer integration
-  seurat_object <- run_pca(seurat_object, save=FALSE, plot=TRUE)
-  
-  ## new parameters ----
-  
-  # Before integration
-  r <- "pca" # reduction to use for computations
-  c <- "not_integrated_clusters" #  column in metadata
-  # se no integration questi rimangono per dopo
-  m <- "no_integration"# method for reduction
-  a <- "RNA" # assay
-  umap <- paste0("umap_", r)
-  
-  ## Clustering before integration ----
-  
-  if (FALSE){
-    saveRDS(seurat_object, file = paste0(output_folder, "main_before_integration_and_clustering.rds"))
-    seurat_object <- readRDS(paste0(output_folder, "main_before_integration_and_clustering.rds"))
-  }
-  
-  # Select the number of dimension that expain more variance than a threshold
-  PCs <- analyze_explained_variance(seurat_object, dstd, reduction_to_inspect = "pca") 
-  if (!is.numeric(PCs)) {cat("Failed to identify correct number of dimensions, using default: 16"); PCs <- 16}
-  
-  # Perform Clustering
-  seurat_object <- clustering(seurat_object, reduction=r, 
-                              desired_resolution=desired_resolution, dimension=PCs,
-                              save=FALSE, column_name = c)
-  
-  # Visualization
-  message <- "visualisation of theclusters obtained before performing any type of integration"
-  seurat_object <- visualization_UMAP(seurat_object, 
-                                                 reduction_name=paste0("umap_", r), reduction=r, 
-                                                 cluster_column=c, dimension=PCs,
-                                                 save=FALSE, name="before_integration", message=message)
-  ## new parameters ----
-  # Integration and annotation parameters
-  m <- "harmony"
-  a <- "RNA"
-  r <- paste0(m, "_reduction")
-  c <- paste0(m, "_clusters")
-  umap <- paste0("umap_", r)
+    parameters <- .update_parameters(integration_settings,  load_settings(settings_path)$integration)
+   
+    data_preparation <- preparation_for_data_loading(data_folder, pattern, patient_info)
+    seurat_object <- merge_seurat_objects(seurat_objects, data_preparation$subjects_info$subject, save = FALSE)
 
-  
-  
-  ## INTEGRATION ----
-  if (FALSE){
-    saveRDS(seurat_object, file = paste0(output_folder, "main_before_integration.rds"))
-    seurat_object <- readRDS(paste0(output_folder, "main_before_integration.rds"))
-    seurat_object[["RNA"]] <- JoinLayers(seurat_object[["RNA"]])
-  }
-  
-  
-  seurat_object <- layer_integration(seurat_object, assay=a, make_default=TRUE,
-                                     new_reduction = r, reduction_method = m)
-  
+    assign("seurat_objects", suerat_object, envir = .GlobalEnv)
+    rm(seurat_objects)
+    
+    # Norm, Scaling, variable features
+    seurat_object <- preprocessing_and_scaling(seurat_object, save = FALSE, normalization = FALSE,
+                                                variable_features = TRUE, scaling = TRUE)
+    
+    # Prepare metadata
+    seurat_object <- create_metadata(seurat_object, save = FALSE)
+    
+    # Run PCA before layer integration
+    seurat_object <- run_pca(seurat_object, save = FALSE, plot = TRUE)
+ 
+    # Select the number of dimension that expain more variance than a threshold
+    PCs <- analyze_explained_variance(seurat_object, dstd, reduction_to_inspect = "pca") 
+    
+    # Perform Clustering
+    seurat_object <- clustering(seurat_object, reduction = r, 
+                                desired_resolution = d, dimension = PCs,
+                                save = FALSE, column_name = c)
+    
+    # Visualization
+    seurat_object <- visualization_UMAP(seurat_object, 
+                                        reduction_name = paste0("umap_", r), reduction = r, 
+                                        cluster_column = c, dimension = PCs,
+                                        save = FALSE, name = "before_integration")
+    
+    seurat_object <- layer_integration(seurat_object, assay = a, make_default = TRUE,
+                                        new_reduction = r, reduction_method = m)
 
+
+    # Select the number of dimension that expain more variance than a threshold
+    PCs <- analyze_explained_variance(seurat_object, dstd, reduction_to_inspect = "pca") 
+
+    # Perform Clustering
+    seurat_object <- clustering(seurat_object, reduction = r, 
+                                desired_resolution = d, dimension = PCs,
+                                save = FALSE, column_name = c)
+
+    # Visualization
+    seurat_object <- visualization_UMAP(seurat_object, 
+                                        reduction_name = umap, reduction = r, 
+                                        cluster_column = c, dimension = PCs,
+                                        save = FALSE, name = "after integration")
+
+    if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+}
+
+annotation <- function(env_variables, annotation_settings) {
+    
+    source("scripts/seurat_utils.r", local = TRUE)
+
+    create_variables(env_variables)
+    create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
+      
+    parameters <- .update_parameters(annotation_settings,  load_settings(settings_path)$annotation)
+    
+    # Annotation using scType
+    if (parameters$annotate) seurat_object <- scType_annotation(seurat_object, assay = a, reduction_name = umap,
+                                        clusters_column = c,
+                                        assignment_name = annotation)
+    # Plot after annotation
+    if (parameters$annotation_plots) seurat_object <- visualization_UMAP(seurat_object, reduction_name = umap, 
+                                    cluster_column = annotation, dimension = PCs,
+                                    save = FALSE, run_UMAP = FALSE, name = paste0("scType_", m))
+
+    ## Correction of the annotation 
+    if (parameters$correct) seurat_object <- correct_annotation(seurat_object, to_correct, 
+                                        annotation, 
+                                        new_annotation_column = corrected_annotation, 
+                                        cluster_column = c)
+
+    # Plot after correction
+    if (parameters$corrected_annotation_plots) seurat_object <- visualization_UMAP(seurat_object, reduction_name=umap, 
+                                                cluster_column=corrected_annotation, dimension=PCs,
+                                                save=FALSE, run_UMAP=FALSE, name=paste0("scType_corrected_", m))
+
+    # saveRDS(seurat_object, file = paste0(output_folder, "main_after_annotation.rds"))
+    if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+    
 }
 
 
 clustering <- function(env_variables, clustering_settings){
 
     source("scripts/seurat_utils.r", local = TRUE)
+
     create_variables(env_variables)
+    create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
       
     parameters <- .update_parameters(clustering_settings,  load_settings(settings_path)$clustering)
    
@@ -149,6 +186,8 @@ deg <- function(env_variables, deg_settings) {
     source("scripts/seurat_utils.r", local = TRUE)
 
     create_variables(env_variables)
+    create_variables(.update_parameters(env_variables,  load_settings(settings_path
+    )$global_variables))
     default_parameters <- load_settings(settings_path)$deg
 
     iterative_methods <- c(
@@ -210,6 +249,8 @@ wgcna <- function(env_variables, wgcna_settings){
     source("scripts/seurat_utils.r", local = TRUE)  
 
     create_variables(env_variables)
+    create_variables(.update_parameters(env_variables,  load_settings(settings_path
+    )$global_variables))
     default_parameters <- load_settings(settings_path)$wgcna
 
     ## WGCNA for clusters ---
@@ -250,6 +291,8 @@ enrichment <- function(env_variables, enrichment_settings){
     source("scripts/seurat_utils.r", local = TRUE)
 
     create_variables(env_variables)
+    create_variables(.update_parameters(env_variables,  load_settings(settings_path
+    )$global_variables))
     default_parameters <- load_settings(settings_path)$enrichment
 
     for (enrichment in seq_along(enrichment_settings)) {

@@ -231,6 +231,9 @@ run_enrichment <- function(which = c(""), output_dir, analysis_name, all_genes =
 # Function to perfom gsea with clusterProfiler: https://bioconductor.org/packages/release/bioc/html/clusterProfiler.html
 cluster_profiler <- function(gene_rankings, go, type, output_dir, analysis_name, 
                              universe = c(""), minGSSize = 3, maxGSSize = 800, ...) {
+
+  # https://www.gsea-msigdb.org/gsea/doc/GSEAUserGuideFrame.html
+  # from this guide it seems like the gene sets should be between 15 and 500
   
   # Check types of arguments
   if (!is.numeric(gene_rankings) && !is.character(gene_rankings)) {

@@ -12,9 +12,12 @@ main <- function(pipeline_file = "pipeline_wgcna.json") {
 
     pipeline <- load_settings(paste0("pipelines/", pipeline_file))
 
-    setup_globals(pipeline$general$folder_destination)
-    load_seurat_object(pipeline$general$microglia_object)
+    setup_globals(pipeline$general$folder_destination, pipeline$general$data_folder)
 
+    if (!pipeline$pipeline$preprocessing)   load_seurat_object(pipeline$general$microglia_object)
+
+    if (pipeline$pipeline$preprocessing)    preprocessing(pipeline$global_variables, pipeline$preprocessing)
+    if (pipeline$pipeline$integration)      integration(pipeline$global_variables, pipeline$integration)
     if (pipeline$pipeline$clustering)       clustering(pipeline$global_variables, pipeline$clustering)
     if (pipeline$pipeline$deg)              deg(pipeline$global_variables, pipeline$deg)
     if (pipeline$pipeline$wgcna)            wgcna(pipeline$global_variables, pipeline$wgcna)
@@ -50,7 +53,7 @@ load_settings <- function(file_path) {
     return(json_data)
 }
 
-setup_globals <- function(folder = "microglia_correct") {
+setup_globals <- function(folder, data_folder) {
     library(Seurat)
     
     assign("project_folder", paste0(getwd(), "/"), envir = .GlobalEnv)
@@ -60,10 +63,7 @@ setup_globals <- function(folder = "microglia_correct") {
         dir.create(folder, recursive = TRUE)
         message("Directory created: ", folder)
     }
-
-    assign("data_folder", paste0(get("project_folder", envir = .GlobalEnv), "input/"), envir = .GlobalEnv)
-    assign("pattern", "filtered_feature_bc_matrix", envir = .GlobalEnv)
-    assign("patient_info", "input/info_subj.txt", envir = .GlobalEnv)
+    assign("data_folder", data_folder, envir = .GlobalEnv)
 }
 
 

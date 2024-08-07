@@ -29,8 +29,10 @@ analyze_explained_variance <- function(seurat_object, desired_variance, reductio
       dimensions <- i  # Store the index if the condition is met
     }
   }
-  if (!is.numeric(dimensions)) {cat("Failed to identify correct number of dimensions, using default: 16"); 
-    dimensions <- default}
+  if (!is.numeric(dimensions)) {
+    cat("Failed to identify correct number of dimensions, using default: 16")
+    dimensions <- default
+    }
   else cat("Dimensions selected: ", dimensions, " from reduction: ", reduction_to_inspect,"\n")
   
   return(dimensions)
