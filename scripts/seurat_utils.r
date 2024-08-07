@@ -828,8 +828,8 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
       
       ## Homotypic Doublet Proportion Estimate -------------------------------------------------------------------------------------
       homotypic.prop <- modelHomotypic(seurat_object@meta.data$seurat_clusters)           ## ex: annotations <- seurat_object@meta.data$ClusteringResults
-      nExp_poi <- round(perc_doublet*nrow(seurat_object@meta.data))                       ## Assuming 7.5% doublet formation rate - tailor for your dataset
-      nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+      nExp_poi <- round(perc_doublet * nrow(seurat_object@meta.data))                       ## Assuming 7.5% doublet formation rate - tailor for your dataset
+      nExp_poi.adj <- round(nExp_poi * (1 - homotypic.prop))
       
       ## Run DoubletFinder with varying classification stringencies ----------------------------------------------------------------
       seurat_object <- doubletFinder(seurat_object, PCs = 1:10, pN = 0.25, pK = 0.09, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
@@ -837,11 +837,11 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
       ## Save Plots ---------------------------------------------------------------------------------------------------------------
       if (!dir.exists(paste0(output_dir, "/exdimred/"))) dir.create(paste0(output_dir, "/exdimred/"))
       save_plot(DimPlot(seurat_object, group.by = "seurat_clusters"),
-                paste0(output_dir, "/exdimred/" ,object_name ,"", extension_plot))
+                paste0(output_dir, "/exdimred/", object_name, "", extension_plot))
       
       if (!dir.exists(paste0(output_dir, "/exdimred_doublets/"))) dir.create(paste0(output_dir, "/exdimred_doublets/"))
       save_plot(DimPlot(seurat_object, group.by = names(seurat_object@meta.data)[ncol(seurat_object@meta.data)]),
-                paste0(output_dir, "exdimred_doublets/" ,object_name ,"", extension_plot))
+                paste0(output_dir, "exdimred_doublets/", object_name, "", extension_plot))
       
       # Scatter plot
       if (!dir.exists(paste0(output_dir, "/scatter_doublets/"))) dir.create(paste0(output_dir, "/scatter_doublets/"))
@@ -1023,7 +1023,7 @@ create_object_from_cluster_id <- function(seurat_object, clusters, assay="RNA", 
   if(is.na(new_idents)) new_idents = "seurat_clusters"
   
   # Install packages
-  check_packages(c("readxl", "dplyr", "Seurat", "purrr", "openxlsx", "Matrix","ggplot2"))
+  check_packages(c("readxl", "dplyr", "Seurat", "purrr", "openxlsx", "Matrix", "ggplot2"))
   
   # Set corrrect identity column
   Idents(seurat_object) <- clusters_column
@@ -1554,7 +1554,7 @@ scType_annotation <- function(seurat_object, assay="RNA", assignment_name="annot
                  " - clusters_column: ", clusters_column))
   
   # Dependencies
-  check_packages(c("dplyr","Seurat","HGNChelper","pbapply", "openxlsx"))
+  check_packages(c("dplyr", "Seurat", "HGNChelper", "pbapply", "openxlsx"))
   
   # Create directory
   output_dir <- paste0(output_folder, "annotation_scType/")
@@ -1594,6 +1594,7 @@ scType_annotation <- function(seurat_object, assay="RNA", assignment_name="annot
   
   # Subset annotation results
   cluster_mapping <- as.data.frame(sctype_scores[c("cluster", "type")])
+
   # Copy metadata column
   metadata_assignments <- seurat_object@meta.data[[clusters_column]]
   

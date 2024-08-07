@@ -105,12 +105,12 @@ load_mri_traits <- function(wgcna_subjects = list(), regions = c(), type = "zsco
     }
     
     # Compute membershio measure
-    source("scripts/new/mri_analysis.r", local = TRUE)
+    source("scripts/mri_wgcna.r", local = TRUE)
 
     if (type == "zscore") {
-        traits <- zscore_for_wgcna(data_source_mri, wgcna_subjects, regions)
+        traits <- zscore_for_wgcna(data_source_mri, regions, wgcna_subjects)
     } else if (type == "mri") {
-        traits <- traits <- mri_for_wgcna(data_source_mri, wgcna_subjects, regions)
+        traits <- mri_for_wgcna(data_source_mri, regions, wgcna_subjects)
     } else stop("in wgcna plot load significance wrong load type")
 
     return(traits)
@@ -151,7 +151,7 @@ make_heatmap <- function(bwnet, excel_filename, traits) {
         y = heatmap_data[, (length(heatmap_data) - ncol(traits) + 1):length(heatmap_data)],
         x = heatmap_data[, 1:(length(heatmap_data) - ncol(traits))], method = "kendall")
 
-    wb <- write_on_excel("correllation", as.data.frame(res$cor), mode = "colorscale")
+    wb <- write_on_excel("correlation", as.data.frame(res$cor), mode = "colorscale")
     wb <- write_on_excel("p.value", as.data.frame(res$p), wb = wb)
     wb <- write_on_excel("t.statistic", as.data.frame(res$t), wb = wb)
     openxlsx::saveWorkbook(wb, excel_filename, overwrite = TRUE)

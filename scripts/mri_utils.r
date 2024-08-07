@@ -166,7 +166,7 @@ read_samseg_file <- function(file_path) {
 }
 
 # Load the mrirestuls informations
-load_data_aparc <- function(columns, source_files = "C:/Users/Edoardo/Desktop/Seurat/input/stats_file_redo") {
+load_data_aparc <- function(columns, source_files = "C:/Users/Edoardo/Desktop/Seurat/input/stats_file_redo/") {
 
     # save all the regions data in a single dataframe
     data_all <- do.call("cbind", lapply(names(columns), function(file) {

@@ -14,7 +14,7 @@ mri_for_wgcna <- function(data_source = "aparc", regions = c(), wgcna_subjects =
     
     # regions_all <- colnames(data)
     if (data_source == "samseg") data <- load_data_samseg(columns)
-    else if (data_source == "aparc") data <- filter_data(load_data_aparc(source, columns), columns)
+    else if (data_source == "aparc") data <- filter_data(load_data_aparc(columns), columns)
     else stop("invalid data type")
     # data <- load_data_samseg(columns)
 
@@ -49,7 +49,7 @@ zscore_for_wgcna <- function(data_source = "aparc", regions = c(), wgcna_subject
     
     # regions_all <- colnames(data)
     if (data_source == "samseg") data <- load_data_samseg(columns)
-    else if (data_source == "aparc") data <- filter_data(load_data_aparc(source, columns), columns)
+    else if (data_source == "aparc") data <- filter_data(load_data_aparc(columns), columns)
     else stop("invalid data type")
     # data <- load_data_samseg(columns)
 

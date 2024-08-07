@@ -99,7 +99,7 @@ prepare_data <- function(seurat_object, column_data, subject_column = "subject",
         design = ~1)  # not spcifying model 
 
     dds75 <- dds[rowSums(counts(dds) >= 15) >= nrow(column_data) * 0.75, ]
-    message("number of genes: ", nrow(dds75))  # 13284 genes
+    message("number of genes: ", nrow(dds75)) 
 
     # Perform variance stabilization
     dds_norm <- vst(dds75, fitType = "local")

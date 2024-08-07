@@ -1,21 +1,24 @@
 # Author: Edoardo Filippi 
 # mail: efilippi@uni-mainz.de
 
+# for debugging (error when using do.call and browser)
+# https://stackoverflow.com/questions/44608323/crash-of-debugging-browser-in-r-rstudio-when-called-from-inside-do-call
+options(deparse.max.lines = 10)
 
 source("scripts/helper_functions.r")
 
 main <- function(pipeline_file = "pipeline_wgcna.json") {
-  source("scripts/pipelines.r", local = TRUE)
+    source("scripts/pipelines.r", local = TRUE)
 
-  pipeline <- load_settings(paste0("pipelines/", pipeline_file))
+    pipeline <- load_settings(paste0("pipelines/", pipeline_file))
 
-  setup_globals(pipeline$general$folder_destination)
-  load_seurat_object(pipeline$general$microglia_object)
+    setup_globals(pipeline$general$folder_destination)
+    load_seurat_object(pipeline$general$microglia_object)
 
-  if (pipeline$pipeline$clustering)       clustering(pipeline$global_variables, pipeline$clustering)
-  if (pipeline$pipeline$deg)              deg(pipeline$global_variables, pipeline$deg)
-  if (pipeline$pipeline$wgcna)            wgcna(pipeline$global_variables, pipeline$wgcna)
-  if (pipeline$pipeline$enrichment)       enrichment(pipeline$global_variables, pipeline$enrichment)
+    if (pipeline$pipeline$clustering)       clustering(pipeline$global_variables, pipeline$clustering)
+    if (pipeline$pipeline$deg)              deg(pipeline$global_variables, pipeline$deg)
+    if (pipeline$pipeline$wgcna)            wgcna(pipeline$global_variables, pipeline$wgcna)
+    if (pipeline$pipeline$enrichment)       enrichment(pipeline$global_variables, pipeline$enrichment)
 
 }
 

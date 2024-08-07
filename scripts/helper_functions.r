@@ -472,6 +472,38 @@ run_asyncronously <- function(func, ..., output_file = "output.txt") {
   sink()
   
   # Give a message to indicate that the function is running in the background
-  cat("Function is running in the background. Check ", paste0(getwd(), "output.txt"), " for progress.\n")
+  cat("Function is running in the background. Check ", paste0(getwd(), "output.txt"), " for progress./n")
 }
 
+
+load_rcc_data <- function(file_path) {
+
+  # library(data.table)
+  # file_path <- "C:/Users/Edoardo/Desktop/Seurat/input/open  access data/GSE227990_RAW/GSM7111949_20201203_30102529261121-01_1_01_01.RCC/GSM7111949_20201203_30102529261121-01_1_01_01.RCC"
+  file_path <- "C:/Users/Edoardo/Desktop/Seurat/input/open  access data/GSE216281_counts.txt/GSE216281_counts.txt"
+  # Read the .rcc file
+  # rcc_data <- fread(file_path, skip = 11, fill = TRUE)  # Skip the header part if necessary
+
+  # Read in entire file
+  # tirosh <- read.delim(file_path, header = T, stringsAsFactors = F)
+  data <- read.table(file_path, header = TRUE, sep = " ")
+
+  # Extract the count data
+  # gene_names <- rcc_data$ProbeName  # Adjust according to actual column name
+  # counts <- rcc_data$Count          # Adjust acording to actual column name
+
+  # Create a matrix
+  count_matrix <- data.frame(Gene = gene_names, Count = counts)
+}
+
+load_txt_data <- function() {
+    data <- read.table(file_path, header = TRUE, sep = " ")
+
+    # Load the packages
+    library(AnnotationDbi)
+    library(org.Hs.eg.db)
+    
+    # Convert Ensembl IDs to gene names
+    rownames(data) <- mapIds(org.Hs.eg.db, keys = rownames(data), column = "SYMBOL", keytype = "ENSEMBL", multiVals = "first")
+    seurat_obj <- CreateSeuratObject(counts = data)
+}

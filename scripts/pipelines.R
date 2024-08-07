@@ -4,6 +4,7 @@
 
 # To implement
 preprocessing <- function(env_variables, clustering_settings) {    
+    
 }
 
 # To implemennt
@@ -215,19 +216,30 @@ wgcna <- function(env_variables, wgcna_settings){
     for (wgcna in seq_along(wgcna_settings)) {
 
         parameters <- .update_parameters(wgcna_settings[[wgcna]], default_parameters)
-    
-        if (!isFALSE(parameters$cluster))  {
 
-            seurat_object_subset <- create_object_from_cluster_id(seurat_object, 
-                                                                    parameters$cluster,
-                                                                    assay = a,
-                                                                    clusters_column = c)
-        } else seurat_object_subset <-seurat_object
-                
-        do.call(wgcna_main, 
-                c(list(seurat_object_subset, 
-                name = names(wgcna_settings)[wgcna]), 
-                parameters))
+        if (parameters$method == "WGCNA") {
+            if (!isFALSE(parameters$cluster))  {
+
+                seurat_object_subset <- create_object_from_cluster_id(seurat_object, 
+                                                                        parameters$cluster,
+                                                                        assay = a,
+                                                                        clusters_column = c)
+            } else seurat_object_subset <- seurat_object
+                    
+            do.call(wgcna_main, 
+                    c(list(seurat_object_subset, 
+                    name = names(wgcna_settings)[wgcna]), 
+                    parameters))
+        }
+        else if (parameters$method == "hdWGCNA") {
+            source("scripts/hdwgcna.r", local = TRUE)
+
+            do.call(hdwgcna, 
+                    c(list(seurat_object, 
+                    name = names(wgcna_settings)[wgcna]), 
+                    parameters))
+            
+        }
     }
 }
 

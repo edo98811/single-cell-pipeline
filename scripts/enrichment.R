@@ -70,9 +70,9 @@ enrichment_analysis <- function(name, markers_path,
   for (file in excel_files) {
     
     # Run only for desired file
-    if(is.numeric(cluster)) {
-      if (!grepl(paste0("expressed_markers_",cluster), file)) {
-        message("Skipping file: ",file)
+    if (is.numeric(cluster)) {
+      if (!grepl(paste0("expressed_markers_", cluster), file)) {
+        message("Skipping file: ", file)
         next
       }
       else message("Running for cluster ", cluster)
@@ -173,8 +173,8 @@ enrichment_analysis <- function(name, markers_path,
       
       # Run GSEA and enrichr on genes 
       result <- run_enrichment(which = c("panther"), output_dir, analysis_name, 
-                               all_genes=gene_rankings, 
-                               subset=select_genes_for_enrich(gene_rankings, ...), ...)
+                               all_genes = gene_rankings, 
+                               subset = select_genes_for_enrich(gene_rankings, ...), ...)
     }
   }
   
@@ -797,13 +797,13 @@ prepare_genes <- function(excel_file, count_threshold, scoring = "log2FC", ...) 
 
   # Read the Excel file and filter out low quality data
   data <- read_excel(excel_file)
-  data <- data[data$pct.1 > count_threshold & data$pct.2 > count_threshold,]
+  data <- data[data$pct.1 > count_threshold & data$pct.2 > count_threshold, ]
   
   # Extract the data
   genes <- data$gene
   if (scoring == "log2FC") scores <- data$avg_log2FC
-  else if (scoring == "spvalue") scores <- sign(data$avg_log2FC)*(-log10(data$p_val))
-  else if (scoring == "paper") scores <- data$avg_log2FC*(-log10(data$p_val))
+  else if (scoring == "spvalue") scores <- sign(data$avg_log2FC) * (-log10(data$p_val))
+  else if (scoring == "paper") scores <- data$avg_log2FC * (-log10(data$p_val))
   else stop("non valid scoring method selection")
   
   names(scores) <- genes
