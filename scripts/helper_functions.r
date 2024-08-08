@@ -1,25 +1,25 @@
 
 #finds the directories that match the pattern
-find_matching_directories <- function(root_directory, pattern, message=TRUE) {
-  # Use list.dirs to recursively list all subdirectories
-  all_directories <- list.dirs(root_directory, full.names = TRUE, recursive = TRUE) 
+find_matching_directories <- function(root_directory, pattern, message = TRUE, source = "celescope") {
 
+  # Use list.dirs to recursively list all subdirectories
+  if (source == "celescope") all_matrices_paths <- list.dirs(root_directory, full.names = TRUE, recursive = TRUE) 
+  else if (source == "celescope") all_matrices_paths <- list.files(root_directory, full.names = TRUE, recursive = TRUE)
   # Create an empty list to store the matching directory paths
   matching_directories <- list()
 
   # Iterate through the directory paths and filter matching names
-  for (dir_path in all_directories) {
-    dir_name <- basename(dir_path)
-    if (grepl(pattern, dir_name, fixed = TRUE)) {
-      dir_path <- gsub("//", "/", dir_path)
-      matching_directories <- c(matching_directories, list(dir_path))
-      if (message) message(paste0("found ", dir_path))
+  for (matrices_paths in all_matrices_paths) {
+    file_name <- basename(matrices_paths)
+    if (grepl(pattern, file_name, fixed = TRUE)) {
+      matrices_paths <- gsub("//", "/", matrices_paths)
+      matching_directories <- c(matching_directories, list(matrices_paths))
+      if (message) message(paste0("found ", matrices_paths))
     }
   }
 
   return(matching_directories)
 }
-
 # retuns the number of principal components that explain more than a given variabce
 analyze_explained_variance <- function(seurat_object, desired_variance, reduction_to_inspect = "pca", default=16) {
 
@@ -73,7 +73,7 @@ save_plot <- function(plotting_function, plotname, x=7, y=7, title=NA){
 }
 
 # reads from a file in a defined format (for more info...) and saves the patient info i a dataframe containing ID - patology
-find_conditions <- function(file_path) {
+load_conditions <- function(file_path) {
 
   # Read lines from the text file
   lines <- readLines(file_path)
