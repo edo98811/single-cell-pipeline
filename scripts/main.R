@@ -4,7 +4,7 @@
 
 source("scripts/init.r")
 
-pipeline <-  "useful/pipeline_wgcna_subset.json"
+pipeline <-  "from_beginning.json"
 main(pipeline)
 pipeline <-  "pipeline_wgcna_subset_run.json"
 main(pipeline)

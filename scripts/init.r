@@ -10,15 +10,20 @@ source("scripts/helper_functions.r")
 main <- function(pipeline_file = "pipeline_wgcna.json") {
     source("scripts/pipelines.r", local = TRUE)
 
+    # Load settings
     pipeline <- load_settings(paste0("pipelines/", pipeline_file))
+    general_settings <- .update_parameters(pipeline$general,  load_settings(pipeline$general$settings_path)$general)
 
-    setup_globals(pipeline$general$folder_destination, pipeline$general$data_folder)
+    setup_globals(general_settings$folder_destination, general_settings$data_folder, pipeline$general$settings_path)
 
-    if (!pipeline$pipeline$preprocessing)   load_seurat_object(pipeline$general$microglia_object)
+    # Load microglia object if needed
+    if (!pipeline$pipeline$preprocessing)   load_seurat_object(general_settings$seurat_object)
 
+    # Pipeline
     if (pipeline$pipeline$preprocessing)    preprocessing(pipeline$global_variables, pipeline$preprocessing)
     if (pipeline$pipeline$integration)      integration(pipeline$global_variables, pipeline$integration)
     if (pipeline$pipeline$clustering)       clustering(pipeline$global_variables, pipeline$clustering)
+    if (pipeline$pipeline$annotation)       annotation(pipeline$global_variables, pipeline$annotation)
     if (pipeline$pipeline$deg)              deg(pipeline$global_variables, pipeline$deg)
     if (pipeline$pipeline$wgcna)            wgcna(pipeline$global_variables, pipeline$wgcna)
     if (pipeline$pipeline$enrichment)       enrichment(pipeline$global_variables, pipeline$enrichment)
@@ -48,12 +53,12 @@ load_settings <- function(file_path) {
     check_packages(c("jsonlite"))
 
     # Read the JSON file and convert it to a list
-    json_data <- fromJSON(readLines(file_path))
+    json_data <- suppressWarnings(fromJSON(readLines(file_path)))
     
     return(json_data)
 }
 
-setup_globals <- function(folder, data_folder) {
+setup_globals <- function(folder, data_folder, settings_path) {
     library(Seurat)
     
     assign("project_folder", paste0(getwd(), "/"), envir = .GlobalEnv)
@@ -64,6 +69,7 @@ setup_globals <- function(folder, data_folder) {
         message("Directory created: ", folder)
     }
     assign("data_folder", data_folder, envir = .GlobalEnv)
+    assign("settings_path", settings_path, envir = .GlobalEnv)
 }
 
 

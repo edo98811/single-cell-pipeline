@@ -10,14 +10,14 @@ preprocessing <- function(env_variables, preprocessing_settings) {
     parameters <- .update_parameters(preprocessing_settings,  load_settings(settings_path)$preprocessing)
 
     # Preparation of subjects info
-    data_preparation <- preparation_for_data_loading(data_folder, pattern, patient_info)
+    data_preparation <- preparation_for_data_loading(data_folder, count_matrix_pattern, patient_info)
 
     # Seurat object creation and quality control
     seurat_objects <- seurat_objects_and_quality_control(data_preparation$count_matrix_files,
-                                                        data_preparation$subjects_info, save = TRUE,
-                                                        normalization = TRUE)
+                                                        data_preparation$subjects_info, save = FALSE,
+                                                        normalization = TRUE, parts_to_remove = parameters$parts_to_remove)
 
-    assign("seurat_objects", seurat_objects, envir = .GlobalEnv)
+    assign("seurat_object", seurat_object, envir = .GlobalEnv)
 
     if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
 }
@@ -25,17 +25,16 @@ preprocessing <- function(env_variables, preprocessing_settings) {
 integration <- function(env_variables, integration_settings) {
 
     source("scripts/seurat_utils.r", local = TRUE)
+    browser()
 
-    create_variables(env_variables)
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
       
     parameters <- .update_parameters(integration_settings,  load_settings(settings_path)$integration)
    
-    data_preparation <- preparation_for_data_loading(data_folder, pattern, patient_info)
-    seurat_object <- merge_seurat_objects(seurat_objects, data_preparation$subjects_info$subject, save = FALSE)
+    data_preparation <- preparation_for_data_loading(data_folder, count_matrix_pattern, patient_info)
+    seurat_object <- merge_seurat_objects(seurat_object, data_preparation$subjects_info$subject, save = FALSE)
 
-    assign("seurat_objects", suerat_object, envir = .GlobalEnv)
-    rm(seurat_objects)
+    assign("seurat_object", seurat_object, envir = .GlobalEnv)
     
     # Norm, Scaling, variable features
     seurat_object <- preprocessing_and_scaling(seurat_object, save = FALSE, normalization = FALSE,
@@ -51,22 +50,23 @@ integration <- function(env_variables, integration_settings) {
     PCs <- analyze_explained_variance(seurat_object, dstd, reduction_to_inspect = "pca") 
     
     # Perform Clustering
-    seurat_object <- clustering(seurat_object, reduction = r, 
+    seurat_object <- clustering(seurat_object, reduction = "pca", 
                                 desired_resolution = d, dimension = PCs,
-                                save = FALSE, column_name = c)
+                                save = FALSE, column_name = "before_integration")
     
     # Visualization
     seurat_object <- visualization_UMAP(seurat_object, 
-                                        reduction_name = paste0("umap_", r), reduction = r, 
-                                        cluster_column = c, dimension = PCs,
-                                        save = FALSE, name = "before_integration")
+                                        reduction_name = "umap_before_integration", reduction = "pca", 
+                                        cluster_column = "before_integration", dimension = PCs,
+                                        save = FALSE, name = "before_integration",
+                                        extension_plot = extension_plot)
     
     seurat_object <- layer_integration(seurat_object, assay = a, make_default = TRUE,
-                                        new_reduction = r, reduction_method = m)
+                                        new_reduction = r, reduction_method = integration_settings$method)
 
 
     # Select the number of dimension that expain more variance than a threshold
-    PCs <- analyze_explained_variance(seurat_object, dstd, reduction_to_inspect = "pca") 
+    PCs <- analyze_explained_variance(seurat_object, dstd, reduction_to_inspect = r) 
 
     # Perform Clustering
     seurat_object <- clustering(seurat_object, reduction = r, 
@@ -77,28 +77,32 @@ integration <- function(env_variables, integration_settings) {
     seurat_object <- visualization_UMAP(seurat_object, 
                                         reduction_name = umap, reduction = r, 
                                         cluster_column = c, dimension = PCs,
-                                        save = FALSE, name = "after integration")
+                                        save = FALSE, name = "after_integration",
+                                        extension_plot = extension_plot)
 
     if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
 }
 
 annotation <- function(env_variables, annotation_settings) {
-    
-    source("scripts/seurat_utils.r", local = TRUE)
 
-    create_variables(env_variables)
+    source("scripts/seurat_utils.r", local = TRUE)
+    browser()
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
       
     parameters <- .update_parameters(annotation_settings,  load_settings(settings_path)$annotation)
     
     # Annotation using scType
-    if (parameters$annotate) seurat_object <- scType_annotation(seurat_object, assay = a, reduction_name = umap,
+    if (parameters$annotate) seurat_object <- scType_annotation(seurat_object, assay = a,
                                         clusters_column = c,
                                         assignment_name = annotation)
     # Plot after annotation
-    if (parameters$annotation_plots) seurat_object <- visualization_UMAP(seurat_object, reduction_name = umap, 
+        
+    if (parameters$annotation_plots) {
+        PCs <- analyze_explained_variance(seurat_object, dstd, reduction_to_inspect = r) 
+        seurat_object <- visualization_UMAP(seurat_object, reduction_name = umap, 
                                     cluster_column = annotation, dimension = PCs,
-                                    save = FALSE, run_UMAP = FALSE, name = paste0("scType_", m))
+                                    save = FALSE, run_UMAP = FALSE, name = "scType_annotation")
+    }
 
     ## Correction of the annotation 
     if (parameters$correct) seurat_object <- correct_annotation(seurat_object, to_correct, 
@@ -116,12 +120,10 @@ annotation <- function(env_variables, annotation_settings) {
     
 }
 
-
 clustering <- function(env_variables, clustering_settings){
 
     source("scripts/seurat_utils.r", local = TRUE)
 
-    create_variables(env_variables)
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
       
     parameters <- .update_parameters(clustering_settings,  load_settings(settings_path)$clustering)
@@ -155,6 +157,7 @@ clustering <- function(env_variables, clustering_settings){
                                             name = parameters$name,
                                             extension_plot = extension_plot)
     }
+
     if (parameters$rename_clusters) {
 
         seurat_object <- correct_annotation(seurat_object, 
@@ -175,17 +178,15 @@ clustering <- function(env_variables, clustering_settings){
                                         extension_plot = extension_plot)
     }    
 
-    if (parameters$save) saveRDS(seurat_object, parameters$save_path)
+    if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
     return(seurat_object)
 
 }
-
 
 deg <- function(env_variables, deg_settings) {
 
     source("scripts/seurat_utils.r", local = TRUE)
 
-    create_variables(env_variables)
     create_variables(.update_parameters(env_variables,  load_settings(settings_path
     )$global_variables))
     default_parameters <- load_settings(settings_path)$deg
@@ -242,13 +243,11 @@ deg <- function(env_variables, deg_settings) {
     }
 }
 
-
 wgcna <- function(env_variables, wgcna_settings){
 
     source("scripts/wgcna.r", local = TRUE)
     source("scripts/seurat_utils.r", local = TRUE)  
 
-    create_variables(env_variables)
     create_variables(.update_parameters(env_variables,  load_settings(settings_path
     )$global_variables))
     default_parameters <- load_settings(settings_path)$wgcna
@@ -290,7 +289,6 @@ enrichment <- function(env_variables, enrichment_settings){
     source("scripts/enrichment.r", local = TRUE)
     source("scripts/seurat_utils.r", local = TRUE)
 
-    create_variables(env_variables)
     create_variables(.update_parameters(env_variables,  load_settings(settings_path
     )$global_variables))
     default_parameters <- load_settings(settings_path)$enrichment

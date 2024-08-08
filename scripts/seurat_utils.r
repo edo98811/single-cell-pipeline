@@ -723,16 +723,17 @@ preparation_for_data_loading <- function(root, pattern, path_to_patient_info, so
   
   if (source == "celescope") {
     # location of files and creation of objects 
-    count_matrix_files <- find_matching_directories(root, pattern)
+    count_matrix_files <- find_matching_matrices_paths(root, pattern)
     subjects_info <- load_conditions(path_to_patient_info)
-    message(subjects_info)
+    message(paste0(capture.output(subjects_info), collapse = "\n"))
     
     return(list(count_matrix_files = count_matrix_files, subjects_info = subjects_info))
 
   } else if (source == "textfile") {
-    
-    count_matrix_files <- find_matrix_files(root, pattern)
+
+    count_matrix_files <- find_matching_matrices_paths(root, pattern, source = "textfile")
     subjects_info <- load_conditions(path_to_patient_info)
+    message(paste0(capture.output(subjects_info), collapse = "\n"))
 
   return(list(count_matrix_files = count_matrix_files, subjects_info = subjects_info))
   } 
@@ -741,7 +742,7 @@ preparation_for_data_loading <- function(root, pattern, path_to_patient_info, so
 
 # Loads seurat objects given paths to them, and path to a suject info data file to update te methadata
 seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info, save=FALSE,
-                                               normalization=FALSE, message="results"){
+                                               normalization=FALSE, source = "celescope", ...){
 
 
   # Setting up output dir 
@@ -805,8 +806,15 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
   for (file_path in count_matrix_files) {
     
     # Subject info
-    object_name <- remove_parts(file_path)
-    pathology <- subjects_info[subjects_info$subject == object_name, "condition"]
+    object_name <- remove_parts(file_path, ...)
+
+    if (object_name %in% subjects_info$subject) {
+      pathology <- subjects_info[subjects_info$subject == object_name, "condition"]
+    } else {
+      message("skipping subject: ", object_name, "check that the parts_to_remove parameter and the subject name in the subject description file are correctly set")
+      next
+    }
+
     message(paste0("loading ", object_name, " pathology: ", pathology))
     
     # functions definition (here to defne them in the right environment)
@@ -861,12 +869,12 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
     
     empty_drops <- function(seurat_object){
       
-      e.out <- emptyDrops(counts(celescope_data), lower=100, test.ambient=TRUE)
+      e.out <- emptyDrops(counts(count_data), lower=100, test.ambient=TRUE)
       
     }
     
     # Call functions for quality control
-    cell_removal <- function(seurat_object, method="DoubletFinder") {
+    cell_removal <- function(seurat_object, method = "DoubletFinder") {
       
       if(method=="fixed_percentage") {
         seurat_object <- subset(seurat_object, subset = nFeature_RNA < n_features)
@@ -930,8 +938,10 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
     }
 
     # Load the data
-    celescope_data <- Read10X(data.dir = file_path)
-    seurat_object <- CreateSeuratObject(counts = celescope_data)
+    if (source == "celescope") count_data <- Read10X(data.dir = file_path)
+    else if (source == "textfile") count_data <-  read.table(file_path, header = TRUE)
+
+    seurat_object <- CreateSeuratObject(counts = count_data)
     
     # add metadata
     seurat_object$subject_pathology <- pathology
@@ -1571,7 +1581,7 @@ scType_annotation <- function(seurat_object,
                               assay = "RNA", 
                               assignment_name = "annotation_scType",
                               clusters_column = "seurat_clusters", 
-                              name = "") {
+                              name = "annotation_scType") {
     # Message
     cat("Running scType annotation...\n")
     message(paste0("Parameters: assay: ", assay,
@@ -1579,10 +1589,13 @@ scType_annotation <- function(seurat_object,
                    " - clusters_column: ", clusters_column))
     
     # Dependencies
-    check_packages(c("dplyr", "Seurat", "openxlsx"))
-    
+    check_packages(c("dplyr", "openxlsx", "HGNChelper"))
+    library("dplyr")
+    library("openxlsx")
+    library("HGNChelper")
+
     # Create directory
-    output_dir <- paste0(output_folder, "annotation_scType/")
+    output_dir <- paste0(output_folder, name, "/")
     if (!dir.exists(output_dir)) dir.create(output_dir)
     
     # Load gene set preparation function
@@ -1639,7 +1652,7 @@ scType_annotation <- function(seurat_object,
 }
 
 # For scType annotation 
-scType_annotation <- function(seurat_object, assay="RNA", assignment_name="annotation_scType",
+scType_annotation_old <- function(seurat_object, assay="RNA", assignment_name="annotation_scType",
                               reduction_name="umap_harmony", clusters_column="seurat_clusters", name ="") {
   # Message
   cat("Running scType annotation...\n")

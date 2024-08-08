@@ -43,7 +43,7 @@ enrichment_analysis <- function(name, markers_path,
   if (!((is.logical(cluster) && isFALSE(cluster)) || is.numeric(cluster))) stop("cluster argument must be either FALSE or a numerical vector or single numerical value")
 
   
-  # Set up output dir
+  # Set up   output dir
   output_dir <- set_up_output(paste0(output_folder, "GSEA_", name, "/"), message)
   
   # Messages

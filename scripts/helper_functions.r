@@ -1,20 +1,25 @@
 
 #finds the directories that match the pattern
-find_matching_directories <- function(root_directory, pattern, message = TRUE, source = "celescope") {
+find_matching_matrices_paths <- function(root_directory, pattern, message = TRUE, source = "celescope") {
 
   # Use list.dirs to recursively list all subdirectories
   if (source == "celescope") all_matrices_paths <- list.dirs(root_directory, full.names = TRUE, recursive = TRUE) 
-  else if (source == "celescope") all_matrices_paths <- list.files(root_directory, full.names = TRUE, recursive = TRUE)
+  else if (source == "textfiles") all_matrices_paths <- list.files(root_directory, full.names = TRUE, recursive = TRUE)
   # Create an empty list to store the matching directory paths
   matching_directories <- list()
 
   # Iterate through the directory paths and filter matching names
-  for (matrices_paths in all_matrices_paths) {
-    file_name <- basename(matrices_paths)
+  for (matrices_path in all_matrices_paths) {
+    file_name <- basename(matrices_path)
     if (grepl(pattern, file_name, fixed = TRUE)) {
-      matrices_paths <- gsub("//", "/", matrices_paths)
-      matching_directories <- c(matching_directories, list(matrices_paths))
-      if (message) message(paste0("found ", matrices_paths))
+
+      # Check that directories contain only files
+      subdirs_in_dir <- list.dirs(matrices_path, full.names = TRUE, recursive = FALSE)
+      if ((length(subdirs_in_dir[subdirs_in_dir != matrices_path]) != 0)) next
+
+      matrices_paths <- gsub("//", "/", matrices_path)
+      matching_directories <- c(matching_directories, list(matrices_path))
+      if (message) message(paste0("found ", matrices_path))
     }
   }
 
@@ -33,19 +38,19 @@ analyze_explained_variance <- function(seurat_object, desired_variance, reductio
     cat("Failed to identify correct number of dimensions, using default: 16")
     dimensions <- default
     }
-  else cat("Dimensions selected: ", dimensions, " from reduction: ", reduction_to_inspect,"\n")
+  else cat("Dimensions selected: ", dimensions, " from reduction: ", reduction_to_inspect, "\n")
   
   return(dimensions)
 }
 
 # remove parts of the string to keep only te subject name
-remove_parts <- function(input_string) {
+remove_parts <- function(input_string, parts_to_remove = "_filtered_feature_bc_matrix") {
   # Remove "/input/" from the input string
-  output_string <- gsub(paste0(project_folder, "input/"), "", input_string)
+  output_string <- tail(strsplit(input_string, split = "/")[[1]], 1)
   
   # Remove "_filtered_feature_bc_matrix" from the updated string
-  output_string <- gsub("_filtered_feature_bc_matrix", "", output_string)
-  
+  output_string <- gsub(parts_to_remove, "", output_string)
+
   return(trimws(output_string))
 }
 
@@ -76,11 +81,10 @@ save_plot <- function(plotting_function, plotname, x=7, y=7, title=NA){
 load_conditions <- function(file_path) {
 
   # Read lines from the text file
-  lines <- readLines(file_path)
+  lines <- suppressWarnings(readLines(file_path))
 
   # Split lines based on the separator '-'
   split_lines <- strsplit(lines, " - ", fixed = TRUE)
-
   # Create a dataframe from the split lines
   df <- do.call(rbind, lapply(split_lines, function(x) {
     data.frame(
@@ -89,6 +93,7 @@ load_conditions <- function(file_path) {
       stringsAsFactors = TRUE
     )
   }))
+
   return(df)
 }
 
