@@ -4,9 +4,9 @@
 #### MARKER ANALYSIS ####
 
 # Heatmap and dotplot
-many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters=NA, assay="RNA",
+many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = NA, assay = "RNA",
                    cluster_column="harmony_clusters", name ="", markers=NA,
-                   extension_plot=".png", maxn_genes=100, n_genes=25, maxn_genes_per_plot=100) {
+                   extension_plot = ".png", maxn_genes = 100, n_genes = 25, maxn_genes_per_plot = 100) {
   
   # Check arguments
   if (TRUE) {
@@ -221,13 +221,13 @@ many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters=NA,
 }
 
 # Function to find differentially expressed markers and plot feature plot
-find_and_plot_markers <- function(seurat_object, cluster_id="all", reduction_name="pca", 
+find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_name = "pca", 
                                   save_data=TRUE, cluster_column="",
                                   name="", assay = "RNA", method = "default",
                                   subset_id="control", o2=NA, condition="PD",
                                   nothreshold=FALSE,
                                   control="non_PD", condition_column="subject_pathology",
-                                  extension_plot=".png") {
+                                  extension_plot = ".png") {
   
   # Dependencies
   check_packages(c("openxlsx", "Seurat"))
@@ -342,11 +342,11 @@ find_and_plot_markers <- function(seurat_object, cluster_id="all", reduction_nam
 }
 
 # Plot a selection of markers from a df (saved in different columns)
-plot_markers_from_df <- function(seurat_object, markers_location, reduction_name="umap_microglia_harmony_reduction", name ="",
+plot_markers_from_df <- function(seurat_object, markers_location, reduction_name = "umap_microglia_harmony_reduction", name  = "",
                                  many_plot=TRUE, feature_plot=FALSE, message="results", extension_plot=".png",
                                  heatmap_by_column=FALSE, cluster_column="microglia_clusters", subplot_n=9, 
                                  max_feature_plots=11, max_genes_many_plots = 100,
-                                 column_list=FALSE) {
+                                 column_list = FALSE) {
   
   
   # Messages 
@@ -1544,6 +1544,91 @@ layer_integration <- function(seurat_object, save=FALSE, assay="RNA",
 
 #### ANNOTATION ####
 
+#' ScType reformatted (not tested) + docstring
+#'
+#' This function annotates a Seurat object using the scType method, which scores cells based on gene sets specific to cell types.
+#'
+#' @param seurat_object A Seurat object to be annotated.
+#' @param assay The assay to be used from the Seurat object. Default is "RNA".
+#' @param assignment_name The name for the new metadata column where annotations will be stored. Default is "annotation_scType".
+#' @param clusters_column The metadata column in the Seurat object that contains clustering information. Default is "seurat_clusters".
+#' @param name An optional name prefix for output files. Default is an empty string.
+#'
+#' @return A Seurat object with added annotations.
+#' @export
+#' 
+scType_annotation <- function(seurat_object, 
+                              assay = "RNA", 
+                              assignment_name = "annotation_scType",
+                              clusters_column = "seurat_clusters", 
+                              name = "") {
+    # Message
+    cat("Running scType annotation...\n")
+    message(paste0("Parameters: assay: ", assay,
+                   " - assignment_name: ", assignment_name, 
+                   " - clusters_column: ", clusters_column))
+    
+    # Dependencies
+    check_packages(c("dplyr", "Seurat", "openxlsx"))
+    
+    # Create directory
+    output_dir <- paste0(output_folder, "annotation_scType/")
+    if (!dir.exists(output_dir)) dir.create(output_dir)
+    
+    # Load gene set preparation function
+    source("https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/R/gene_sets_prepare.R")
+    # Load cell type annotation function
+    source("https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/R/sctype_score_.R")
+    
+    # DB file
+    db_ <- "https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/ScTypeDB_full.xlsx"
+    tissue <- "Brain" # e.g. Immune system, Pancreas, Liver, Eye, Kidney, Brain, etc.
+    
+    # Prepare gene sets
+    gs_list <- gene_sets_prepare(db_, tissue)
+    message("scType: data prepared")
+    
+    # Run scType
+    es.max <- sctype_score(scRNAseqData = seurat_object[[assay]]$scale.data, 
+                           scaled = TRUE, 
+                           gs = gs_list$gs_positive, 
+                           gs2 = gs_list$gs_negative)
+    
+    # Merge by cluster
+    cL_results <- do.call("rbind", lapply(unique(seurat_object@meta.data[[clusters_column]]), function(cl) {
+        es.max.cl <- sort(rowSums(es.max[, rownames(seurat_object@meta.data[seurat_object@meta.data[[clusters_column]] == cl, ])]), decreasing = TRUE)
+        head(data.frame(cluster = cl, type = names(es.max.cl), scores = es.max.cl, ncells = sum(seurat_object@meta.data[[clusters_column]] == cl)), 10)
+    }))
+    sctype_scores <- cL_results %>% group_by(cluster) %>% top_n(n = 1, wt = scores)
+    
+    # Set low-confident (low ScType score) clusters to "unknown"
+    sctype_scores$type[as.numeric(as.character(sctype_scores$scores)) < sctype_scores$ncells / 6] <- "Unknown"
+    
+    # Save results in table
+    write.xlsx(sctype_scores, paste0(output_dir, name, "results.xlsx"), sheetName = "results", append = TRUE)
+    message(paste0("scType: annotation results saved in: ", output_dir))
+    
+    # Subset annotation results
+    cluster_mapping <- as.data.frame(sctype_scores[c("cluster", "type")])
+    
+    # Copy metadata column
+    metadata_assignments <- seurat_object@meta.data[[clusters_column]]
+    
+    # Update metadata column and add again to the Seurat object
+    matching_rows <- match(metadata_assignments, cluster_mapping[["cluster"]])
+    metadata_assignments <- cluster_mapping[["type"]][matching_rows]
+    seurat_object <- AddMetaData(
+        object = seurat_object,
+        metadata = metadata_assignments,
+        col.name = assignment_name
+    )
+    
+    message("scType: metadata updated")
+    
+    return(seurat_object)
+}
+
+# For scType annotation 
 scType_annotation <- function(seurat_object, assay="RNA", assignment_name="annotation_scType",
                               reduction_name="umap_harmony", clusters_column="seurat_clusters", name ="") {
   # Message
@@ -1580,7 +1665,7 @@ scType_annotation <- function(seurat_object, assay="RNA", assignment_name="annot
   
   # Merge by cluster
   cL_resutls <-  do.call("rbind", lapply(unique(seurat_object@meta.data[[clusters_column]]), function(cl){
-    es.max.cl <-  sort(rowSums(es.max[ ,rownames(seurat_object@meta.data[seurat_object@meta.data[[clusters_column]]==cl, ])]), decreasing = !0)
+    es.max.cl <-  sort(rowSums(es.max[, rownames(seurat_object@meta.data[seurat_object@meta.data[[clusters_column]]==cl, ])]), decreasing = !0)
     head(data.frame(cluster = cl, type = names(es.max.cl), scores = es.max.cl, ncells = sum(seurat_object@meta.data[[clusters_column]]==cl)), 10)
   }))
   sctype_scores <-  cL_resutls %>% group_by(cluster) %>% top_n(n = 1, wt = scores)  
