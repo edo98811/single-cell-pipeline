@@ -719,14 +719,24 @@ visualization_UMAP <- function(seurat_object, reduction_name="umap_",
 #### SEURAT OBJECTS MANIPULATION #####
 
 # Find the files that respect a pattern in a root directory and returns the info
-preparation_for_data_loading <- function(root, pattern, path_to_patient_info){
+preparation_for_data_loading <- function(root, pattern, path_to_patient_info, source = "celescope"){
   
-  # location of files and creation of objects 
-  count_matrix_files <- find_matching_directories(root, pattern)
-  subjects_info <- find_conditions(path_to_patient_info)
-  message(subjects_info)
+  if (source == "celescope") {
+    # location of files and creation of objects 
+    count_matrix_files <- find_matching_directories(root, pattern)
+    subjects_info <- load_conditions(path_to_patient_info)
+    message(subjects_info)
+    
+    return(list(count_matrix_files = count_matrix_files, subjects_info = subjects_info))
+
+  } else if (source == "textfile") {
+    
+    count_matrix_files <- find_matrix_files(root, pattern)
+    subjects_info <- load_conditions(path_to_patient_info)
+
+  return(list(count_matrix_files = count_matrix_files, subjects_info = subjects_info))
+  } 
   
-  return (list(count_matrix_files = count_matrix_files, subjects_info = subjects_info))
 }
 
 # Loads seurat objects given paths to them, and path to a suject info data file to update te methadata
