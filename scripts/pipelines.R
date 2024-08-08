@@ -25,7 +25,6 @@ preprocessing <- function(env_variables, preprocessing_settings) {
 integration <- function(env_variables, integration_settings) {
 
     source("scripts/seurat_utils.r", local = TRUE)
-    browser()
 
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
       
@@ -86,7 +85,6 @@ integration <- function(env_variables, integration_settings) {
 annotation <- function(env_variables, annotation_settings) {
 
     source("scripts/seurat_utils.r", local = TRUE)
-    browser()
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
       
     parameters <- .update_parameters(annotation_settings,  load_settings(settings_path)$annotation)
