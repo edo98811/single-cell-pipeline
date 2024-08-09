@@ -4,9 +4,9 @@
 
 source("scripts/init.r")
 
-pipeline <-  "from_beginning.json"
+pipeline <-  "from_beginning_n.json"
 main(pipeline)
-pipeline <-  "pipeline_wgcna_subset_run.json"
+pipeline <-  "from_beginning_s.json"
 main(pipeline)
 pipeline <-  "useful/pipeline_enrich_wgcna_subset.json"
 main(pipeline)

@@ -13,7 +13,7 @@ preprocessing <- function(env_variables, preprocessing_settings) {
     data_preparation <- preparation_for_data_loading(data_folder, count_matrix_pattern, patient_info)
 
     # Seurat object creation and quality control
-    seurat_objects <- seurat_objects_and_quality_control(data_preparation$count_matrix_files,
+    seurat_object <- seurat_objects_and_quality_control(data_preparation$count_matrix_files,
                                                         data_preparation$subjects_info, save = FALSE,
                                                         normalization = TRUE, parts_to_remove = parameters$parts_to_remove)
 
@@ -36,7 +36,7 @@ integration <- function(env_variables, integration_settings) {
     assign("seurat_object", seurat_object, envir = .GlobalEnv)
     
     # Norm, Scaling, variable features
-    seurat_object <- preprocessing_and_scaling(seurat_object, save = FALSE, normalization = FALSE,
+    seurat_object <- normalization_and_scaling(seurat_object, save = FALSE, normalization = FALSE,
                                                 variable_features = TRUE, scaling = TRUE)
     
     # Prepare metadata
@@ -59,9 +59,8 @@ integration <- function(env_variables, integration_settings) {
                                         cluster_column = "before_integration", dimension = PCs,
                                         save = FALSE, name = "before_integration",
                                         extension_plot = extension_plot)
-    
     seurat_object <- layer_integration(seurat_object, assay = a, make_default = TRUE,
-                                        new_reduction = r, reduction_method = integration_settings$method)
+                                        new_reduction = r, reduction_method = parameters$method)
 
 
     # Select the number of dimension that expain more variance than a threshold
@@ -118,7 +117,7 @@ annotation <- function(env_variables, annotation_settings) {
     
 }
 
-clustering <- function(env_variables, clustering_settings){
+clustering <- function(env_variables, clustering_settings) {
 
     source("scripts/seurat_utils.r", local = TRUE)
 

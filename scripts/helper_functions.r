@@ -54,6 +54,19 @@ remove_parts <- function(input_string, parts_to_remove = "_filtered_feature_bc_m
   return(trimws(output_string))
 }
 
+match_names <- function(subjects_df, matrices_paths) {
+
+  # Extract subjects from the dataframe
+  subjects <- subjects_df$subject
+
+  # Filter the file paths to keep only those that match a subject
+  filtered_paths <- matrices_paths[sapply(matrices_paths, function(path) {
+    last_element <- tail(strsplit(path, split = "/")[[1]], 1)
+    any(grepl(paste(subjects, collapse = "|"), last_element))
+  })]
+
+  return(filtered_paths)
+}
 # saves a plot in the desired dimention in the desired path
 save_plot <- function(plotting_function, plotname, x=7, y=7, title=NA){
   check_packages(c("ggplot2", "stringr"))

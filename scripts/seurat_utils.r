@@ -726,7 +726,10 @@ preparation_for_data_loading <- function(root, pattern, path_to_patient_info, so
     count_matrix_files <- find_matching_matrices_paths(root, pattern)
     subjects_info <- load_conditions(path_to_patient_info)
     message(paste0(capture.output(subjects_info), collapse = "\n"))
-    
+
+    count_matrix_files <- match_names(subjects_info, count_matrix_files)
+    message("all file names correctly found? ", nrow(subjects_info) == length(count_matrix_files))
+
     return(list(count_matrix_files = count_matrix_files, subjects_info = subjects_info))
 
   } else if (source == "textfile") {
@@ -1417,7 +1420,7 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
 #### PCA and INTEGRATION ####
 
 # Standard preprocessing pipeline (normalize, feature selection variable features, scale data)
-preprocessing_and_scaling <- function(seurat_object, save=FALSE, vf_plot=TRUE, normalization=TRUE,
+normalization_and_scaling <- function(seurat_object, save=FALSE, vf_plot=TRUE, normalization=TRUE,
                                        variable_features=TRUE, scaling=TRUE, check.for.norm=TRUE){
   
   # TODO: rendere questa funzione generic?
@@ -1439,7 +1442,7 @@ preprocessing_and_scaling <- function(seurat_object, save=FALSE, vf_plot=TRUE, n
   
   # If it is a single object
   else {
-    cat("Runing preprocessing, normalization and variable features \n")
+    cat("Runing normalization, scaling and variable features \n")
     
     # info message
     message(paste0("Parameters: normalization: ", normalization,
