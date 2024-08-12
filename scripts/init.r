@@ -51,6 +51,12 @@ check_packages <- function(list_of_packages) {
 load_settings <- function(file_path) {
     
     check_packages(c("jsonlite"))
+    message("loading config file: ", file_path)
+    browser()
+    # Check if the file exists
+    if (!file.exists(file_path)) {
+        stop(paste("Error: File does not exist at path:", file_path))
+    }
 
     # Read the JSON file and convert it to a list
     json_data <- suppressWarnings(fromJSON(readLines(file_path)))

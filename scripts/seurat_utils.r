@@ -1527,7 +1527,7 @@ layer_integration <- function(seurat_object, save=FALSE, assay="RNA",
   # perform layer integration with selected method
   if (reduction_method =="harmony_seurat") {
     seurat_object  <- IntegrateLayers(
-      object = seurat_object , method = HarmonyIntegration,
+      object = seurat_object, method = HarmonyIntegration,
       orig.reduction = orig_reduction, new.reduction = new_reduction,
       verbose = TRUE
     )
@@ -1559,10 +1559,11 @@ layer_integration <- function(seurat_object, save=FALSE, assay="RNA",
     stop("invalid parameter: reduction_method")
   }
   
+  seurat_object <- JoinLayers(seurat_object)
   # Save object if needed
   if (save) saveRDS(seurat_object, file = paste0(output_folder, "after_layer_integration.rds"))
   
-  return (seurat_object)
+  return(seurat_object)
 }
 
 #### ANNOTATION ####

@@ -59,6 +59,8 @@ enrichment_analysis <- function(name, markers_path,
   
   # Check useful packages
   check_packages(c("Seurat", "tools"))
+  library("Seurat")
+  library("rlang")
 
   if (!isFALSE(modules_significance_table) || !isFALSE(wgcna_folder)) wgcna_module <- .select_mdoules_to_enrich(filename = paste0(output_folder, wgcna_folder, modules_significance_table))
   
@@ -448,9 +450,9 @@ enrichment_save_results <- function(output_dir, type, analysis_name, result, raw
   
   # Save data
   message("saving results:")
-  if (raw) saveRDS(result, file = paste0(output_subdir, "raw_", filename, ".rds"))
-  if (type == "panther") write.xlsx(result$result, file = paste0(output_subdir, "results", filename, ".xlsx"))
-  else write.xlsx(result@result, file = paste0(output_subdir, "results", filename, ".xlsx"))
+  if (raw) saveRDS(result, file = paste0(output_subdir, "raw_", hash(filename), ".rds"))
+  if (type == "panther") write.xlsx(result$result, file = paste0(output_subdir, "results", hash(filename), ".xlsx"))
+  else write.xlsx(result@result, file = paste0(output_subdir, "results", hash(filename), ".xlsx"))
   # message
   message(paste0("results saved in: ", output_subdir))
   
@@ -689,14 +691,14 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
   if (class(gse) == "gseaResult") {
     tryCatch({
       save_plot(dotplot(gse, show_category = 10, split = ".sign") + facet_grid(.~.sign),
-                paste0(output_subdir, "dotplot_", filename, extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "dotplot_", hash(filename), extension_plot), x = 10, y = 12)
       #save_plot(heatplot(gse) + ggtitle("heatplot for GSEA"),
       #          paste0(output_dir, "heatplot_", result_name, extension_plot), x = 5, y = 3)
       
       save_plot(ridgeplot(gse) + labs(x = "log2FC distribution"),
-                paste0(output_subdir, "ridgeplot_", filename, extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "ridgeplot_", hash(filename), extension_plot), x = 10, y = 12)
       save_plot(volcano_plot(as.data.frame(gse@result)),
-                paste0(output_subdir, "volcano_", filename, extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
       message("The plots could not be created, probably the enrichment didn't find anything significant, error: \n", e)
     })
@@ -708,9 +710,9 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
       gse <- pairwise_termsim(gse) # https://rdrr.io/bioc/enrichplot/man/pairwise_termsim.html
       message("Following warning message ok to ignore: https://github.com/YuLab-SMU/ggtree/issues/577")
       save_plot(treeplot(gse),
-                paste0(output_subdir,  "tree_plot_", filename, extension_plot), x = 10, y = 10)
+                paste0(output_subdir,  "tree_plot_", hash(filename), extension_plot), x = 10, y = 10)
       save_plot(emapplot(gse),
-                paste0(output_subdir,  "enrichment_map_", filename, extension_plot), x = 10, y = 10)
+                paste0(output_subdir,  "enrichment_map_", hash(filename), extension_plot), x = 10, y = 10)
     }, error = function(e) {
       message("The plots could not be created, probably the enrichment didn't find anything significant, error: \n", e)
     })
@@ -719,13 +721,13 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
   if (type == "ora") {
     tryCatch({
       save_plot(horizontal_barplot(as.data.frame(gse@result), c("pvalue", "Count", "Description")),
-                paste0(output_subdir, "horizontal_barplot_", filename, extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "horizontal_barplot_", hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
       message("An error occurred (horizontal_barplot):  \n", e)
     })
     tryCatch({
       save_plot(volcano_plot(as.data.frame(gse@result), y = "pvalue", x = "Count", labels = "Description", fc_threshold=0),
-                paste0(output_subdir, "volcano_", filename, extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
       
     }, error = function(e) {
       message("An error occurred (volcano):  \n", e)
@@ -735,20 +737,20 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
   if (type == "panther") {
     tryCatch({
       save_plot(horizontal_barplot(as.data.frame(gse$result), c("pValue", "signed_fold_enrichment", "term.label")),
-                paste0(output_subdir, "horizontal_barplot_", filename, extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "horizontal_barplot_", hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
       message("An error occurred (horizontal_barplot):  \n", e)
     })
     tryCatch({
       save_plot(volcano_plot(as.data.frame(gse$result), y = "pValue", x = "signed_fold_enrichment", labels = "term.label", fc_threshold=0),
-                paste0(output_subdir, "volcano_", filename, extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
       
     }, error = function(e) {
       message("An error occurred (volcano):  \n", e)
     })
     tryCatch({
       save_plot(volcano_plot(as.data.frame(gse$result), y = "pValue", x = "signed_fold_enrichment", labels = "term.label", fc_threshold=0),
-                paste0(output_subdir, "volcano_", filename, extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
       
     }, error = function(e) {
       message("An error occurred (volcano):  \n", e)
@@ -758,19 +760,19 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
   if (type == "enrichr") {
     tryCatch({
       save_plot(horizontal_barplot(as.data.frame(gse@result), c("Count", "pvalue", "Description"), pvalue="pvalue"),
-                paste0(output_subdir, "horizontal_barplot_", filename, extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "horizontal_barplot_", hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
       message("An error occurred (horizontal_barplot):  \n", e)
     })
     tryCatch({
       save_plot(horizontal_barplot(as.data.frame(gse@result), c("pvalue", "Count", "Description"), pvalue="pvalue"),
-                paste0(output_subdir, "horizontal_barplot_count", filename, extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "horizontal_barplot_count", hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
       message("An error occurred (horizontal_barplot):  \n", e)
     })
     tryCatch({
       save_plot(volcano_plot(as.data.frame(gse@result), y = "pvalue", x = "Count", labels = "Description", fc_threshold=0),
-                paste0(output_subdir, "volcano_", filename, extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
       message("An error occurred (volcano):  \n", e)
     })

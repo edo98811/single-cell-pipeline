@@ -32,8 +32,6 @@ integration <- function(env_variables, integration_settings) {
    
     data_preparation <- preparation_for_data_loading(data_folder, count_matrix_pattern, patient_info)
     seurat_object <- merge_seurat_objects(seurat_object, data_preparation$subjects_info$subject, save = FALSE)
-
-    assign("seurat_object", seurat_object, envir = .GlobalEnv)
     
     # Norm, Scaling, variable features
     seurat_object <- normalization_and_scaling(seurat_object, save = FALSE, normalization = FALSE,
@@ -79,6 +77,7 @@ integration <- function(env_variables, integration_settings) {
                                         extension_plot = extension_plot)
 
     if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+    assign("seurat_object", seurat_object, envir = .GlobalEnv)
 }
 
 annotation <- function(env_variables, annotation_settings) {
@@ -114,6 +113,7 @@ annotation <- function(env_variables, annotation_settings) {
 
     # saveRDS(seurat_object, file = paste0(output_folder, "main_after_annotation.rds"))
     if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+    assign("seurat_object", seurat_object, envir = .GlobalEnv)
     
 }
 
@@ -176,6 +176,7 @@ clustering <- function(env_variables, clustering_settings) {
     }    
 
     if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+    assign("seurat_object", seurat_object, envir = .GlobalEnv)
     return(seurat_object)
 
 }
@@ -184,8 +185,7 @@ deg <- function(env_variables, deg_settings) {
 
     source("scripts/seurat_utils.r", local = TRUE)
 
-    create_variables(.update_parameters(env_variables,  load_settings(settings_path
-    )$global_variables))
+    create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
     default_parameters <- load_settings(settings_path)$deg
 
     iterative_methods <- c(

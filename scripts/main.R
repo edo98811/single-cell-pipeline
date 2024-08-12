@@ -8,7 +8,7 @@ pipeline <-  "from_beginning_n.json"
 main(pipeline)
 pipeline <-  "from_beginning_s.json"
 main(pipeline)
-pipeline <-  "useful/pipeline_enrich_wgcna_subset.json"
+pipeline <-  "pipeline_wgcna_subset_run.json"
 main(pipeline)
 pipeline <-  "useful/pipeline_deg.json"
 main(pipeline)
