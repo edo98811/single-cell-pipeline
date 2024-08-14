@@ -4,7 +4,7 @@
 
 source("scripts/init.r")
 
-pipeline <-  "from_beginning_n.json"
+pipeline <-  "from_beginning.json"
 main(pipeline)
 pipeline <-  "from_beginning_s.json"
 main(pipeline)

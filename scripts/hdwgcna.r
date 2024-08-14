@@ -69,7 +69,8 @@ hdwgcna <- function(seurat_obj, name = "test", ...) {
         seurat_obj,
         networkType = "unsigned" # you can also use "unsigned" or "signed hybrid"
     )
-       # plot the results:
+    
+    # plot the results:
     plot_list <- PlotSoftPowers(seurat_obj)
 
     # assemble with patchwork (to save with save plot)
@@ -78,7 +79,7 @@ hdwgcna <- function(seurat_obj, name = "test", ...) {
     # construct co-expression network:
     seurat_obj <- ConstructNetwork(
         seurat_obj,
-        soft_power = 3,
+        soft_power = 10,
         tom_name = "test", # name of the topoligical overlap matrix written to disk
         networkType = "unsigned",
         overwrite_tom = "true"
@@ -131,7 +132,7 @@ correlation_heatmaps <- function() {
         "PD_007" = "02_096",
         "PD_008" = "02_097",
         "PD_009" = "02_105",
-        # "PD_012" = "02_104",
+        "PD_012" = "02_104",
         "PD_016" = "02_108",
         "PD_017" = "02_115"
         )

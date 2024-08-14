@@ -135,7 +135,7 @@ enrichment_analysis <- function(name, markers_path,
     } 
     
     # Enrichment excluding wgcna module
-    else if(is.character(wgcna_folder) && nchar(wgcna_folder) > 1 && is.character(wgcna_exclude))  {
+    else if (is.character(wgcna_folder) && nchar(wgcna_folder) > 1 && is.character(wgcna_exclude))  {
       
       # Message
       message("Running enrichment excluding wgcna modules: ", unlist(wgcna_exclude))

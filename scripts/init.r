@@ -52,7 +52,6 @@ load_settings <- function(file_path) {
     
     check_packages(c("jsonlite"))
     message("loading config file: ", file_path)
-    browser()
     # Check if the file exists
     if (!file.exists(file_path)) {
         stop(paste("Error: File does not exist at path:", file_path))
