@@ -5,7 +5,7 @@
 
 # Heatmap and dotplot
 many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = NA, assay = "RNA",
-                   cluster_column="harmony_clusters", name ="", markers=NA,
+                   cluster_column="harmony_clusters", name ="", markers=FALSE,
                    extension_plot = ".png", maxn_genes = 100, n_genes = 25, maxn_genes_per_plot = 100) {
   
   # Check arguments
@@ -36,7 +36,7 @@ many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = N
     stop("name argument must be a character")
   }
   
-  if (!is.na(markers) 
+  if (!isFALSE(markers) 
       || (!is.character(markers) && !is.vector(markers))
       || (!is.integer(clusters) && !is.vector(markers))) {
     stop("markers argument must be a character vector or NA")
@@ -82,7 +82,7 @@ many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = N
   if (!is.na(clusters)[[1]] && is.vector(clusters)) {message("clusters provided") ; clusters <- as.character(clusters)} # Nota -> Na is considered vector of length 1
   else clusters <-  as.character(unique(seurat_object@meta.data[[cluster_column]]))
   if (!is.vector(which) || !is.character(which)) stop(paste0("Error: the variable which must be a vector with the desired plot names"))
-  if (!is.na(markers)[[1]]) compute_markers <- FALSE
+  if (!isFALSE(markers)) compute_markers <- FALSE
   else compute_markers <- TRUE
   
   # Definition of function used to return a list of markers correctly formatted
@@ -343,7 +343,7 @@ find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_n
 
 # Plot a selection of markers from a df (saved in different columns)
 plot_markers_from_df <- function(seurat_object, markers_location, reduction_name = "umap_microglia_harmony_reduction", name  = "",
-                                 many_plot=TRUE, feature_plot=FALSE, message="results", extension_plot=".png",
+                                 many_plot=TRUE, feature_plot=FALSE, extension_plot=".png",
                                  heatmap_by_column=FALSE, cluster_column="microglia_clusters", subplot_n=9, 
                                  max_feature_plots=11, max_genes_many_plots = 100,
                                  column_list = FALSE) {
@@ -1157,10 +1157,10 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
     
     # Create FeaturePlots for each gene
     for (gene in genes_to_plot) {
-      plot <- FeaturePlot(seurat_obj, features = gene, pt.size = 0.5, cols = "red")
+      plot <- FeaturePlot(seurat_obj, features = gene, pt.size = 0.5, cols = "#0026ff")
       plot_list[[gene]] <- plot
     }
-    save_plot(CombinePlots(plots = plot_list, ncol = 1), paste0(output_dir, "featureplot", extension_plot))
+    save_plot(CombinePlots(plots = plot_list, ncol = 2), paste0(output_dir, "featureplot", extension_plot))
     
   }
   # Pie charts deprecated

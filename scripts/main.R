@@ -8,7 +8,7 @@ pipeline <-  "from_beginning.json"
 main(pipeline)
 pipeline <-  "from_beginning_s.json"
 main(pipeline)
-pipeline <-  "pipeline_wgcna_subset_run.json"
+pipeline <-  "pipeline_complete_all.json"
 main(pipeline)
-pipeline <-  "useful/pipeline_deg.json"
+pipeline <-  "pipeline_complete_microglia.json"
 main(pipeline)

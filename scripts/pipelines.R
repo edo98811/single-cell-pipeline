@@ -228,13 +228,25 @@ deg <- function(env_variables, deg_settings) {
                 assay = a,
                 cluster_column = parameters$cluster_column, 
                 name = names(deg_settings)[deg],
-                extension_plot = parameters$extension_plot)
+                extension_plot = parameters$extension_plot,
+                markers = parameters$markers)
  
         } else if (parameters$method == "volcano") {
-            if (isFALSE(parameters$folder)) stop("folder is a requuíred_parameter for volcano")
+            if (isFALSE(parameters$folder)) stop("folder is a required_parameter for volcano")
 
             volcano_plot(parameters$folder,
-            extension_plot = parameters$extension_plot)
+                extension_plot = parameters$extension_plot)
+            
+        } else if (parameters$method == "dimred") {
+            if (isFALSE(parameters$markers)) stop("markers is a required_parameter for dimred")
+
+            plots_for_paper(
+                which = c("feature_plots"), 
+                name = names(deg_settings)[deg],
+                extension_plot = parameters$extension_plot,
+                genes_to_plot = parameters$markers,
+                assay = a,               
+                cluster_column = parameters$cluster_column)
             
         } else stop("enrichment analysis: not valid method")
     }
