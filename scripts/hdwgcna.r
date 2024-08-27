@@ -15,6 +15,8 @@ hdwgcna <- function(seurat_obj, name = "test", ...) {
     output_dir <- set_up_output(paste0(output_folder, "wgcna_", name, "/"), message)
     
     browser()
+    
+    purrr::walk(c("subject", "microglia_clusters"), function(name) {seurat_obj@meta.data[[name]] <- factor(seurat_obj@meta.data[[name]]) })
 
     # Select the genes that are expressed in at least 5% of cells in the test field in misc seurat obkect
     seurat_obj <- SetupForWGCNA(
@@ -23,14 +25,15 @@ hdwgcna <- function(seurat_obj, name = "test", ...) {
         fraction = 0.05, # fraction of cells that a gene needs to be expressed in order to be included
         wgcna_name = "test" # the name of the hdWGCNA experiment
     )
+    
     # construct metacells  in each group ( group by to keep the cells coming from these groups in the same metacells)
     seurat_obj <- MetacellsByGroups(
         seurat_obj = seurat_obj,
-        group.by = c("subject", "microglia_clusters"), # specify the columns in seurat_obj@meta.data to group by
+        group.by = c("subject"), # specify the columns in seurat_obj@meta.data to group by
         reduction = "harmony_reduction", # select the dimensionality reduction to perform KNN on
-        k = 25, # nearest-neighbors parameter
+        k = 45, # nearest-neighbors parameter
         max_shared = 10, # maximum number of shared cells between two metacells
-        ident.group = "microglia_clusters" # set the Idents of the metacell seurat object
+        ident.group = "subject" # set the Idents of the metacell seurat object
     )
 
     # The group.by parameter determines which groups metacells will be constructed in. We 
@@ -42,7 +45,18 @@ hdwgcna <- function(seurat_obj, name = "test", ...) {
     
     # normalize metacell expression matrix:
     seurat_obj <- NormalizeMetacells(seurat_obj)
+    metacell_obj <- GetMetacellObject(seurat_obj)
 
+
+    seurat_obj <- ScaleMetacells(seurat_obj, features = VariableFeatures(seurat_obj))
+    seurat_obj <- RunPCAMetacells(seurat_obj, features = VariableFeatures(seurat_obj))
+    seurat_obj <- RunHarmonyMetacells(seurat_obj, group.by.vars = "Sample")
+    seurat_obj <- RunUMAPMetacells(seurat_obj, reduction = "harmony", dims = 1:15)
+
+    p1 <- DimPlotMetacells(seurat_obj, group.by = "cell_type") + umap_theme() + ggtitle("Cell Type")
+    p2 <- DimPlotMetacells(seurat_obj, group.by = "Sample") + umap_theme() + ggtitle("Sample")
+
+    p1 | p2
     # Questo posso anche non metterlo, serve se voglio fare il wgcna only per un subset delle cellule
     # Pero questo é molto utile prché riduce il lavoro che ho fatto per la wgcna normale 
     # quando ad esempio voglio lavorare solo con un subset
@@ -85,7 +99,7 @@ hdwgcna <- function(seurat_obj, name = "test", ...) {
         overwrite_tom = "true"
     )
 
-    save_plot(wrap_plots(PlotDendrogram(seurat_obj, main = "TEST_1"), paste0(output_dir, "/dendro_test.png")))
+    save_plot(PlotDendrogram(seurat_obj, main = "TEST_1"), paste0(output_dir, "/dendro_test.png"))
     # need to run ScaleData first or else harmony throws an error:
     #seurat_obj <- ScaleData(seurat_obj, features=VariableFeatures(seurat_obj))
 
@@ -95,31 +109,31 @@ hdwgcna <- function(seurat_obj, name = "test", ...) {
         group.by.vars = "Sample",
     )
     # harmonized module eigengenes:
-    hMEs <- GetMEs(seurat_obj)
+    hmes <- Getmes(seurat_obj)
 
     # module eigengenes:
-    MEs <- GetMEs(seurat_obj, harmonized=FALSE)
+    mes <- Getmes(seurat_obj, harmonized = FALSE)
 
     # make a featureplot of hMEs for each module
     plot_list <- ModuleFeaturePlot(
         seurat_obj,
-        features="hMEs", # plot the hMEs
-        order=TRUE # order so the points with highest hMEs are on top
+        features = "hMEs", # plot the hMEs
+        order = TRUE # order so the points with highest hMEs are on top
     )
 
     # stitch together with patchwork
-    save_plot(wrap_plots(plot_list, ncol=6), paste0(output_dir, "/module_feature_plot1.png"))
+    save_plot(wrap_plots(plot_list, ncol = 6), paste0(output_dir, "/module_feature_plot1.png"))
     
     # make a featureplot of hub scores for each module
     plot_list <- ModuleFeaturePlot(
         seurat_obj,
-        features="scores", # plot the hub gene scores
-        order="shuffle", # order so cells are shuffled
+        features = "scores", # plot the hub gene scores
+        order = "shuffle", # order so cells are shuffled
         ucell = TRUE # depending on Seurat vs UCell for gene scoring
     )
 
     # stitch together with patchwork
-    save_plot(wrap_plots(plot_list, ncol=6), paste0(output_dir, "/module_feature_plot2.png"))
+    save_plot(wrap_plots(plot_list, ncol = 6), paste0(output_dir, "/module_feature_plot2.png"))
 
     correlation_heatmaps()
 }

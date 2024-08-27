@@ -71,17 +71,17 @@ tom <- function(bwnet, norm_counts, column_data) {
     library(WGCNA)
 
     adjacency_matrix <- adjacency(norm_counts, power = soft_power, type = "signed")
-    TOM <- 1 - TOMsimilarity(adjacency_matrix)
+    tom <- 1 - TOMsimilarity(adjacency_matrix)
     saveRDS(TOM, paste0(output_dir, "TOM.rds"))
     save_plot(TOMplot(TOM, bwnet$dendrograms[[1]]))
     # 6B. Intramodular analysis: Identifying driver genes ---------------
 
     # Calculating the module dissimilarity eigengenes
-    MEDiss = 1 - cor(MEs)
+    mediss <- 1 - cor(MEs)
 
     # Clustering the eigengenes modules
-    METree = hclust(as.dist(MEDiss), method = "average")
-    MEDissThres = 0.25
+    metree <- hclust(as.dist(mediss), method = "average")
+    medissthres <- 0.25
     # Plotting the result sizeGrWindow(7, 6)
     # save_plot(plot(METree, main = "Clustering of module eigengenes", xlab = "", sub = "") + 
     #     abline(h = MEDissThres, col = "red"))
@@ -176,7 +176,7 @@ histogram_plot <- function(bwnet, norm_counts, column_data, cluster, deg_to_use,
                 legend.position = "none",      
                 axis.text.x = element_text(angle = 45, hjust = 1)  
                 )
-        , paste0(output_dir,deg_to_use, "_boxplot", extension_plot))
+        , paste0(output_dir, deg_to_use, "_boxplot", extension_plot))
 
     save_plot(
         ggplot(
@@ -214,7 +214,7 @@ histogram_plot_significance <- function(bwnet, norm_counts, column_data, extensi
                     legend.position = "none",            # Remove the legend
                     axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate x-axis labels
                     )
-            , paste0(output_dir,column, "_boxplot", extension_plot))
+            , paste0(output_dir, column, "_boxplot", extension_plot))
 
         save_plot(
             ggplot(

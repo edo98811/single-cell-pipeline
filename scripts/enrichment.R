@@ -14,8 +14,8 @@
 #' @param which 
 #' @param all_genes
 #' @param subset
-#' @param minGSSize
-#' @param maxGSSize
+#' @param min_gs_size
+#' @param max_gs_size
 #' @param organism
 #' @param num_tries
 #' @param scoring
@@ -62,7 +62,7 @@ enrichment_analysis <- function(name, markers_path,
   library("Seurat")
   library("rlang")
 
-  if (!isFALSE(modules_significance_table) || !isFALSE(wgcna_folder)) wgcna_module <- .select_mdoules_to_enrich(filename = paste0(output_folder, wgcna_folder, modules_significance_table))
+  if (!isFALSE(modules_significance_table) && !isFALSE(wgcna_folder)) wgcna_module <- .select_mdoules_to_enrich(filename = paste0(output_folder, wgcna_folder, modules_significance_table))
   
   # List excel files
   excel_files <- list.files(paste0(output_folder, markers_path), pattern = "\\.xlsx$", full.names = TRUE)
@@ -91,7 +91,8 @@ enrichment_analysis <- function(name, markers_path,
       message("Running enrichment by wgcna module")
       
       # Load module names
-      sheet_names <- excel_sheets(paste0(output_folder, wgcna_folder, "module_genes.xlsx" ))
+      message("loading modules info: ", paste0(output_folder, wgcna_folder, "/module_genes.xlsx"))
+      sheet_names <- readxl::excel_sheets(paste0(output_folder, wgcna_folder, "/module_genes.xlsx"))
       
       # If only a subset was given
       if (length(wgcna_module) > 0) sheet_names <- sheet_names[sheet_names %in% wgcna_module]
@@ -100,7 +101,8 @@ enrichment_analysis <- function(name, markers_path,
       for (sheet_name in sheet_names) {
         
         # Load list of genes for module to explore
-        module_genes <- c(read_excel(paste0(output_folder, wgcna_folder, "module_genes.xlsx" ), sheet = sheet_name))[[1]]
+        message("loading file: ", paste0(output_folder, wgcna_folder, "/module_genes.xlsx"))
+        module_genes <- c(readxl::read_excel(paste0(output_folder, wgcna_folder, "/module_genes.xlsx"), sheet = sheet_name))[[1]]
         
         # Name of this analysis
         analysis_name <- paste0(file_path_sans_ext(basename(file)), "_", sheet_name)
@@ -113,9 +115,9 @@ enrichment_analysis <- function(name, markers_path,
           gene_rankings_subset <- gene_rankings[names(gene_rankings) %in% module_genes]
 
           # Run GSEA and enrichr on genes 
-          result <- run_enrichment(which = c("ora" ,"panther", "enrichr"), output_dir, analysis_name, 
-                                   all_genes=gene_rankings, # universe
-                                   subset=select_genes_for_enrich(gene_rankings_subset, ...), ...)
+          result <- run_enrichment(which = c("ora", "panther", "enrichr"), output_dir, analysis_name, 
+                                   all_genes = gene_rankings, # universe
+                                   subset = .select_genes_for_enrich(gene_rankings_subset, ...), ...)
           
         }
         else {
@@ -125,9 +127,9 @@ enrichment_analysis <- function(name, markers_path,
           gene_rankings_subset <- gene_rankings[names(gene_rankings) %in% module_genes]
 
           # Run GSEA and enrichr on genes 
-          result <- run_enrichment(which = c("gsea" ,"panther", "enrichr"), output_dir, analysis_name, 
-                                   all_genes=gene_rankings_subset, 
-                                   subset=select_genes_for_enrich(gene_rankings_subset, ...), ...)
+          result <- run_enrichment(which = c("gsea", "panther", "enrichr"), output_dir, analysis_name, 
+                                   all_genes = gene_rankings_subset, 
+                                   subset = .select_genes_for_enrich(gene_rankings_subset, ...), ...)
         }
 
       }
@@ -141,14 +143,15 @@ enrichment_analysis <- function(name, markers_path,
       message("Running enrichment excluding wgcna modules: ", unlist(wgcna_exclude))
       
       # Load module names
-      sheet_names <- excel_sheets(paste0(output_folder, wgcna_folder, "module_genes.xlsx" ))
+      sheet_names <- readxl::excel_sheets(paste0(output_folder, wgcna_folder, "module_genes.xlsx"))
       
       # Iterate throug modules
       for (sheet_name in sheet_names) {
         if (sheet_name %in% wgcna_exclude) {
           
           # Load list of genes for module to explore
-          module_genes <- c(read_excel(paste0(output_folder, wgcna_folder, "module_genes.xlsx" ), sheet = sheet_name))[[1]]
+          message("loading file: ", paste0(output_folder, wgcna_folder, "module_genes.xlsx"))
+          module_genes <- c(readxl::read_excel(paste0(output_folder, wgcna_folder, "module_genes.xlsx"), sheet = sheet_name))[[1]]
           
           # Filter the gene ranking list with the module genes
           gene_rankings_subset <- gene_rankings[!names(gene_rankings) %in% module_genes]
@@ -157,9 +160,9 @@ enrichment_analysis <- function(name, markers_path,
           analysis_name <- paste0(file_path_sans_ext(basename(file)),  "_no_", sheet_name)
           
           # Run GSEA and enrichr on genes 
-          result <- run_enrichment(which = c("gsea" ,"panther", "enrichr"), output_dir, analysis_name, 
-                                   all_genes=gene_rankings_subset, 
-                                   subset=select_genes_for_enrich(gene_rankings_subset, ...), ...)
+          result <- run_enrichment(which = c("gsea", "panther", "enrichr"), output_dir, analysis_name, 
+                                   all_genes = gene_rankings_subset, 
+                                   subset = .select_genes_for_enrich(gene_rankings_subset, ...), ...)
         }
       }
     }
@@ -176,7 +179,7 @@ enrichment_analysis <- function(name, markers_path,
       # Run GSEA and enrichr on genes 
       result <- run_enrichment(which = c("panther"), output_dir, analysis_name, 
                                all_genes = gene_rankings, 
-                               subset = select_genes_for_enrich(gene_rankings, ...), ...)
+                               subset = .select_genes_for_enrich(gene_rankings, ...), ...)
     }
   }
   
@@ -192,7 +195,7 @@ run_enrichment <- function(which = c(""), output_dir, analysis_name, all_genes =
     stop("which argument must be a character vector")
   }
   
-  check_packages(c("DOSE", "enrichplot"))
+  # check_packages(c("DOSE", "enrichplot"))
 
   results <- list()
   # Run GSEA
@@ -206,10 +209,10 @@ run_enrichment <- function(which = c(""), output_dir, analysis_name, all_genes =
   # Run ORA
   if ("ora" %in% which) {
     results[["ora"]][[analysis_name]] <- cluster_profiler(subset, "BP", "ora",
-                                                          output_dir, analysis_name, universe=names(all_genes), ...)
+                                                          output_dir, analysis_name, universe = names(all_genes), ...)
     
     results[["ora"]][[analysis_name]] <- cluster_profiler(subset, "MF", "ora",
-                                                          output_dir, analysis_name, universe=names(all_genes), ...)
+                                                          output_dir, analysis_name, universe = names(all_genes), ...)
   }
   # Run enrichr
   if ("enrichr" %in% which) {
@@ -232,11 +235,11 @@ run_enrichment <- function(which = c(""), output_dir, analysis_name, all_genes =
 
 # Function to perfom gsea with clusterProfiler: https://bioconductor.org/packages/release/bioc/html/clusterProfiler.html
 cluster_profiler <- function(gene_rankings, go, type, output_dir, analysis_name, 
-                             universe = c(""), minGSSize = 3, maxGSSize = 800, ...) {
+                             universe = c(""), min_gs_size = 3, max_gs_size = 800, ...) {
 
   # https://www.gsea-msigdb.org/gsea/doc/GSEAUserGuideFrame.html
   # from this guide it seems like the gene sets should be between 15 and 500
-  
+
   # Check types of arguments
   if (!is.numeric(gene_rankings) && !is.character(gene_rankings)) {
     stop("gene_rankings must be a numeric or character vector")
@@ -255,24 +258,27 @@ cluster_profiler <- function(gene_rankings, go, type, output_dir, analysis_name,
   }
   
   # Check useful packages
-  check_packages(c("clusterProfiler", "org.Hs.eg.db"))
-
+  library("DOSE")
+  library("clusterProfiler")
+  library("org.Hs.eg.db")
+  
   # Run GSEA
-  if (type == "gsea")  result <- gseGO(geneList=gene_rankings, 
+  if (type == "gsea")  result <- gseGO(geneList = gene_rankings, 
                                    ont = go, 
                                    keyType = "SYMBOL", 
-                                   minGSSize = minGSSize, 
-                                   maxGSSize = maxGSSize, 
+                                   minGSSize = min_gs_size, 
+                                   maxGSSize = max_gs_size, 
                                    pvalueCutoff = 0.05, 
                                    verbose = TRUE, 
                                    OrgDb = "org.Hs.eg.db")
+
   # Run over representation analysis
   else if (type == "ora") result <- enrichGO(gene = gene_rankings, 
                                              ont = go, 
                                              universe = universe,
                                              keyType = "SYMBOL", 
-                                             minGSSize = minGSSize, 
-                                             maxGSSize = maxGSSize, 
+                                             minGSSize = min_gs_size, 
+                                             maxGSSize = max_gs_size, 
                                              pvalueCutoff = 0.05, 
                                              OrgDb = "org.Hs.eg.db")
 
@@ -438,9 +444,6 @@ enrichment_save_results <- function(output_dir, type, analysis_name, result, raw
     stop("raw must be a single logical value")
   }
   
-  # Check useful packages
-  check_packages(c("openxlsx", "readxl"))
-  
   # Define folder names
   output_subdir <- paste0(output_dir, type, "_", analysis_name, "/") # (to analysis_name the go or enrichment libray name is added in the funtion where it is run)
   filename <-  paste0(type, "_", analysis_name)
@@ -451,8 +454,8 @@ enrichment_save_results <- function(output_dir, type, analysis_name, result, raw
   # Save data
   message("saving results:")
   if (raw) saveRDS(result, file = paste0(output_subdir, "raw_", hash(filename), ".rds"))
-  if (type == "panther") write.xlsx(result$result, file = paste0(output_subdir, "results", hash(filename), ".xlsx"))
-  else write.xlsx(result@result, file = paste0(output_subdir, "results", hash(filename), ".xlsx"))
+  if (type == "panther") openxlsx::write.xlsx(result$result, file = paste0(output_subdir, "results", hash(filename), ".xlsx"))
+  else  openxlsx::write.xlsx(result@result, file = paste0(output_subdir, "results", hash(filename), ".xlsx"))
   # message
   message(paste0("results saved in: ", output_subdir))
   
@@ -470,11 +473,13 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
   # filename and directory are built in the enrichment_save_results function 
   
   # Check useful packages
-  check_packages(c("enrichplot", "DOSE", "svglite"))
+  library("enrichplot")
+  library("DOSE")
+  library("svglite")
   
   ## Function definitions ----
-  ridgeplot <- function(x, show_category=ridge_n, fill="NES",
-                        core_enrichment = TRUE, label_format = 30, qthreshold_in=force(qthreshold)) {
+  ridgeplot <- function(x, show_category = ridge_n, fill = "NES",
+                        core_enrichment = TRUE, label_format = 30, qthreshold_in = force(qthreshold)) {
     
     if (!is(x, "gseaResult"))
       stop("currently only support gseaResult")
@@ -488,11 +493,11 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
       stop("'fill' variable not available ...")
     }
     
-    x@result <- x@result[order(x@result$p.adjust),]
+    x@result <- x@result[order(x@result$p.adjust), ]
     
     
     # Prende i geni contenuti nei pathways (geneSets non e gene list ma sono i pathways con i geni)
-    if (!is.na(qthreshold)) show_category <- nrow(x@result[x@result$qvalue < qthreshold_in,])
+    if (!is.na(qthreshold)) show_category <- nrow(x@result[x@result$qvalue < qthreshold_in, ])
     n_plots <- show_category
     if (n_plots > 25) n_plots <- 25
     else if (n_plots < 10) n_plots <- 10
@@ -515,26 +520,26 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
     nn <- x$Description[i]
     
     # Create ordered indexes for plotting
-    j <- order(x$p.adjust[i], decreasing=TRUE)
+    j <- order(x$p.adjust[i], decreasing = TRUE)
     
     # Save the lengths of the gene sets
     len <- sapply(gs2val, length)
     
     # Creates the correct dataframe to send as input to ridge (2 cols, pathway, score)
-    gs2val_df <- data.frame(category = rep(nn, times=len),
-                            color = rep(x[i, fill], times=len),
+    gs2val_df <- data.frame(category = rep(nn, times = len),
+                            color = rep(x[i, fill], times = len),
                             value = unlist(gs2val))
     # Parameters of the plot
     colnames(gs2val_df)[2] <- fill
-    gs2val_df$category <- factor(gs2val_df$category, levels=nn[j]) 
+    gs2val_df$category <- factor(gs2val_df$category, levels = nn[j]) 
     
     # Ridge plot con ggplot
     
-    ggplot(gs2val_df, aes(x=.data[["value"]], y=.data[["category"]], fill=.data[[fill]])) +
+    ggplot(gs2val_df, aes(x = .data[["value"]], y = .data[["category"]], fill = .data[[fill]])) +
       ggridges::geom_density_ridges() + 
       #scale_fill_continuous(low="blue", high="red", name = fill, limits = c(-4, 4),
       #                      guide=guide_colorbar(reverse=TRUE)) + 
-      scale_fill_gradient2(low="blue", mid="white", high="red", name = fill, midpoint=0, limits = c(-2.7, 4),
+      scale_fill_gradient2(low = "blue", mid = "white", high = "red", name = fill, midpoint = 0, limits = c(-2.7, 4),
                            guide = guide_colorbar(reverse = FALSE)) +
       # breaks = seq(-4, 4, by = 1)) 
       scale_y_discrete(labels = function(x) str_wrap(x, width = label_format)) +
@@ -555,7 +560,10 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
       dplyr::ungroup()
 
     # Create dataframe to plot
-    if (any(class(source) == "gseaResult")) {x_name = "qvalue" ; y_name = "NES"}
+    if (any(class(source) == "gseaResult")) {
+      x_name <- "qvalue" 
+      y_name <- "NES"
+    }
     
     source_df <- source[, c(x_name, y_name)]
     rownames(source_df) <- source[[labels]] 
@@ -591,22 +599,22 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
     len <- sapply(gs2val, length)
     
     # Creates the correct dataframe to send as input to ridge (2 cols, pathway, score)
-    gs2val_df <- data.frame(geneset = rep(nn, times=len),
+    gs2val_df <- data.frame(geneset = rep(nn, times = len),
                             foldChange = unlist(gs2val),
-                            gene = sub(".*\\.", "",names(unlist(gs2val))))
+                            gene = sub(".*\\.", "", names(unlist(gs2val))))
     
-    gs2val_df <- gs2val_df[gs2val_df$gene %in% genes,]
+    gs2val_df <- gs2val_df[gs2val_df$gene %in% genes, ]
     
     # gs2val_df$geneset <- factor(gs2val_df$geneset, levels=nn[j])
     
-    p <- ggplot(gs2val_df, aes_string(x="gene", y="geneset")) +
+    p <- ggplot(gs2val_df, aes_string(x = "gene", y = "geneset")) +
       geom_tile(aes_string(fill = "foldChange"), color = "white") +
-      scale_fill_continuous(low="blue", high="red", name = "fold change") +
+      scale_fill_continuous(low = "blue", high = "red", name = "fold change") +
       ## scale_fill_gradientn(name = "fold change", colors = palette)
       xlab(NULL) + ylab(NULL) + theme_minimal() +
       scale_y_discrete(labels = function(x) str_wrap(x, width = label_format))  +
       theme(panel.grid.major = element_blank(),
-            axis.text.x=element_text(angle = 60, hjust = 1))
+            axis.text.x = element_text(angle = 60, hjust = 1))
   }
   
   # Upset plot
@@ -630,11 +638,11 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
     len <- sapply(gs2val, length)
     
     # Creates the correct dataframe to send as input to ridge (2 cols, pathway, score)
-    gs2val_df <- data.frame(geneset = rep(nn, times=len),
+    gs2val_df <- data.frame(geneset = rep(nn, times = len),
                             foldChange = unlist(gs2val),
-                            gene = sub(".*\\.", "",names(unlist(gs2val))))
+                            gene = sub(".*\\.", "", names(unlist(gs2val))))
     
-    gs2val_df <- gs2val_df[gs2val_df$gene %in% genes,]
+    gs2val_df <- gs2val_df[gs2val_df$gene %in% genes, ]
     # gs2val_df$geneset <- factor(gs2val_df$geneset)
     # gs2val_df$geneset <- factor(gs2val_df$geneset, levels=nn[j])
     gs2val_df$gene <- NULL
@@ -667,7 +675,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
     }
     
     # select only the significant rows, delete all na rows
-    df <- na.omit(df[df[[pvalue]] < 0.05,][order(df[[pvalue]]),])
+    df <- na.omit(df[df[[pvalue]] < 0.05, ][order(df[[pvalue]]), ])
     
     # Set color limits to correct values if needed
     if (color_limits == FALSE) {
@@ -679,7 +687,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
 
     p <- ggplot(df, aes(y = .data[[names]], x = .data[[col_length]], fill = .data[[col_color]])) +
       geom_bar(stat = "identity") +
-      scale_fill_gradient2(low = "blue", mid ="#99e599", high = "red", limits = color_limits) +
+      scale_fill_gradient2(low = "blue", mid = "#99e599", high = "red", limits = color_limits) +
       labs(x = col_length, y = "") +
       theme_minimal() +
       theme(axis.text.y = element_text(size = 10))
@@ -690,7 +698,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
 
   if (class(gse) == "gseaResult") {
     tryCatch({
-      save_plot(dotplot(gse, show_category = 10, split = ".sign") + facet_grid(.~.sign),
+      save_plot(dotplot(gse, show_category = 10, split = ".sign") + facet_grid(. ~ .sign),
                 paste0(output_subdir, "dotplot_", hash(filename), extension_plot), x = 10, y = 12)
       #save_plot(heatplot(gse) + ggtitle("heatplot for GSEA"),
       #          paste0(output_dir, "heatplot_", result_name, extension_plot), x = 5, y = 3)
@@ -726,7 +734,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
       message("An error occurred (horizontal_barplot):  \n", e)
     })
     tryCatch({
-      save_plot(volcano_plot(as.data.frame(gse@result), y = "pvalue", x = "Count", labels = "Description", fc_threshold=0),
+      save_plot(volcano_plot(as.data.frame(gse@result), y = "pvalue", x = "Count", labels = "Description", fc_threshold = 0),
                 paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
       
     }, error = function(e) {
@@ -742,14 +750,14 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
       message("An error occurred (horizontal_barplot):  \n", e)
     })
     tryCatch({
-      save_plot(volcano_plot(as.data.frame(gse$result), y = "pValue", x = "signed_fold_enrichment", labels = "term.label", fc_threshold=0),
+      save_plot(volcano_plot(as.data.frame(gse$result), y = "pValue", x = "signed_fold_enrichment", labels = "term.label", fc_threshold = 0),
                 paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
       
     }, error = function(e) {
       message("An error occurred (volcano):  \n", e)
     })
     tryCatch({
-      save_plot(volcano_plot(as.data.frame(gse$result), y = "pValue", x = "signed_fold_enrichment", labels = "term.label", fc_threshold=0),
+      save_plot(volcano_plot(as.data.frame(gse$result), y = "pValue", x = "signed_fold_enrichment", labels = "term.label", fc_threshold = 0),
                 paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
       
     }, error = function(e) {
@@ -759,19 +767,19 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
   
   if (type == "enrichr") {
     tryCatch({
-      save_plot(horizontal_barplot(as.data.frame(gse@result), c("Count", "pvalue", "Description"), pvalue="pvalue"),
+      save_plot(horizontal_barplot(as.data.frame(gse@result), c("Count", "pvalue", "Description"), pvalue = "pvalue"),
                 paste0(output_subdir, "horizontal_barplot_", hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
       message("An error occurred (horizontal_barplot):  \n", e)
     })
     tryCatch({
-      save_plot(horizontal_barplot(as.data.frame(gse@result), c("pvalue", "Count", "Description"), pvalue="pvalue"),
+      save_plot(horizontal_barplot(as.data.frame(gse@result), c("pvalue", "Count", "Description"), pvalue = "pvalue"),
                 paste0(output_subdir, "horizontal_barplot_count", hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
       message("An error occurred (horizontal_barplot):  \n", e)
     })
     tryCatch({
-      save_plot(volcano_plot(as.data.frame(gse@result), y = "pvalue", x = "Count", labels = "Description", fc_threshold=0),
+      save_plot(volcano_plot(as.data.frame(gse@result), y = "pvalue", x = "Count", labels = "Description", fc_threshold = 0),
                 paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
       message("An error occurred (volcano):  \n", e)
@@ -824,7 +832,7 @@ prepare_genes <- function(excel_file, count_threshold, scoring = "log2FC", ...) 
 }
 
 # Helper function: to prepare the vector of genes to enrich
-select_genes_for_enrich <- function(gene_rankings, n_gene_enrich = 400, ...) {
+.select_genes_for_enrich <- function(gene_rankings, n_gene_enrich = 400, ...) {
   
   if (!is.numeric(n_gene_enrich) || length(n_gene_enrich) != 1) {
     stop("n_gene_enrich argument must be a single numeric value")
@@ -839,6 +847,8 @@ select_genes_for_enrich <- function(gene_rankings, n_gene_enrich = 400, ...) {
 
 # Helper function: to select which modules to enrich based on the previously fitted linear model pvalue
 .select_mdoules_to_enrich <- function(filename) {
+  message("modules_significance_table set to true")
+  message("loading table with significance informations: ", filename)
   data <- openxlsx::read.xlsx(filename, rowNames = TRUE)
   filtered_data <- rownames(data[data$Pr...t.. < 0.05, ])
 }

@@ -3,9 +3,41 @@
 
 #### MARKER ANALYSIS ####
 
-# Heatmap and dotplot
-many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = NA, assay = "RNA",
-                   cluster_column="harmony_clusters", name ="", markers=FALSE,
+#' Generate Multiple Plots for a Seurat Object
+#'
+#' This function generates various plots (e.g., dot plot, heatmap) for a Seurat object, based on the specified parameters.
+#'
+#' @param seurat_object A Seurat object containing the single-cell RNA-seq data.
+#' @param which A character vector specifying the types of plots to generate. 
+#'        Options are \code{"dotplot"} and \code{"heatmap"}. Default is \code{c("dotplot", "heatmap")}.
+#' @param clusters A vector specifying the clusters to include in the plots. 
+#'        If \code{NA}, all clusters will be included. Default is \code{NA}.
+#' @param assay A character string specifying the assay to use from the Seurat object. 
+#'        Default is \code{"RNA"}.
+#' @param cluster_column A character string specifying the column name in the Seurat object's metadata 
+#'        that contains the cluster assignments. Default is \code{"harmony_clusters"}.
+#' @param name A character string specifying the prefix to use for the saved plot files. 
+#'        Default is an empty string \code{""}.
+#' @param markers A logical value indicating whether to include marker genes in the plots. 
+#'        Default is \code{FALSE}.
+#' @param extension_plot A character string specifying the file extension for the saved plots. 
+#'        Default is \code{".png"}.
+#' @param maxn_genes An integer specifying the maximum number of genes to include in the plots. 
+#'        Default is \code{100}.
+#' @param n_genes An integer specifying the number of top genes to include in each plot. 
+#'        Default is \code{25}.
+#' @param maxn_genes_per_plot An integer specifying the maximum number of genes to include per plot. 
+#'        Default is \code{100}.
+#'
+#' @return This function saves the generated plots to files and does not return a value.
+#'
+#' @examples
+#' # Generate dot plots and heatmaps for a Seurat object
+#' many_plots(seurat_object = my_seurat, which = c("dotplot", "heatmap"), clusters = c(1, 2, 3))
+#'
+#' @export
+many_plots <- function(seurat_object, which = c("dotplot", "heatmap"), clusters = NA, assay = "RNA",
+                   cluster_column = "harmony_clusters", name = "", markers = FALSE,
                    extension_plot = ".png", maxn_genes = 100, n_genes = 25, maxn_genes_per_plot = 100) {
   
   # Check arguments
@@ -79,7 +111,10 @@ many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = N
     output_dir <- set_up_output(paste0(output_folder, "plot_heatmap_", name, "/"))
   
   # Arguments check
-  if (!is.na(clusters)[[1]] && is.vector(clusters)) {message("clusters provided") ; clusters <- as.character(clusters)} # Nota -> Na is considered vector of length 1
+  if (!is.na(clusters)[[1]] && is.vector(clusters)) {
+    message("clusters provided")
+    clusters <- as.character(clusters)
+  } # Nota -> Na is considered vector of length 1
   else clusters <-  as.character(unique(seurat_object@meta.data[[cluster_column]]))
   if (!is.vector(which) || !is.character(which)) stop(paste0("Error: the variable which must be a vector with the desired plot names"))
   if (!isFALSE(markers)) compute_markers <- FALSE
@@ -100,7 +135,7 @@ many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = N
     
     # create a dataframe that contains the n_genes top markers per cluster, oly keeping the ones present in variable features
     markers_df <- as.data.frame(lapply(cluster_markers, function(markers_df_for_cluster) {
-      markers_df_for_cluster <- markers_df_for_cluster[order(markers_df_for_cluster$avg_log2FC),]
+      markers_df_for_cluster <- markers_df_for_cluster[order(markers_df_for_cluster$avg_log2FC), ]
       
       # Select the top 25 markers, after having checked that they are present in the variable features
       top_markers <- row.names(markers_df_for_cluster) %>%
@@ -121,13 +156,13 @@ many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = N
   for (which_element in which){
     
     if (which_element == "dotplot") {
-      n_genes = 5
+      n_genes <- 5
       
       # Create new seurat object
-      new_seurat_object <- create_object_from_cluster_id(seurat_object, clusters, assay=assay,
-                                                         clusters_column=cluster_column, save=FALSE, new_idents=cluster_column)
+      new_seurat_object <- create_object_from_cluster_id(seurat_object, clusters, assay = assay,
+                                                         clusters_column = cluster_column, save = FALSE, new_idents = cluster_column)
       # Old code
-      if(FALSE) {
+      if (FALSE) {
         new_seurat_object <- CreateSeuratObject(seurat_object[[assay]],
                                                 assay = "RNA",
                                                 meta.data = seurat_object@meta.data)
@@ -143,15 +178,15 @@ many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = N
         features = unique(markers),
         group.by = cluster_column,
         idents = clusters,
-        cols = c( "white", "blue"),
+        cols = c("white", "blue"),
         dot.scale = 3 
       ), paste0(output_dir, "dotplot", extension_plot), x = 20, y = 5)
     } 
-    if (which_element =="heatmap") {
+    if (which_element == "heatmap") {
       
       # Create new seurat object
-      new_seurat_object <- create_object_from_cluster_id(seurat_object, clusters, assay=assay,
-                                                         clusters_column=cluster_column, save=FALSE, new_idents=cluster_column)
+      new_seurat_object <- create_object_from_cluster_id(seurat_object, clusters, assay = assay,
+                                                         clusters_column = cluster_column, save = FALSE, new_idents = cluster_column)
       
       # Compute the markers to plot if needed, otherwise filter to keep the ones that are in the variable features
       if (compute_markers) markers_filtered <- find_markers_local()
@@ -167,7 +202,7 @@ many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = N
       # Loop to create the heatmaps
       for (i in seq(1, length(markers_filtered), by = maxn_genes_per_plot)) {
         
-        subset_markers_filtered <- markers_filtered[i:min(i+maxn_genes_per_plot, length(markers_filtered))]
+        subset_markers_filtered <- markers_filtered[i:min(i + maxn_genes_per_plot, length(markers_filtered))]
         
         # Create a heatmap
         save_plot(DoHeatmap(
@@ -176,7 +211,7 @@ many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = N
           group.by = cluster_column,
           slot = "scale.data", # scale data contains only the variable features 
           disp.min = 0 # to modify
-        ) + scale_fill_gradientn(colors = c("powderblue","white", "red")), 
+        ) + scale_fill_gradientn(colors = c("powderblue", "white", "red")), 
         paste0(output_dir, "heatmap_", i, "_", min(i + maxn_genes_per_plot - 1, length(markers_filtered)), extension_plot), x = 15, y = 20)
         
       }
@@ -191,16 +226,16 @@ many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = N
       # r colors: https://www.datanovia.com/en/blog/awesome-list-of-657-r-color-names/
       
       # Save plotted features in a dataframe
-      write.xlsx(as.data.frame(markers_filtered), file = paste0(output_dir, "markers.xlsx" ), sheetName = "marker_genes", append=TRUE)
-      message(paste0("results saved in: ",output_dir, "markers.xlsx"))
+      write.xlsx(as.data.frame(markers_filtered), file = paste0(output_dir, "markers.xlsx"), sheetName = "marker_genes", append = TRUE)
+      message(paste0("results saved in: ", output_dir, "markers.xlsx"))
       
     }
-    if (which_element =="barplot") {
-      n_genes = 50
+    if (which_element == "barplot") {
+      n_genes <- 50
       
       # Create new seurat object
-      new_seurat_object <- create_object_from_cluster_id(seurat_object, clusters, assay=assay,
-                                                         clusters_column=cluster_column, save=FALSE, new_idents=cluster_column)
+      new_seurat_object <- create_object_from_cluster_id(seurat_object, clusters, assay = assay,
+                                                         clusters_column = cluster_column, save = FALSE, new_idents = cluster_column)
       
       # Compute the markers to plot if needed
       if (compute_markers) markers <- find_markers_local(n_genes)
@@ -222,37 +257,37 @@ many_plots <- function(seurat_object, which=c("dotplot","heatmap"), clusters = N
 
 # Function to find differentially expressed markers and plot feature plot
 find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_name = "pca", 
-                                  save_data=TRUE, cluster_column="",
-                                  name="", assay = "RNA", method = "default",
-                                  subset_id="control", o2=NA, condition="PD",
-                                  nothreshold=FALSE,
-                                  control="non_PD", condition_column="subject_pathology",
-                                  extension_plot = ".png") {
+                                  save_data = TRUE, cluster_column = "",
+                                  name = "", assay = "RNA", method = "default",
+                                  subset_id = "control", o2 = NA, condition = "PD",
+                                  nothreshold = FALSE,
+                                  control = "non_PD", condition_column = "subject_pathology",
+                                  extension_plot = ".png", ...) {
   
   # Dependencies
   check_packages(c("openxlsx", "Seurat"))
   
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "markers_", name, "/"))
-  
+
   # Setting parameters
-  if (cluster_column != '' && cluster_column %in% names(seurat_object@meta.data)) Idents(seurat_object) <- cluster_column
-  else if (cluster_column != '' && !(cluster_column %in% names(seurat_object@meta.data))) 
+  if (cluster_column != "" && cluster_column %in% names(seurat_object@meta.data)) Idents(seurat_object) <- cluster_column
+  else if (cluster_column != "" && !(cluster_column %in% names(seurat_object@meta.data))) 
     stop("invalid idents column selected")
   
   # Find differentially expressed markers with the specified method
   if (method == "microglia_only") {
-    microglia = c("0", "1", "2")
+    microglia <- c("0", "1", "2")
     message("running for microglia")
     markers <- FindMarkers(seurat_object, ident.1 = cluster_id, ident.2 = microglia[!(microglia == cluster_id)])
-  } else if (method == "condition"){
+  } else if (method == "condition") {
     message("running for condition")
     if (nothreshold) 
       markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column,
                              logfc.threshold = 0, min.pct = 0) #,  test.use="DESeq2")
     else 
       markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column) #,  test.use="DESeq2")
-  } else if (method == "condition_vf"){
+  } else if (method == "condition_vf") {
     message("running for condition")
     if (nothreshold) 
       markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column,
@@ -262,23 +297,23 @@ find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_n
       markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column, 
                              slot = "scale.data", features = row.names(seurat_object_microglia@assays[[assay]]$scale.data)) #,  test.use="DESeq2")
     
-  } else if (method == "condition_and_clusters" && !is.na(subset_id)){
+  } else if (method == "condition_and_clusters" && !is.na(subset_id)) {
     message("running for condition and clusters")
     markers <- FindMarkers(seurat_object, ident.1 = control, group.by = condition_column,
                            subset.ident = cluster_id)#, test.use="DESeq2")
-  } else if (method == "condition_and_clusters_vf" && !is.na(subset_id)){
+  } else if (method == "condition_and_clusters_vf" && !is.na(subset_id)) {
     message("running for condition and clusters")
     markers <- FindMarkers(seurat_object, ident.1 = control, group.by = condition_column,
                            subset.ident = cluster_id, 
                            slot = "scale.data", features = row.names(seurat_object_microglia@assays[[assay]]$scale.data))#, test.use="DESeq2")
-  } else if (method == "default"){
+  } else if (method == "default") {
     markers <- FindMarkers(seurat_object, ident.1 = cluster_id)
-  } else if (method == "default_vf"){
+  } else if (method == "default_vf") {
     markers <- FindMarkers(seurat_object, ident.1 = cluster_id, 
                            slot = "scale.data", features = row.names(seurat_object_microglia@assays[[assay]]$scale.data)) 
-  } else if (method == "default_LR"){
-    markers <- FindMarkers(seurat_object, ident.1 = cluster_id, test.use="LR")
-  } else if (method == "condition_DESeq2"){
+  } else if (method == "default_LR") {
+    markers <- FindMarkers(seurat_object, ident.1 = cluster_id, test.use = "LR")
+  } else if (method == "condition_DESeq2") {
     message("running for condition with DESeq2")
     
     # Delete the features that have an expression of 0 everywhere, (hwo is it possile????) rowsumns on the condition > 0, if rowsums is 0 then there are no cells that satisfy it
@@ -286,16 +321,16 @@ find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_n
     
     if (nothreshold) 
       markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column,
-                             logfc.threshold = 0, min.pct = 0, test.use="DESeq2")
+                             logfc.threshold = 0, min.pct = 0, test.use = "DESeq2")
     else 
-      markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column,test.use="DESeq2")
+      markers <- FindMarkers(seurat_object, ident.1 = control, ident.2 = condition, group.by = condition_column, test.use = "DESeq2")
     
-  } else if (method == "condition_and_clusters_DESeq2" && !is.na(subset_id)){
+  } else if (method == "condition_and_clusters_DESeq2" && !is.na(subset_id)) {
     message("running for condition and clusters with DESeq2")
     seurat_object <- subset(seurat_object, features = rownames(seurat_object@assays$RNA$data)[rowSums(seurat_object@assays$RNA$data > 0) > 0])
     
     markers <- FindMarkers(seurat_object, ident.1 = control, group.by = condition_column,
-                           subset.ident = cluster_id, test.use="DESeq2")
+                           subset.ident = cluster_id, test.use = "DESeq2")
   } else {
     stop("no condition met")
   }
@@ -312,40 +347,40 @@ find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_n
     markers_excel <- markers# [1:1000, ]
     markers_excel$gene <- rownames(markers_excel)
     
-    if (method =="default" || method == "microglia_only") {
+    if (method == "default" || method == "microglia_only") {
       
       # Check if the group is numeric (for some reason if it is numeric it adds a g at the end)
       if (is.na(as.numeric(cluster_id))) expr <-
           AggregateExpression(object = seurat_object)[[assay]][, cluster_id]
       else       expr <- 
           AggregateExpression(object = 
-                                seurat_object)[[assay]][, paste0("g",as.character(cluster_id))]
+                                seurat_object)[[assay]][, paste0("g", as.character(cluster_id))]
       
       # Add the average expression column
       markers_excel <- cbind(markers_excel, "average expression" = 
                                expr[names(expr) %in% row.names(markers_excel)])
     }
     
-    write.xlsx(markers_excel, file = paste0(output_dir, "expressed_markers_", cluster_id, "_", name, ".xlsx" ), sheetName = "marker_genes", append=TRUE)
-    message(paste0("results saved in: ",output_dir, "expressed_markers_", cluster_id, ".xlsx"))
+    write.xlsx(markers_excel, file = paste0(output_dir, "expressed_markers_", cluster_id, "_", name, ".xlsx"), sheetName = "marker_genes", append = TRUE)
+    message(paste0("results saved in: ", output_dir, "expressed_markers_", cluster_id, ".xlsx"))
   }
 
   return()
   # Create a feature plot for the top markers
-  if (!is.na(o2)) save_plot(FeaturePlot(o2, features = marker_genes, cols = c('lightgrey','blue'),
-                                        reduction=reduction_name),#  min.cutoff="q15"),
-                            paste0(output_dir, "feature_plot", cluster_id, extension_plot), x=10, y=10)#
-  else save_plot(FeaturePlot(seurat_object, features = marker_genes, cols = c('lightgrey','blue'),
-                             reduction=reduction_name),#  min.cutoff="q15"),
-                 paste0(output_dir, "feature_plot_", cluster_id, extension_plot), x=10, y=10)
+  if (!is.na(o2)) save_plot(FeaturePlot(o2, features = marker_genes, cols = c("lightgrey", "blue"),
+                                        reduction = reduction_name), #  min.cutoff="q15"),
+                            paste0(output_dir, "feature_plot", cluster_id, extension_plot), x = 10, y = 10)#
+  else save_plot(FeaturePlot(seurat_object, features = marker_genes, cols = c("lightgrey", "blue"),
+                             reduction = reduction_name), #  min.cutoff="q15"),
+                 paste0(output_dir, "feature_plot_", cluster_id, extension_plot), x = 10, y = 10)
   
 }
 
 # Plot a selection of markers from a df (saved in different columns)
 plot_markers_from_df <- function(seurat_object, markers_location, reduction_name = "umap_microglia_harmony_reduction", name  = "",
-                                 many_plot=TRUE, feature_plot=FALSE, extension_plot=".png",
-                                 heatmap_by_column=FALSE, cluster_column="microglia_clusters", subplot_n=9, 
-                                 max_feature_plots=11, max_genes_many_plots = 100,
+                                 many_plot = TRUE, feature_plot = FALSE, extension_plot = ".png",
+                                 heatmap_by_column = FALSE, cluster_column = "microglia_clusters", subplot_n = 9, 
+                                 max_feature_plots = 11, max_genes_many_plots = 100,
                                  column_list = FALSE) {
   
   
@@ -364,7 +399,7 @@ plot_markers_from_df <- function(seurat_object, markers_location, reduction_name
                  " - max_genes_many_plots: ", max_genes_many_plots))
   
   # Package management
-  check_packages(c("readxl", "dplyr", "Seurat", "gridExtra", "openxlsx", "Matrix","ggplot2"))
+  check_packages(c("readxl", "dplyr", "Seurat", "gridExtra", "openxlsx", "Matrix", "ggplot2"))
 
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "plot_markers_from_df_", name, "/"))
@@ -373,7 +408,7 @@ plot_markers_from_df <- function(seurat_object, markers_location, reduction_name
   markers_df <- read_excel(markers_location)
   
   # Saves the relative plots (either using many plots and a heatmap or the feature plots)
-  if (feature_plot){
+  if (feature_plot) {
     for (column in names(markers_df)) {
       
       # Skip if no data is present
@@ -389,15 +424,15 @@ plot_markers_from_df <- function(seurat_object, markers_location, reduction_name
       
       # Iterate thorugh the featres in batches of subplot_n and plot (max 11 plots)
       if (length(features) == 0) {message("skipping, not enough features"); next}
-      lapply(seq(1, min(length(features), subplot_n*max_feature_plots), by = subplot_n), function(start_index){
-        end_index <- min(start_index + subplot_n-1, length(features))
+      lapply(seq(1, min(length(features), subplot_n * max_feature_plots), by = subplot_n), function(start_index) {
+        end_index <- min(start_index + subplot_n - 1, length(features))
         save_plot(FeaturePlot(seurat_object, features = features[start_index:end_index],
-                              cols = c('lightgrey','blue'),
-                              reduction=reduction_name),
+                              cols = c("lightgrey", "blue"),
+                              reduction = reduction_name),
                   paste0(output_dir, "feature_plot_", column, "_", 
                          start_index, "_", end_index, 
                          extension_plot)
-                  , x=10, y=10) 
+                  , x = 10, y = 10) 
       })
     }
   }
@@ -419,8 +454,8 @@ plot_markers_from_df <- function(seurat_object, markers_location, reduction_name
           .[. %in% rownames(seurat_object)] 
         
         # Create the heatmap, plots at most max_genes_many_plots genes
-        many_plots(seurat_object_microglia, which=c("heatmap"), assay="RNA",
-                   cluster_column=cluster_column, name = paste0(output_dir, column), markers=features,
+        many_plots(seurat_object_microglia, which = c("heatmap"), assay = "RNA",
+                   cluster_column = cluster_column, name = paste0(output_dir, column), markers = features,
                    maxn_genes = max_genes_many_plots)
       }
     } else {
@@ -430,8 +465,8 @@ plot_markers_from_df <- function(seurat_object, markers_location, reduction_name
         .[. %in% rownames(seurat_object)]
       
       # Create the heatmap, plots at most max_genes_many_plots genes
-      many_plots(seurat_object_microglia, which=c("heatmap"), assay="RNA",
-                 cluster_column=cluster_column, name = output_dir, markers=features,
+      many_plots(seurat_object_microglia, which = c("heatmap"), assay = "RNA",
+                 cluster_column = cluster_column, name = output_dir, markers = features,
                  maxn_genes = max_genes_many_plots)
       
     }
@@ -439,7 +474,7 @@ plot_markers_from_df <- function(seurat_object, markers_location, reduction_name
 }
 
 # Volcano plot from gene table
-volcano_plot <- function(markers_dir, count_threshold=0, extension_plot=".png") {
+volcano_plot <- function(markers_dir, count_threshold = 0, extension_plot = ".png") {
   
   # Check packages
   check_packages(c("EnhancedVolcano", "readxl", "tools"))
@@ -457,10 +492,10 @@ volcano_plot <- function(markers_dir, count_threshold=0, extension_plot=".png") 
     source <- as.data.frame(read_excel(excel_file))
     
     # Filter dataframe
-    source <- source[source$pct.1 > count_threshold & source$pct.2 > count_threshold,]
+    source <- source[source$pct.1 > count_threshold & source$pct.2 > count_threshold, ]
     
     # Create dataframe to plot
-    source_df <- source[,c("avg_log2FC", "p_val_adj")]
+    source_df <- source[, c("avg_log2FC", "p_val_adj")]
     rownames(source_df) <- unlist(source["gene"])
 
     # Save plot
@@ -469,13 +504,13 @@ volcano_plot <- function(markers_dir, count_threshold=0, extension_plot=".png") 
                               x = "avg_log2FC",
                               y = "p_val_adj") + 
                 labs(subtitle = file_path_sans_ext(basename(excel_file))),
-              paste0(output_dir, "volcano_plot_", file_path_sans_ext(basename(excel_file)), as.character(count_threshold), "", extension_plot), x=10, y=10)
+              paste0(output_dir, "volcano_plot_", file_path_sans_ext(basename(excel_file)), as.character(count_threshold), "", extension_plot), x = 10, y = 10)
   }
 }
 
 # Save a gene expression table for selected gene list
-gene_table <- function(seurat_object, gene_list, message="resutls of gene analysis", name="gabriel",
-                       assay="RNA", method="subjects", name2="", cluster_column="microglia_clusters") {
+gene_table <- function(seurat_object, gene_list, message = "resutls of gene analysis", name = "gabriel",
+                       assay = "RNA", method = "subjects", name2 = "", cluster_column = "microglia_clusters") {
   # Dependencies
   check_packages(c("Seurat", "openxlsx", "readxl"))
   
@@ -492,7 +527,7 @@ gene_table <- function(seurat_object, gene_list, message="resutls of gene analys
   
   # Aggregate expression
   expr <- AggregateExpression(object = seurat_object, features = features)[[assay]]
-  df[features,] <- expr[features,]
+  df[features, ] <- expr[features, ]
   
   # Initialize df
   Idents(seurat_object) <- "subject_pathology"
@@ -500,14 +535,14 @@ gene_table <- function(seurat_object, gene_list, message="resutls of gene analys
   df[, col_names] <- NA
   
   # Diff expression and adding to a table
-  for (group in col_names){
+  for (group in col_names) {
     if (sum(seurat_object@meta.data$subject_pathology == group) < 3) next
     markers <- FindMarkers(seurat_object, ident.1 = group, features = features,
                            logfc.threshold = 0, min.pct = 0)
-    log2FC_column <- as.vector(markers$avg_log2FC)
-    names(log2FC_column) <- row.names(markers)
+    log_2fc_column <- as.vector(markers$avg_log2FC)
+    names(log_2fc_column) <- row.names(markers)
     
-    df[features, group] <- log2FC_column[features] # can i add it also in another way??
+    df[features, group] <- log_2fc_column[features] # can i add it also in another way??
   }
   
   # Save df
@@ -516,8 +551,8 @@ gene_table <- function(seurat_object, gene_list, message="resutls of gene analys
   write.xlsx(df, file = paste0(output_dir, method, name, "_analysis.xlsx"))
 }
 
-violin_plot <- function(seurat_object, gene_list, name="", n_min=3,
-                        markers_analysisGPD="", markers_analysisPD="", message="results", extension_plot=".png") {
+violin_plot <- function(seurat_object, gene_list, name = "", n_min = 3,
+                        markers_analysis_gpd = "", markers_analysis_pd = "", message = "results", extension_plot = ".png") {
   
   # Dependencies
   check_packages(c("Seurat", "ggplot2", "gridExtra", "purrr", "Matrix", "readxl"))
@@ -526,22 +561,22 @@ violin_plot <- function(seurat_object, gene_list, name="", n_min=3,
   output_dir <- set_up_output(paste0(output_folder, "violin_plots_", name, "/"), message)
   
   # Subset count matrix to include only needed genes
-  count_matrix <- Matrix(GetAssay(seurat_object, assay ="RNA")$data, sparse=TRUE)
-  count_matrix <- t(count_matrix[row.names(count_matrix) %in% gene_list,])
+  count_matrix <- Matrix(GetAssay(seurat_object, assay = "RNA")$data, sparse = TRUE)
+  count_matrix <- t(count_matrix[row.names(count_matrix) %in% gene_list, ])
   # TODO: convert in sparse matrix?
   sorting_dataframe <- seurat_object@meta.data$subject_pathology
 
   # Load DEGs table
-  if (!markers_analysisPD == '') {
-    message(paste0("loading... ", output_folder, "markers_", markers_analysisPD, 
-                   "/expressed_markers_all_", markers_analysisPD, ".xlxs"))
-    markers_tablePD <- read_excel(paste0(output_folder, "markers_", markers_analysisPD, 
-                                    "/expressed_markers_all_", markers_analysisPD, ".xlsx"))
+  if (!markers_analysis_pd == "") {
+    message(paste0("loading... ", output_folder, "markers_", markers_analysis_pd, 
+                   "/expressed_markers_all_", markers_analysis_pd, ".xlxs"))
+    markers_table_pd <- read_excel(paste0(output_folder, "markers_", markers_analysis_pd, 
+                                    "/expressed_markers_all_", markers_analysis_pd, ".xlsx"))
 
-    message(paste0("loading... ", output_folder, "markers_", markers_analysisGPD, 
-                           "/expressed_markers_all_", markers_analysisGPD, ".xlxs"))
-    markers_tableGPD <- read_excel(paste0(output_folder, "markers_", markers_analysisGPD, 
-                                    "/expressed_markers_all_", markers_analysisGPD, ".xlsx"))
+    message(paste0("loading... ", output_folder, "markers_", markers_analysis_gpd, 
+                           "/expressed_markers_all_", markers_analysis_gpd, ".xlxs"))
+    markers_table_gpd <- read_excel(paste0(output_folder, "markers_", markers_analysis_gpd, 
+                                    "/expressed_markers_all_", markers_analysis_gpd, ".xlsx"))
   }
   else message("no DEGs table given")
 
@@ -554,36 +589,36 @@ violin_plot <- function(seurat_object, gene_list, name="", n_min=3,
     expr_df <- expr_df[expr_df$expr_list > 0, ]
     c2 <- nrow(expr_df)
     expr_df$expr_list <- as.numeric(expr_df$expr_list)
-    expr_df$sorting_dataframe <- factor(expr_df$sorting_dataframe, levels=c("PD", "genetic_PD", "non_PD"))
+    expr_df$sorting_dataframe <- factor(expr_df$sorting_dataframe, levels = c("PD", "genetic_PD", "non_PD"))
     
     # Prepare text
-    if (!markers_analysisPD == '') {
+    if (!markers_analysis_pd == "") {
       
       # Read values
-      qvaluePD <- format(as.numeric(markers_tablePD[markers_tablePD$gene == gene, "p_val_adj"], scientific = TRUE, digits = 4))
-      qvalueGPD <- format(as.numeric(markers_tableGPD[markers_tableGPD$gene == gene, "p_val_adj"], scientific = TRUE, digits = 4))
-      log2fcPD <- format(as.numeric(markers_tablePD[markers_tablePD$gene == gene, "avg_log2FC"], scientific = TRUE, digits = 4))
-      log2fcGPD <- format(as.numeric(markers_tableGPD[markers_tableGPD$gene == gene, "avg_log2FC"], scientific = TRUE, digits = 4))
+      qvalue_pd <- format(as.numeric(markers_table_pd[markers_table_pd$gene == gene, "p_val_adj"], scientific = TRUE, digits = 4))
+      qvalue_gpd <- format(as.numeric(markers_table_gpd[markers_table_gpd$gene == gene, "p_val_adj"], scientific = TRUE, digits = 4))
+      log2fc_pd <- format(as.numeric(markers_table_pd[markers_table_pd$gene == gene, "avg_log2FC"], scientific = TRUE, digits = 4))
+      log2fc_gpd <- format(as.numeric(markers_table_gpd[markers_table_gpd$gene == gene, "avg_log2FC"], scientific = TRUE, digits = 4))
       
       # Prepare text
-      text <- paste0("cells which show expression: ",c2 ,"/", c1, "\n",
-                     "genetic PD adj_pvalue: ",qvalueGPD , " - log2FC: " ,log2fcGPD, "\n",
-                     "PD         adj_pvalue: ",qvaluePD ," - log2FC: " ,log2fcPD)
+      text <- paste0("cells which show expression: ", c2, "/", c1, "\n",
+                     "genetic PD adj_pvalue: ", qvalue_gpd, " - log2FC: ", log2fc_gpd, "\n",
+                     "PD         adj_pvalue: ", qvalue_pd, " - log2FC: ", log2fc_pd)
       # message(text)
     }
     else 
-      text <- paste0("cells which show expression: ",c2 ,"/", c1)
+      text <- paste0("cells which show expression: ", c2, "/", c1)
     
     # Create violin plot
     if (c2 > n_min) 
-      save_plot(ggplot(expr_df, aes(x = sorting_dataframe, y = expr_list, colour = sorting_dataframe)) +#, fill=sorting_dataframe)) +
-                  geom_violin(alpha=0.2) + geom_jitter(alpha = 0.8, size=0.2) + # scale_fill_manual(values = c("red", "blue", "green")) +
+      save_plot(ggplot(expr_df, aes(x = sorting_dataframe, y = expr_list, colour = sorting_dataframe)) + #, fill=sorting_dataframe)) +
+                  geom_violin(alpha = 0.2) + geom_jitter(alpha = 0.8, size = 0.2) + # scale_fill_manual(values = c("red", "blue", "green")) +
                   labs(x = NULL, y = "Expression Value") +
                   ggtitle(paste0("Violin Plot for ", gene)) + 
                   # theme(plot.margin = margin(b=1.5, unit="cm")) +
                   # labs(caption = str_wrap(text, width = 60)) +
                   labs(caption = text) +
-                  theme(legend.position="none"),
+                  theme(legend.position = "none"),
                 paste0(output_dir, "volin_plot_", gene, extension_plot))
     else message(gene, " expressed in too little cells (<", n_min, ")")
 
@@ -591,7 +626,7 @@ violin_plot <- function(seurat_object, gene_list, name="", n_min=3,
 }
 
 # Saves a table with the average expression vales of the data
-avg_expression <- function(seurat_object, gene_list, name="") {
+avg_expression <- function(seurat_object, gene_list, name = "") {
   
   # Dependencies
   check_packages(c("Seurat", "ggplot2", "gridExtra", "purrr", "Matrix", "readxl"))
@@ -600,8 +635,8 @@ avg_expression <- function(seurat_object, gene_list, name="") {
   output_dir <- set_up_output(paste0(output_folder, "avg_expression_", name, "/"), message)
   
   # Extract count matrix
-  count_matrix <- Matrix(GetAssay(seurat_object, assay ="RNA")$data, sparse=TRUE)
-  count_matrix <- data.frame(count_matrix[row.names(count_matrix) %in% gene_list,])
+  count_matrix <- Matrix(GetAssay(seurat_object, assay = "RNA")$data, sparse = TRUE)
+  count_matrix <- data.frame(count_matrix[row.names(count_matrix) %in% gene_list, ])
   
   # saves the gene list as dataframes and assigns rownames
   means <- as.data.frame(gene_list)
@@ -610,22 +645,53 @@ avg_expression <- function(seurat_object, gene_list, name="") {
   # Iterate though the different conditions and compute means
   # TODO: use apply?
   for (pathology in unique(seurat_object@meta.data$subject_pathology)) {
-    cells <- row.names(seurat_object@meta.data[seurat_object@meta.data$subject_pathology == pathology,])
+    cells <- row.names(seurat_object@meta.data[seurat_object@meta.data$subject_pathology == pathology, ])
 
-    means <- cbind(means, as.data.frame(rowMeans(count_matrix[,colnames(count_matrix) %in% cells])))
+    means <- cbind(means, as.data.frame(rowMeans(count_matrix[, colnames(count_matrix) %in% cells])))
     names(means)[length(means)] <- pathology
   }
 
   # Save excel
-  write.xlsx(means, file = paste0(output_dir, "means_", name, ".xlsx" ))
-  message(paste0("results saved in: ",output_dir, "means_", name, ".xlsx"))
+  write.xlsx(means, file = paste0(output_dir, "means_", name, ".xlsx"))
+  message(paste0("results saved in: ", output_dir, "means_", name, ".xlsx"))
 }
   
 #### CLUSTERING ####
 
-# Performs clustering, selecting the number of dimensons to consider based on a threshold on the standard deviation, and the visualization, the results of the visualization are passed as parameters
-clustering <- function(seurat_object, reduction="pca", 
-                       dimensions=15, desired_resolution=0.6, save=FALSE, column_name="seurat_clusters"){
+#' Performs clustering, selecting the number of dimensons to consider based on a threshold on the standard deviation, and the visualization, the results of the visualization are passed as parameters
+#'
+#'
+#' This function performs clustering on a Seurat object using a specified dimensional reduction method 
+#' (e.g., PCA) and saves the clustering results in the object's metadata. The function also optionally saves 
+#' the Seurat object to a file.
+#'
+#' @param seurat_object A Seurat object containing the single-cell RNA-seq data.
+#' @param reduction A character string specifying the dimensional reduction method to use for clustering. 
+#'        Default is \code{"pca"}.
+#' @param dimensions An integer specifying the number of dimensions to use for clustering. 
+#'        Default is \code{15}.
+#' @param desired_resolution A numeric value specifying the resolution parameter for clustering. 
+#'        Higher values lead to more clusters. Default is \code{0.6}.
+#' @param save A logical value indicating whether to save the Seurat object after clustering. 
+#'        Default is \code{FALSE}.
+#' @param column_name A character string specifying the name of the metadata column to store the cluster 
+#'        assignments. Default is \code{"seurat_clusters"}.
+#'
+#' @return The Seurat object with updated clustering information in the metadata.
+#'
+#' @details This function first builds a nearest neighbor graph using the specified reduction method and 
+#' dimensions. It then performs clustering on the graph and saves the resulting cluster assignments 
+#' in the specified metadata column of the Seurat object. If the \code{column_name} is not 
+#' \code{"seurat_clusters"}, the default \code{"seurat_clusters"} column is removed from the metadata.
+#'
+#' @examples
+#' # Perform clustering using the first 20 principal components
+#' seurat_object <- clustering(seurat_object = my_seurat, reduction = "pca", 
+#'                             dimensions = 20, desired_resolution = 0.8)
+#'
+#' @export
+clustering <- function(seurat_object, reduction = "pca", 
+                       dimensions = 15, desired_resolution = 0.6, save = FALSE, column_name = "seurat_clusters") {
   
   # Message
   cat("Clustering.... \n")
@@ -633,7 +699,7 @@ clustering <- function(seurat_object, reduction="pca",
                  " - reduction used: ", reduction))
   
   # build the graph
-  seurat_object <- FindNeighbors(seurat_object, reduction = reduction, dims = 1:dimensions, verbose=FALSE)
+  seurat_object <- FindNeighbors(seurat_object, reduction = reduction, dims = 1:dimensions, verbose = FALSE)
   # graph.name assiged according to: https://github.com/satijalab/seurat/issues/2995
   
   # Message
@@ -643,8 +709,8 @@ clustering <- function(seurat_object, reduction="pca",
   
   # Compute the clusters
   seurat_object <- FindClusters(seurat_object, resolution = desired_resolution, 
-                                cluster.name=column_name, 
-                                graph.name = paste0(seurat_object[[reduction]]@assay.used, "_snn"), verbos=FALSE)
+                                cluster.name = column_name, 
+                                graph.name = paste0(seurat_object[[reduction]]@assay.used, "_snn"), verbose = FALSE)
   
   # Delete seurat_clusters column if created by mistake
   if (column_name != "seurat_clusters")  seurat_object$seurat_clusters <- NULL 
@@ -657,16 +723,56 @@ clustering <- function(seurat_object, reduction="pca",
 }
 
 # Visualization, given a reduction to use and the de1sired stdeviation to select the desired number of features 
-visualization_UMAP <- function(seurat_object, reduction_name="umap_",
-                                          reduction="pca", dimensions=16, 
-                                          cluster_column="seurat_clusters",
-                                          plots=NA, save=FALSE, 
-                                          run_UMAP=TRUE, name = "", 
-                                          message="results", extension_plot=".png",
-                                          daniela=FALSE){
+#' UMAP Visualization and Plotting for a Seurat Object
+#'
+#' This function generates UMAP visualizations for a Seurat object, creating and saving multiple plots 
+#' based on the specified parameters. It can also optionally run UMAP dimensionality reduction if required.
+#'
+#' @param seurat_object A Seurat object containing the single-cell RNA-seq data.
+#' @param reduction_name A character string specifying the name to save the UMAP reduction under. 
+#'        Default is \code{"umap_"}.
+#' @param reduction A character string specifying the dimensional reduction method to use as input for UMAP. 
+#'        Default is \code{"pca"}.
+#' @param dimensions An integer specifying the number of dimensions to use for UMAP. 
+#'        Default is \code{16}.
+#' @param cluster_column A character string specifying the column name in the Seurat object's metadata 
+#'        that contains the cluster assignments. Default is \code{"seurat_clusters"}.
+#' @param plots A character vector specifying the names of the plot files to save. 
+#'        If \code{NA}, default names will be generated based on the \code{name} and \code{extension_plot} parameters.
+#' @param save A logical value indicating whether to save the Seurat object after generating the plots. 
+#'        Default is \code{FALSE}.
+#' @param run_UMAP A logical value indicating whether to run UMAP before generating the plots. 
+#'        Default is \code{TRUE}.
+#' @param name A character string specifying the prefix for the plot names. 
+#'        Default is \code{""}.
+#' @param message A character string specifying a custom message to append to an information log. 
+#'        Default is \code{"results"}.
+#' @param extension_plot A character string specifying the file extension for the saved plots. 
+#'        Default is \code{".png"}.
+#'
+#' @return The Seurat object with the UMAP reduction added to it (if \code{run_UMAP} is \code{TRUE}).
+#'
+#' @details This function handles UMAP dimensionality reduction and generates several plots based on the specified 
+#' reduction. The plots can be customized and saved with different naming conventions. The \code{daniela} parameter 
+#' controls a specific set of plots, while the default generates a different set. If the UMAP has already been run, 
+#' \code{run_UMAP} can be set to \code{FALSE} to skip rerunning it.
+#'
+#' @examples
+#' # Generate UMAP plots and save them to files
+#' seurat_object <- visualization_UMAP(seurat_object = my_seurat, dimensions = 20, 
+#'                                     save = TRUE, name = "sample_umap")
+#'
+#' @export
+visualization_UMAP <- function(seurat_object, reduction_name = "umap_",
+                                          reduction = "pca", dimensions = 16, 
+                                          cluster_column = "seurat_clusters",
+                                          plots = NA, save = FALSE, 
+                                          run_UMAP = TRUE, name = "", 
+                                          message = "results", extension_plot = ".png",
+                                          daniela = FALSE) {
   
   # Setting plot names
-  if (is.na(name)) name = reduction_name
+  if (is.na(name)) name <- reduction_name
   if (is.na(plots)) {
     plots <- c(
       paste0(name, "_by_pathology", extension_plot),
@@ -693,20 +799,20 @@ visualization_UMAP <- function(seurat_object, reduction_name="umap_",
   
   # UMAP
   if (run_UMAP) seurat_object <- RunUMAP(seurat_object, dims = 1:dimensions, reduction = reduction, 
-                                         reduction.name = reduction_name, verbose=FALSE)
+                                         reduction.name = reduction_name, verbose = FALSE)
   
   # Visualisation
   # TODO: delete daniela or/ and add some other way of controlling plots
-  if (daniela){
+  if (daniela) {
     save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = "Condition"), paste0(output_dir, plots[1]))
-    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = cluster_column, label=TRUE),  paste0(output_dir, plots[2]))
-    save_plot(DimPlot(seurat_object, reduction = reduction_name, split.by = "Condition"), paste0(output_dir, plots[3]), x=14, y=7)
-    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = "Sample", label=TRUE), paste0(output_dir, plots[4]))
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = cluster_column, label = TRUE),  paste0(output_dir, plots[2]))
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, split.by = "Condition"), paste0(output_dir, plots[3]), x = 14, y = 7)
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = "Sample", label = TRUE), paste0(output_dir, plots[4]))
   } else {
     save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = "subject_pathology"), paste0(output_dir, plots[1]))
-    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = cluster_column, label=TRUE) + theme(legend.position="none"),  paste0(output_dir, plots[2]))
-    save_plot(DimPlot(seurat_object, reduction = reduction_name, split.by = "subject_pathology"), paste0(output_dir, plots[3]), x=14, y=7)
-    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = "subject", label=TRUE) + theme(legend.position="none"), paste0(output_dir, plots[4]))
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = cluster_column, label = TRUE) + theme(legend.position = "none"),  paste0(output_dir, plots[2]))
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, split.by = "subject_pathology"), paste0(output_dir, plots[3]), x = 14, y = 7)
+    save_plot(DimPlot(seurat_object, reduction = reduction_name, group.by = "subject", label = TRUE) + theme(legend.position = "none"), paste0(output_dir, plots[4]))
   }
   
   # Save the seurat object if requested
@@ -719,7 +825,7 @@ visualization_UMAP <- function(seurat_object, reduction_name="umap_",
 #### SEURAT OBJECTS MANIPULATION #####
 
 # Find the files that respect a pattern in a root directory and returns the info
-preparation_for_data_loading <- function(root, pattern, path_to_patient_info, source = "celescope"){
+preparation_for_data_loading <- function(root, pattern, path_to_patient_info, source = "celescope") {
   
   if (source == "celescope") {
     # location of files and creation of objects 
@@ -743,9 +849,35 @@ preparation_for_data_loading <- function(root, pattern, path_to_patient_info, so
   
 }
 
-# Loads seurat objects given paths to them, and path to a suject info data file to update te methadata
-seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info, save=FALSE,
-                                               normalization=FALSE, source = "celescope", ...){
+#' Prepare Data for Loading by Finding Matching Files
+#'
+#' This function searches for files in a root directory that match a specified pattern, 
+#' loads patient information, and returns the paths to the matching files along with the patient information.
+#'
+#' @param root A character string specifying the root directory where the search for files should be performed.
+#' @param pattern A character string specifying the pattern to match file names against.
+#' @param path_to_patient_info A character string specifying the path to the file containing patient information.
+#' @param source A character string specifying the source type. Options are \code{"celescope"} or \code{"textfile"}.
+#'        This determines how the matching files are identified. Default is \code{"celescope"}.
+#'
+#' @return A list containing two elements:
+#' \item{count_matrix_files}{A vector of file paths that match the specified pattern.}
+#' \item{subjects_info}{A data frame containing the loaded patient information.}
+#'
+#' @details The function first finds all files in the root directory that match the given pattern. It then loads 
+#' the patient information from the provided path. If the \code{source} is \code{"celescope"}, it verifies that 
+#' all file names are correctly matched with the patient information. The function returns a list with the file 
+#' paths and the patient information.
+#'
+#' @examples
+#' # Prepare data for loading from celescope source
+#' data_info <- preparation_for_data_loading(root = "/data/sequencing_results", 
+#'                                           pattern = "matrix.mtx.gz", 
+#'                                           path_to_patient_info = "/data/patient_info.csv")
+#'
+#' @export
+seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info, save = FALSE,
+                                               normalization = FALSE, source = "celescope", ...) {
 
 
   # Setting up output dir 
@@ -757,7 +889,7 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
     # https://github.com/satijalab/seurat/blob/master/R/visualization.R
 
     # Funzione che serve per recuperare i punti 
-    GetXYAesthetics <- function(plot, geom = 'GeomPoint', plot.first = TRUE) {
+    GetXYAesthetics <- function(plot, geom = "GeomPoint", plot.first = TRUE) {
       geoms <- sapply(
         X = plot$layers,
         FUN = function(layer) {
@@ -782,25 +914,25 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
         x <- as_label(x = plot$layers[[geoms]]$mapping$x %||% plot$mapping$x)
         y <- as_label(x = plot$layers[[geoms]]$mapping$y %||% plot$mapping$y)
       }
-      return(list('x' = x, 'y' = y))
+      return(list("x" = x, "y" = y))
     }
     xynames <- GetXYAesthetics(plot = plot)
     
     
-    label.data <- plot$data[points, ]
-    # label.data$labels <- labels
+    label_data <- plot$data[points, ]
+    # label_data$labels <- labels
     # Per fre gli scatter usano una funzione anche da loro definita che si chiama SingleCorPlot
     # secondo me dovrebe essere possibile ottenere lo stesso risultato semplicemente con geom scatter
 
     plot <- plot + geom_point( #https://ggplot2.tidyverse.org/reference/geom_point.html
       mapping = aes_string(x = xynames$x, y = xynames$y),
-      data = label.data,  
+      data = label_data,  
       colour = "blue")
     
     # da LabelPoints
     # plot <- plot + geom_text_repel(
     #  mapping = aes_string(x = xynames$x, y = xynames$y, label = 'labels'),
-    #  data = label.data)
+    #  data = label_data)
     
     return(plot)
   }
@@ -870,22 +1002,22 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
       return(seurat_object@meta.data)
     }
     
-    empty_drops <- function(seurat_object){
+    empty_drops <- function(seurat_object) {
       
-      e.out <- emptyDrops(counts(count_data), lower=100, test.ambient=TRUE)
+      e.out <- emptyDrops(counts(count_data), lower = 100, test.ambient = TRUE)
       
     }
     
     # Call functions for quality control
     cell_removal <- function(seurat_object, method = "DoubletFinder") {
       
-      if(method=="fixed_percentage") {
+      if (method == "fixed_percentage") {
         seurat_object <- subset(seurat_object, subset = nFeature_RNA < n_features)
       }
-      if(method=="fixed_value") {
+      if (method == "fixed_value") {
         seurat_object <- subset(seurat_object, subset = nFeature_RNA < n_features)
       }
-      if(method=="model_percentage") {
+      if (method == "model_percentage") {
         num_cells <- c(1000, 2000, 3000, 4000, 5000)
         doublet_rate <- c(0.008, 0.016, 0.023, 0.031, 0.039)
         linear_model <- lm(doublet_rate ~ num_cells)
@@ -893,7 +1025,7 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
         n_features <- quantile(df$column_name, probs = perc_doublet, na.rm = TRUE)
         seurat_object <- subset(seurat_object, subset = nFeature_RNA < n_features)
       }
-      if(method=="DoubletFinder") {
+      if (method == "DoubletFinder") {
         
         
         metadata_df <- doublet_finder(seurat_object)
@@ -901,14 +1033,14 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
         cells_to_keep <- rownames(
           metadata_df[
             metadata_df[
-              ,ncol(metadata_df)
-            ] == "Singlet",])
+              , ncol(metadata_df)
+            ] == "Singlet", ])
         
         cells_to_discard <- rownames(
           metadata_df[
             metadata_df[
-              ,ncol(metadata_df) # Takes last column
-            ] == "Doublet",]) # selects rownames when the value in the last column equals to doublet
+              , ncol(metadata_df) # Takes last column
+            ] == "Doublet", ]) # selects rownames when the value in the last column equals to doublet
         
         save_plot(
           plot_doublets(
@@ -917,10 +1049,10 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
               feature1 = "nCount_RNA", 
               feature2 = "percent.mt"), 
             points = cells_to_discard),           
-          plotname = paste0(output_dir,"scatter_doublets/", 
+          plotname = paste0(output_dir, "scatter_doublets/", 
                             object_name, 
                             "_features_scatter_mt_plot", extension_plot),
-          x=10, y=7)
+          x = 10, y = 7)
         
         save_plot(
           plot_doublets(
@@ -929,10 +1061,10 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
               feature1 = "nCount_RNA", 
               feature2 = "nFeature_RNA"), 
             points = cells_to_discard),           
-          plotname = paste0(output_dir,"scatter_doublets/", 
+          plotname = paste0(output_dir, "scatter_doublets/", 
                             object_name, 
                             "_features_scatter_plot", extension_plot),
-          x=10, y=7)
+          x = 10, y = 7)
         
         seurat_object <- subset(seurat_object, cells = cells_to_keep)
       }
@@ -957,7 +1089,7 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
                              feature2 = "percent.mt") +
                 FeatureScatter(seurat_object, feature1 = "nCount_RNA", 
                                feature2 = "nFeature_RNA"),
-              paste0(output_dir, object_name, "_features_scatter_plot", extension_plot), x=10, y=7)
+              paste0(output_dir, object_name, "_features_scatter_plot", extension_plot), x = 10, y = 7)
     
     # Violin plot
     save_plot(VlnPlot(seurat_object, 
@@ -992,8 +1124,28 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
   return(seurat_objects)
 }
 
-# Starting from a list of seurat objects merges them without any further processing
-merge_seurat_objects <- function(seurat_objects, subjects_info, save=FALSE){
+#' Merge a List of Seurat Objects
+#'
+#' This function merges a list of Seurat objects into a single Seurat object without performing any additional processing.
+#'
+#' @param seurat_objects A list of Seurat objects to be merged.
+#' @param subjects_info A character vector containing the identifiers for each Seurat object, used to label the cells in the merged object.
+#' @param save A logical value indicating whether to save the merged Seurat object to a file. 
+#'        Default is \code{FALSE}.
+#'
+#' @return A single merged Seurat object containing the combined data from the input list of Seurat objects.
+#'
+#' @details The function merges multiple Seurat objects provided in the \code{seurat_objects} list into a single Seurat object. 
+#' The \code{subjects_info} vector is used to assign unique cell identifiers corresponding to each Seurat object. 
+#' If \code{save} is \code{TRUE}, the merged Seurat object is saved to a file named \code{"after_merging.rds"} in the output folder.
+#'
+#' @examples
+#' # Merge a list of Seurat objects without saving the result
+#' merged_object <- merge_seurat_objects(seurat_objects = list(seurat_obj1, seurat_obj2), 
+#'                                       subjects_info = c("Subject1", "Subject2"))
+#'
+#' @export
+merge_seurat_objects <- function(seurat_objects, subjects_info, save = FALSE) {
   
   # merge seurat objects
   cat("Merging seurat objects... \n")
@@ -1009,7 +1161,30 @@ merge_seurat_objects <- function(seurat_objects, subjects_info, save=FALSE){
 }
 
 # To create metadata according to the object information
-create_metadata <- function(seurat_object, option = 1, save=TRUE){
+#' Create and Update Metadata for a Seurat Object
+#'
+#' This function creates new metadata columns for a Seurat object by extracting information from 
+#' the sample identifiers. It can also save the updated Seurat object to a file.
+#'
+#' @param seurat_object A Seurat object containing the single-cell RNA-seq data.
+#' @param option An integer specifying the option for metadata creation. 
+#'        Currently, only \code{option = 1} is implemented. Default is \code{1}.
+#' @param save A logical value indicating whether to save the updated Seurat object to a file. 
+#'        Default is \code{TRUE}.
+#'
+#' @return The Seurat object with updated metadata, including new columns for \code{subject} and \code{barcode}.
+#'
+#' @details The function extracts the \code{subject} and \code{barcode} information from the row names of the 
+#' Seurat object's metadata, which are assumed to follow a specific naming convention with values separated by 
+#' underscores. It then adds these as new columns in the metadata. If \code{save} is \code{TRUE}, 
+#' the updated Seurat object is saved to a file named \code{"after_loading.rds"} in the output folder.
+#'
+#' @examples
+#' # Create metadata for a Seurat object and save the updated object
+#' seurat_obj <- create_metadata(seurat_object = my_seurat)
+#'
+#' @export
+create_metadata <- function(seurat_object, option = 1, save = TRUE) {
   # TODO: make the column have factors
   
   # Message
@@ -1036,14 +1211,43 @@ create_metadata <- function(seurat_object, option = 1, save=TRUE){
   return(seurat_object)
 }
 
-# To subset seurat object
-create_object_from_cluster_id <- function(seurat_object, clusters, assay="RNA", clusters_column="seurat_clusters", 
-                                          save=FALSE, filename ="subset_of_object.rds", new_idents=NA, 
-                                          variable_features=FALSE) {
+#' Subset a Seurat Object Based on Cluster IDs
+#'
+#' This function subsets a Seurat object based on specified cluster IDs, and optionally saves the subsetted object to a file.
+#'
+#' @param seurat_object A Seurat object containing the single-cell RNA-seq data.
+#' @param clusters A vector specifying the cluster IDs to subset from the Seurat object.
+#' @param assay A character string specifying the assay to use. Default is \code{"RNA"}.
+#' @param clusters_column A character string specifying the column in the Seurat object's metadata that contains 
+#'        the cluster assignments. Default is \code{"seurat_clusters"}.
+#' @param save A logical value indicating whether to save the subsetted Seurat object to a file. 
+#'        Default is \code{FALSE}.
+#' @param filename A character string specifying the name of the file to save the subsetted Seurat object. 
+#'        Default is \code{"subset_of_object.rds"}.
+#' @param new_idents A character string specifying the new identity class for the cells. 
+#'        If \code{NA}, the function will retain the original \code{"seurat_clusters"} identities. Default is \code{NA}.
+#' @param variable_features A logical value indicating whether to find and select variable features in the subsetted object. 
+#'        Default is \code{FALSE}.
+#'
+#' @return The subsetted Seurat object.
+#'
+#' @details The function subsets the input Seurat object based on the specified cluster IDs. 
+#' If \code{variable_features} is \code{TRUE}, it identifies the top 2000 variable features in the subset. 
+#' The subsetted object can be saved to a file if \code{save} is \code{TRUE}. The function also ensures that 
+#' necessary packages are installed before proceeding.
+#'
+#' @examples
+#' # Subset a Seurat object by clusters 1 and 2, and save the result
+#' subset_obj <- create_object_from_cluster_id(seurat_object = my_seurat, clusters = c(1, 2), save = TRUE)
+#'
+#' @export
+create_object_from_cluster_id <- function(seurat_object, clusters, assay = "RNA", clusters_column = "seurat_clusters", 
+                                          save = FALSE, filename = "subset_of_object.rds", new_idents = NA, 
+                                          variable_features = FALSE) {
   
   # Check arguments
-  if(!is.vector(clusters)) stop("clusters must be a vector")
-  if(is.na(new_idents)) new_idents = "seurat_clusters"
+  if (!is.vector(clusters)) stop("clusters must be a vector")
+  if (is.na(new_idents)) new_idents <- "seurat_clusters"
   
   # Install packages
   check_packages(c("readxl", "dplyr", "Seurat", "purrr", "openxlsx", "Matrix", "ggplot2"))
@@ -1066,11 +1270,11 @@ create_object_from_cluster_id <- function(seurat_object, clusters, assay="RNA", 
 plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "numberofcell_pie_chart", 
                                                      "numberofcell_barplot_subject", "numberofcell_pie_chart_subject",
                                                      "numberofcell_pie_chart_cluster_subject", "numberofcell_pie_chart_cluster_pathology"), 
-                            genes_to_plot=c(""), cluster_column ="microglia_clusters", extension_plot=".png", name ="", assay = "RNA") {
+                            genes_to_plot = c(""), cluster_column = "microglia_clusters", extension_plot = ".png", name = "", assay = "RNA") {
   
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "plots_misc_", name, "/"), message)
-  
+  browser()
   # update_text_file(output_dir, message)
   if (!dir.exists(output_dir)) dir.create(output_dir)
   
@@ -1109,11 +1313,11 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
     # Etract cell type
     cell_types <- unique(seurat_object@meta.data[[cluster_column]])
     names(cell_types) <- cell_types
-    level_counts <- lapply(cell_types, function(x){
+    level_counts <- lapply(cell_types, function(x) {
       
-      counts <- lapply(subjects, function(y){
+      counts <- lapply(subjects, function(y) {
         
-        subject_counts <- nrow(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == x & seurat_object@meta.data$subject == y,])
+        subject_counts <- nrow(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == x & seurat_object@meta.data$subject == y, ])
         
         return(subject_counts)
       }) 
@@ -1144,7 +1348,7 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
   # Cluster on legend, data from one subject
   if ("numberofcell_pie_chart_subject" %in% which) pie_function("subject", "subject", cluster_column)
   # Subject on legend, data from one cluster
-  if ("numberofcell_pie_chart_cluster_subject" %in% which) pie_function("cluster_subject", cluster_column,"subject")
+  if ("numberofcell_pie_chart_cluster_subject" %in% which) pie_function("cluster_subject", cluster_column, "subject")
   # Pathology on legend, data from one cluster
   if ("numberofcell_pie_chart_cluster_pathology" %in% which) pie_function("cluster_subject_pathology", cluster_column, "subject_pathology")
 
@@ -1152,17 +1356,23 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
   # Feature plots (to add)
   if ("feature_plot" %in% which) {
     
-    # Create a list to store individual FeaturePlots
-    plot_list <- list()
-    
-    # Create FeaturePlots for each gene
-    for (gene in genes_to_plot) {
-      plot <- FeaturePlot(seurat_obj, features = gene, pt.size = 0.5, cols = "#0026ff")
-      plot_list[[gene]] <- plot
-    }
-    save_plot(CombinePlots(plots = plot_list, ncol = 2), paste0(output_dir, "featureplot", extension_plot))
-    
+    genes <- genes_to_plot %in% Features(seurat_object[["RNA"]])
+
+    purrr::walk(seq(1, length(genes_to_plot), by = 9), function(gene) {
+       save_plot(
+        FeaturePlot(seurat_object, 
+          features = genes_to_plot[gene:ifelse(gene + 9 < length(genes_to_plot), gene + 9, length(genes_to_plot))], 
+          pt.size = 0.5, 
+          cols = c("lightgrey", "#0026ff")), 
+        paste0(output_dir, "feature_plots_genes_", 
+          gene, ifelse(gene + 9 < length(genes_to_plot), gene + 9, length(genes_to_plot)), 
+          extension_plot
+          ),
+        x = 10, y = 10
+        )
+    })
   }
+  #
   # Pie charts deprecated
   if (FALSE) {
     if ("numberofcell_pie_chart" %in% which) {
@@ -1273,25 +1483,32 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
       if (
         !(gene %in% rownames(seurat_object@assays[[assay]]$data)) 
         &&
-        rowSums(t(seurat_object@assays[[assay]]$data[gene,])) == 0
+        rowSums(t(seurat_object@assays[[assay]]$data[gene, ])) == 0
       ) 
         next
       
       # Iterate thrugh the pathologies to count how much that gene appears in each pathology
       # cant be an abs value because number o subjects for each path is different, it must be avg
       # problem: there are a lot fo nonzero elemtns, the mean does not work, the um does not work what can I use, if i can even use something)
-      for (pathology in seurat_object@meta.data$subject_pathology) {
-        
-        # Calculate the frequency of each level (... on legend)
-        gene_counts <- mean(seurat_object@assays[[assay]]$data[ 
+      gene_count <- lapply(seurat_object@meta.data$subject_pathology, function(pathology) {
+        browser()
+        counts <- mean(seurat_object@assays[[assay]]$data[ 
           gene, # rownames -> genes
-          rownames(seurat_object@meta.data[seurat_object@meta.data$subject_pathology == pathology,]) # columnames -> cells
+          rownames(seurat_object@meta.data[seurat_object@meta.data$subject_pathology == pathology, ]) # columnames -> cells
         ])
-      }
+      })
+
+      # for (pathology in seurat_object@meta.data$subject_pathology) {
+      #   # Calculate the frequency of each level (... on legend)
+      #   gene_counts <- mean(seurat_object@assays[[assay]]$data[ 
+      #     gene, # rownames -> genes
+      #     rownames(seurat_object@meta.data[seurat_object@meta.data$subject_pathology == pathology, ]) # columnames -> cells
+      #   ])
+      # }
       
       # Create a data frame for ggplot
-      pie_data <- data.frame(Level = names(level_counts),
-                             Frequency = as.vector(level_counts))
+      pie_data <- data.frame(Level = names(gene_count),
+                             Frequency = as.vector(gene_count))
       
       # Create the cake plot
       save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
@@ -1339,11 +1556,11 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
     # Etract cell type
     cell_types <- unique(seurat_object@meta.data[[cluster_column]])
     names(cell_types) <- cell_types
-    level_counts <- lapply(cell_types, function(x){
+    level_counts <- lapply(cell_types, function(x) {
       
-      counts <- lapply(pathologies, function(y){
+      counts <- lapply(pathologies, function(y) {
 
-        pathology_counts <- nrow(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == x & seurat_object@meta.data$subject_pathology == y,])
+        pathology_counts <- nrow(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == x & seurat_object@meta.data$subject_pathology == y, ])
         
         return(pathology_counts)
       }) 
@@ -1381,11 +1598,11 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
     # Etract cell type
     cell_types <- unique(seurat_object@meta.data[[cluster_column]])
     names(cell_types) <- cell_types
-    level_counts <- lapply(cell_types, function(x){
+    level_counts <- lapply(cell_types, function(x) {
       
-      counts <- lapply(subjects, function(y){
+      counts <- lapply(subjects, function(y) {
         
-        subject_counts <- nrow(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == x & seurat_object@meta.data$subject == y,])
+        subject_counts <- nrow(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == x & seurat_object@meta.data$subject == y, ])
         
         return(subject_counts)
       }) 
@@ -1420,15 +1637,51 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
 #### PCA and INTEGRATION ####
 
 # Standard preprocessing pipeline (normalize, feature selection variable features, scale data)
-normalization_and_scaling <- function(seurat_object, save=FALSE, vf_plot=TRUE, normalization=TRUE,
-                                       variable_features=TRUE, scaling=TRUE, check.for.norm=TRUE){
+#' Preprocess a Seurat Object: Normalization, Variable Feature Selection, and Scaling
+#'
+#' This function performs a standard preprocessing pipeline on a Seurat object or a list of Seurat objects. 
+#' The pipeline includes data normalization, variable feature selection, and data scaling. Optionally, it can save 
+#' the processed Seurat object and generate a plot of variable features.
+#'
+#' @param seurat_object A Seurat object or a list of Seurat objects to be preprocessed.
+#' @param save A logical value indicating whether to save the processed Seurat object(s) to a file. 
+#'        Default is \code{FALSE}.
+#' @param vf_plot A logical value indicating whether to generate and save a plot of the top variable features. 
+#'        Default is \code{TRUE}.
+#' @param normalization A logical value indicating whether to perform data normalization. 
+#'        Default is \code{TRUE}.
+#' @param variable_features A logical value indicating whether to perform variable feature selection. 
+#'        Default is \code{TRUE}.
+#' @param scaling A logical value indicating whether to perform data scaling. 
+#'        Default is \code{TRUE}.
+#' @param check_for_norm A logical value indicating whether to check for normalization when scaling the data. 
+#'        Default is \code{TRUE}.
+#'
+#' @return The processed Seurat object or list of Seurat objects.
+#'
+#' @details This function applies a series of preprocessing steps to a Seurat object or a list of Seurat objects. 
+#' For a single object, the steps include normalization, selection of the top 2000 variable features, and scaling 
+#' the data. For a list of objects, normalization and variable feature selection are applied to each object in the list.
+#' If \code{vf_plot} is \code{TRUE}, a plot of the top variable features is saved. The processed object(s) can also 
+#' be saved to a file if \code{save} is \code{TRUE}.
+#'
+#' @examples
+#' # Preprocess a single Seurat object
+#' processed_obj <- normalization_and_scaling(seurat_object = my_seurat, save = TRUE)
+#'
+#' # Preprocess a list of Seurat objects
+#' processed_list <- normalization_and_scaling(seurat_object = list(seurat_obj1, seurat_obj2), save = FALSE)
+#'
+#' @export
+normalization_and_scaling <- function(seurat_object, save = FALSE, vf_plot = TRUE, normalization = TRUE,
+                                       variable_features = TRUE, scaling = TRUE, check_for_norm = TRUE) {
   
   # TODO: rendere questa funzione generic?
   # If the input is a list of objects and not a single object
-  if (is.list(seurat_object)){
+  if (is.list(seurat_object)) {
     cat("Runing preprocessing on list, normalization and variable features... \n")
 
-    for (i in 1:length(seurat_object)){
+    for (i in seq_along(length(seurat_object))){
       
       # normalization, feature selection and scaling
       seurat_object[[i]] <- NormalizeData(seurat_object[[i]])
@@ -1436,8 +1689,7 @@ normalization_and_scaling <- function(seurat_object, save=FALSE, vf_plot=TRUE, n
                                                  nfeatures = 2000, verbose = FALSE)
       
     }
-    return (seurat_object)
-    
+    return(seurat_object)
   } 
   
   # If it is a single object
@@ -1456,10 +1708,10 @@ normalization_and_scaling <- function(seurat_object, save=FALSE, vf_plot=TRUE, n
     if (variable_features) seurat_object <- FindVariableFeatures(seurat_object, selection.method  = "vst", 
                                                                  nfeatures = 2000, verbose = FALSE)
 
-    if (!check.for.norm) LayerData(seurat_object, assay= "counts", layer = 'data') <-  
-        GetAssayData(object = seurat_object, assay="counts", layer = 'counts')
+    if (!check_for_norm) LayerData(seurat_object, assay = "counts", layer = "data") <-  
+        GetAssayData(object = seurat_object, assay = "counts", layer = "counts")
     
-    if (scaling) seurat_object <- ScaleData(seurat_object)#, check.for.norm=check.for.norm)
+    if (scaling) seurat_object <- ScaleData(seurat_object)#, check_for_norm=check_for_norm)
     
     if (vf_plot) save_plot(LabelPoints(VariableFeaturePlot(seurat_object),
                                     points = head(VariableFeatures(seurat_object)),
@@ -1475,7 +1727,37 @@ normalization_and_scaling <- function(seurat_object, save=FALSE, vf_plot=TRUE, n
 }
 
 # Runs pca and elbow plot if needed
-run_pca <- function(seurat_object, plot=FALSE, save=FALSE, assay="default", reduction_name="pca", extension_plot=".png"){
+#' Run PCA on a Seurat Object and Generate Elbow Plot
+#'
+#' This function performs Principal Component Analysis (PCA) on a Seurat object and optionally generates 
+#' an elbow plot to help determine the number of significant principal components. The processed Seurat object 
+#' can also be saved to a file.
+#'
+#' @param seurat_object A Seurat object containing the single-cell RNA-seq data.
+#' @param plot A logical value indicating whether to generate and save an elbow plot. 
+#'        Default is \code{FALSE}.
+#' @param save A logical value indicating whether to save the Seurat object after running PCA. 
+#'        Default is \code{FALSE}.
+#' @param assay A character string specifying which assay to use for PCA. If \code{"default"}, the default assay is used. 
+#'        Default is \code{"default"}.
+#' @param reduction_name A character string specifying the name to assign to the PCA reduction. 
+#'        Default is \code{"pca"}.
+#' @param extension_plot A character string specifying the file extension for saving the elbow plot. 
+#'        Default is \code{".png"}.
+#'
+#' @return The Seurat object with PCA results added.
+#'
+#' @details This function runs PCA on the specified Seurat object using either the default or specified assay. 
+#' The PCA results are stored in the Seurat object under the name given by \code{reduction_name}. 
+#' If \code{plot} is \code{TRUE}, an elbow plot is generated and saved. If \code{save} is \code{TRUE}, the updated 
+#' Seurat object is saved to a file named \code{"after_pca.rds"} in the output folder.
+#'
+#' @examples
+#' # Run PCA and save the Seurat object
+#' seurat_obj <- run_pca(seurat_object = my_seurat, plot = TRUE, save = TRUE)
+#'
+#' @export
+run_pca <- function(seurat_object, plot = FALSE, save = FALSE, assay = "default", reduction_name = "pca", extension_plot = ".png") {
   
   # Parameters
   cat("Running PCA... \n")
@@ -1485,22 +1767,55 @@ run_pca <- function(seurat_object, plot=FALSE, save=FALSE, assay="default", redu
                " - save: ", save))
   
   # Run PCA
-  if (assay == "default") seurat_object <- RunPCA(seurat_object, reduction.name=reduction_name, 
-                                                  reduction.key=reduction_name, verbose=TRUE)
-  else  seurat_object <- RunPCA(seurat_object, assay=assay, reduction.name=reduction_name, 
-                            reduction.key=reduction_name)
+  if (assay == "default") seurat_object <- RunPCA(seurat_object, reduction.name = reduction_name, 
+                                                  reduction.key = reduction_name, verbose = TRUE)
+  else  seurat_object <- RunPCA(seurat_object, assay = assay, reduction.name = reduction_name, 
+                            reduction.key = reduction_name)
   
   # Save plots and object
   if (plot) save_plot(ElbowPlot(seurat_object), paste0(output_folder, "elbow_plot_", assay, "_", reduction_name, extension_plot))
   if (save) saveRDS(seurat_object, file = paste0(output_folder, "after_pca.rds"))
   
-  return (seurat_object)
+  return(seurat_object)
 }
 
 # Layer integration using seurat
-layer_integration <- function(seurat_object, save=FALSE, assay="RNA",
+#' Integrate Layers of a Seurat Object Using Various Methods
+#'
+#' This function performs integration of layers within a Seurat object using various integration methods, 
+#' such as Harmony, CCA, and PCA-based approaches. It can handle both single Seurat objects and lists of Seurat objects.
+#'
+#' @param seurat_object A Seurat object or a list of Seurat objects to be integrated.
+#' @param save A logical value indicating whether to save the integrated Seurat object to a file. 
+#'        Default is \code{FALSE}.
+#' @param assay A character string specifying the assay to use for integration. Default is \code{"RNA"}.
+#' @param new_reduction A character string specifying the name of the new reduction to add after integration. 
+#'        Default is \code{"integrated.harmony"}.
+#' @param reduction_method A character string specifying the method for integration. Options include \code{"harmony"},
+#'        \code{"harmony_seurat"}, \code{"cca"}, \code{"jpca"}, and \code{"rpca"}. Default is \code{"harmony"}.
+#' @param make_default A logical value indicating whether to make the new reduction the default reduction. 
+#'        Default is \code{FALSE}.
+#' @param orig_reduction A character string specifying the original reduction to use for integration. Default is \code{"pca"}.
+#' @param new_assay A character string specifying a new assay to use. If \code{NA}, the original assay is used. Default is \code{NA}.
+#'
+#' @return The Seurat object with integrated layers.
+#'
+#' @details This function integrates layers of a Seurat object using the specified method. For a list of Seurat objects, 
+#' integration is performed using \code{FindIntegrationAnchors} and \code{IntegrateData}. For a single Seurat object, 
+#' integration is performed using one of the specified methods. The integrated layers are joined, and the updated 
+#' Seurat object is returned. The function can also save the integrated Seurat object to a file if \code{save} is \code{TRUE}.
+#'
+#' @examples
+#' # Integrate layers using Harmony method and save the object
+#' integrated_obj <- layer_integration(seurat_object = my_seurat, reduction_method = "harmony", save = TRUE)
+#'
+#' # Integrate a list of Seurat objects
+#' integrated_list <- layer_integration(seurat_object = list(seurat_obj1, seurat_obj2), reduction_method = "cca")
+#'
+#' @export
+layer_integration <- function(seurat_object, save = FALSE, assay = "RNA",
                               new_reduction = "integrated.harmony", reduction_method = "harmony",
-                              make_default=FALSE,  orig_reduction = "pca", new_assay=NA) {
+                              make_default = FALSE,  orig_reduction = "pca", new_assay = NA) {
   
   # Messages
   cat("Integrating layers...\n")
@@ -1515,41 +1830,41 @@ layer_integration <- function(seurat_object, save=FALSE, assay="RNA",
   if (is.na(new_assay)) new_assay <- assay
   
   # If the input is a list, then the object are merged with integratedata
-  if (is.list(seurat_object)){
+  if (is.list(seurat_object)) {
     cat("Runing integration on a list, normalization and variable features\n")
     
     anchors <- FindIntegrationAnchors(object.list = seurat_object)
-    seurat_object <- IntegrateData(anchorset = anchors, normalization.method = "LogNormalize",)
+    seurat_object <- IntegrateData(anchorset = anchors, normalization.method = "LogNormalize", )
     
     return(seurat_object)
   }
   
   # perform layer integration with selected method
-  if (reduction_method =="harmony_seurat") {
+  if (reduction_method == "harmony_seurat") {
     seurat_object  <- IntegrateLayers(
       object = seurat_object, method = HarmonyIntegration,
       orig.reduction = orig_reduction, new.reduction = new_reduction,
       verbose = TRUE
     )
-  } else if (reduction_method =="cca") {
+  } else if (reduction_method == "cca") {
     seurat_object  <- IntegrateLayers(
-      object = seurat_object , method = CCAIntegration,
+      object = seurat_object, method = CCAIntegration,
       orig.reduction = orig_reduction, new.reduction = new_reduction,
       verbose = FALSE
     )
-  } else if (reduction_method =="jpca") {
+  } else if (reduction_method == "jpca") {
     seurat_object  <- IntegrateLayers(
-      object = seurat_object , method = JointPCAIntegration,
+      object = seurat_object, method = JointPCAIntegration,
       orig.reduction = orig_reduction, new.reduction = new_reduction,
       verbose = FALSE
     )
-  } else if (reduction_method =="rpca") {
+  } else if (reduction_method == "rpca") {
     seurat_object  <- IntegrateLayers(
-      object = seurat_object , method = RPCAIntegration,
+      object = seurat_object, method = RPCAIntegration,
       orig.reduction = orig_reduction, new.reduction = new_reduction,
       verbose = FALSE
     )
-  }  else if (reduction_method =="harmony") {
+  }  else if (reduction_method == "harmony") {
     check_packages("harmony")
     seurat_object <- RunHarmony(seurat_object, 
                                 group.by.vars = c("subject"), 
@@ -1616,17 +1931,17 @@ scType_annotation <- function(seurat_object,
     message("scType: data prepared")
     
     # Run scType
-    es.max <- sctype_score(scRNAseqData = seurat_object[[assay]]$scale.data, 
+    es_max <- sctype_score(scRNAseqData = seurat_object[[assay]]$scale.data, 
                            scaled = TRUE, 
                            gs = gs_list$gs_positive, 
                            gs2 = gs_list$gs_negative)
     
     # Merge by cluster
-    cL_results <- do.call("rbind", lapply(unique(seurat_object@meta.data[[clusters_column]]), function(cl) {
-        es.max.cl <- sort(rowSums(es.max[, rownames(seurat_object@meta.data[seurat_object@meta.data[[clusters_column]] == cl, ])]), decreasing = TRUE)
-        head(data.frame(cluster = cl, type = names(es.max.cl), scores = es.max.cl, ncells = sum(seurat_object@meta.data[[clusters_column]] == cl)), 10)
+    cl_results <- do.call("rbind", lapply(unique(seurat_object@meta.data[[clusters_column]]), function(cl) {
+        es_max_cl <- sort(rowSums(es_max[, rownames(seurat_object@meta.data[seurat_object@meta.data[[clusters_column]] == cl, ])]), decreasing = TRUE)
+        head(data.frame(cluster = cl, type = names(es_max_cl), scores = es_max_cl, ncells = sum(seurat_object@meta.data[[clusters_column]] == cl)), 10)
     }))
-    sctype_scores <- cL_results %>% group_by(cluster) %>% top_n(n = 1, wt = scores)
+    sctype_scores <- cl_results %>% group_by(cluster) %>% top_n(n = 1, wt = scores)
     
     # Set low-confident (low ScType score) clusters to "unknown"
     sctype_scores$type[as.numeric(as.character(sctype_scores$scores)) < sctype_scores$ncells / 6] <- "Unknown"
@@ -1655,79 +1970,9 @@ scType_annotation <- function(seurat_object,
     return(seurat_object)
 }
 
-# For scType annotation 
-scType_annotation_old <- function(seurat_object, assay="RNA", assignment_name="annotation_scType",
-                              reduction_name="umap_harmony", clusters_column="seurat_clusters", name ="") {
-  # Message
-  cat("Running scType annotation...\n")
-  message(paste0("Parameters: assay: ", assay,
-                 " - assignment_name: ", assignment_name, 
-                 " - reduction_name: ", reduction_name,
-                 " - clusters_column: ", clusters_column))
-  
-  # Dependencies
-  check_packages(c("dplyr", "Seurat", "HGNChelper", "pbapply", "openxlsx"))
-  
-  # Create directory
-  output_dir <- paste0(output_folder, "annotation_scType/")
-  if (!dir.exists(output_dir)) dir.create(output_dir)
-  
-  
-  # Load gene set preparation function
-  source("https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/R/gene_sets_prepare.R")
-  # Load cell type annotation function
-  source("https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/R/sctype_score_.R")
-  
-  # DB file
-  db_ = "https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/ScTypeDB_full.xlsx";
-  tissue = "Brain" # e.g. Immune system,Pancreas,Liver,Eye,Kidney,Brain,Lung,Adrenal,Heart,Intestine,Muscle,Placenta,Spleen,Stomach,Thymus 
-  
-  # Prepare gene sets
-  gs_list = gene_sets_prepare(db_, tissue)
-  message("scType: data prepared")
-  
-  # Run scType
-  es.max <-  sctype_score(scRNAseqData = seurat_object[[assay]]$scale.data, scaled = TRUE, 
-                          gs = gs_list$gs_positive, gs2 = gs_list$gs_negative)
-  
-  # Merge by cluster
-  cL_resutls <-  do.call("rbind", lapply(unique(seurat_object@meta.data[[clusters_column]]), function(cl){
-    es.max.cl <-  sort(rowSums(es.max[, rownames(seurat_object@meta.data[seurat_object@meta.data[[clusters_column]]==cl, ])]), decreasing = !0)
-    head(data.frame(cluster = cl, type = names(es.max.cl), scores = es.max.cl, ncells = sum(seurat_object@meta.data[[clusters_column]]==cl)), 10)
-  }))
-  sctype_scores <-  cL_resutls %>% group_by(cluster) %>% top_n(n = 1, wt = scores)  
-  
-  # set low-confident (low ScType score) clusters to "unknown"
-  sctype_scores$type[as.numeric(as.character(sctype_scores$scores)) < sctype_scores$ncells/6] = "Unknown"
-  
-  # Save results in table
-  write.xlsx(sctype_scores, paste0(output_dir, name, "results.xlsx"), sheetName = "results", append=TRUE)
-  message(paste0("scType: annotation results saved in: ", output_dir))
-  
-  # Subset annotation results
-  cluster_mapping <- as.data.frame(sctype_scores[c("cluster", "type")])
-
-  # Copy metadata column
-  metadata_assignments <- seurat_object@meta.data[[clusters_column]]
-  
-  # Update metadata column and add again to the seurat object
-  matching_rows <- match(metadata_assignments, cluster_mapping[["cluster"]])
-  metadata_assignments <- cluster_mapping[["type"]][matching_rows]
-  seurat_object <- AddMetaData(
-    object = seurat_object,
-    metadata = metadata_assignments,
-    col.name = assignment_name
-  )
-  
-  message("scType: metadata udated")
-  
-  return(seurat_object)
-}
-
-
 # Correct an annotation. changing specific values of a column
 correct_annotation <- function(seurat_object, to_correct, annotation_column, 
-                               new_annotation_column=NA, cluster_column="seurat_clusters") {
+                               new_annotation_column = NA, cluster_column = "seurat_clusters") {
 
   # if new name not given create it by adding corrected to the annotation column
   if (is.na(new_annotation_column)) new_annotation_column <- paste0(annotation_column, "_corrected")
@@ -1751,8 +1996,34 @@ correct_annotation <- function(seurat_object, to_correct, annotation_column,
 
 #### OTHER ####
 
-# Perform trajectory analysis using monocle 3
-trajectory_analysis <- function(seurat_object, extension_plot=".png", name="test") {
+#' Perform Trajectory Analysis Using Monocle 3
+#'
+#' This function performs trajectory analysis on a Seurat object using the Monocle 3 package. It sets up the necessary environment,
+#' converts the Seurat object to a Monocle CellDataSet object, performs clustering, and computes and visualizes the trajectory of cells.
+#'
+#' @param seurat_object A Seurat object containing the single-cell RNA-seq data. This object is converted to a Monocle CellDataSet for trajectory analysis.
+#' @param extension_plot A character string specifying the file extension for saving the plots. Default is \code{".png"}.
+#' @param name A character string specifying a name prefix for the output files. Default is \code{"test"}.
+#'
+#' @details
+#' This function installs and loads necessary packages, including Monocle 3, and performs the following steps:
+#' \itemize{
+#'   \item Sets up the output directory for saving results.
+#'   \item Converts the Seurat object to a Monocle CellDataSet object.
+#'   \item Preprocesses the data by adding PCA and UMAP embeddings.
+#'   \item Performs clustering on the cells.
+#'   \item Computes the trajectory graph and orders the cells based on pseudotime.
+#'   \item Saves plots of the clustering results and trajectory analysis.
+#' }
+#'
+#' The function requires the installation of Monocle 3 and other dependencies, and uses functions from the SeuratWrappers package for conversion.
+#'
+#' @examples
+#' # Perform trajectory analysis on a Seurat object and save the results
+#' trajectory_analysis(seurat_object = my_seurat, extension_plot = ".png", name = "sample")
+#'
+#' @export
+trajectory_analysis <- function(seurat_object, extension_plot = ".png", name = "test") {
   
   # Messages 
   cat("Performing trajectory analysis with monocle... \n")
@@ -1760,12 +2031,12 @@ trajectory_analysis <- function(seurat_object, extension_plot=".png", name="test
                  " - extension_plot: ", extension_plot))
   
   # Dependencies
-  check_packages(c('BiocGenerics', 'DelayedArray', 'DelayedMatrixStats',
-                       'limma', 'lme4', 'S4Vectors', 'SingleCellExperiment',
-                       'SummarizedExperiment', 'batchelor', 'HDF5Array',
-                       'terra', 'ggrastr', 'devtools'))
+  check_packages(c("BiocGenerics", "DelayedArray", "DelayedMatrixStats",
+                       "limma", "lme4", "S4Vectors", "SingleCellExperiment",
+                       "SummarizedExperiment", "batchelor", "HDF5Array",
+                       "terra", "ggrastr", "devtools"))
   # Monocle
-  devtools::install_github('cole-trapnell-lab/monocle3')
+  devtools::install_github("cole-trapnell-lab/monocle3")
   library(monocle3)
   
 
@@ -1773,11 +2044,11 @@ trajectory_analysis <- function(seurat_object, extension_plot=".png", name="test
   output_dir <- set_up_output(paste0(output_folder, "monocle", name, "/"))
   
   # Other dependencies
-  check_packages(c('ggplot2', 'dplyr'))
+  check_packages(c("ggplot2", "dplyr"))
   
   # Seuart wraper 
-  # devtools::install_github('satijalab/seurat-wrappers')
-  remotes::install_github('satijalab/seurat-wrappers@community-vignette')
+  # devtools::install_github("satijalab/seurat-wrappers")
+  remotes::install_github("satijalab/seurat-wrappers@community-vignette")
   
   # Automatic object creation
   # cds <- SeuratWrappers::as.cell_data_set(seurat_object)
@@ -1809,17 +2080,17 @@ trajectory_analysis <- function(seurat_object, extension_plot=".png", name="test
             paste0(output_dir, "pseudotime", extension_plot))
 }
 
-cellchat_function <- function(seurat_object, cluster_column="microglia_clusters", 
-                              clusters_to_analyze=c(), subject_column="subject",
-                              name="test", save_object=TRUE, load_object=FALSE,
-                              obj_name = "cellchat_object.rds", extension_plot=".png") {
+cellchat_function <- function(seurat_object, cluster_column = "microglia_clusters", 
+                              clusters_to_analyze = c(), subject_column = "subject",
+                              name = "test", save_object = TRUE, load_object = FALSE,
+                              obj_name = "cellchat_object.rds", extension_plot = ".png") {
   # Dependencies
   check_packages(c("devtools", "Seurat"))
   
   #devtools::install_github("jinworks/CellChat")
   #devtools::install_github("jokergoo/circlize")
   #devtools::install_github("jokergoo/ComplexHeatmap")
-  #devtools::install_github('immunogenomics/presto')
+  #devtools::install_github("immunogenomics/presto")
   library("CellChat")
   library("patchwork")
   options(stringsAsFactors = FALSE)
@@ -1829,12 +2100,12 @@ cellchat_function <- function(seurat_object, cluster_column="microglia_clusters"
   if (!dir.exists(paste0(output_dir, "circle_plots"))) dir.create(paste0(output_dir, "circle_plots"))
   
   # Setting up global objects
-  data.input <- NA
+  data_input <- NA
   meta <- NA
   cellchat <- NA # https://rdrr.io/github/sqjin/CellChat/man/CellChat-class.html
   
   ## Main ----
-  main <- function(){
+  main <- function() {
     prepare_data()
     
     if (load_object) cellchat <- readRDS(paste0(output_dir, obj_name))
@@ -1847,7 +2118,7 @@ cellchat_function <- function(seurat_object, cluster_column="microglia_clusters"
   prepare_data <- function() {
     
     # Preparing data
-    data.input <<- seurat_object[["RNA"]]$data 
+    data_input <<- seurat_object[["RNA"]]$data 
     Idents(seurat_object) <- cluster_column
     
     if ("0" %in% as.character(unique(seurat_object@meta.data[[cluster_column]]))) {
@@ -1872,17 +2143,16 @@ cellchat_function <- function(seurat_object, cluster_column="microglia_clusters"
   
   compute_cellchat <- function() {
     
-    cellchat <- createCellChat(object = data.input, meta = meta, group.by = "labels")
-    CellChatDB <- CellChatDB.human 
+    cellchat <- createCellChat(object = data_input, meta = meta, group.by = "labels")
+    cell_chat_db <- cell_chat_db.human 
     
     # For visual inspection
-    # showDatabaseCategory(CellChatDB)
-    # dplyr::glimpse(CellChatDB$interaction)
+    # showDatabaseCategory(cell_chat_db)
+    # dplyr::glimpse(cell_chat_db$interaction)
     
-    # use a subset of CellChatDB for cell-cell communication analysis (important, which one?)
-    CellChatDB.use <- subsetDB(CellChatDB, search = "Secreted Signaling", key = "annotation") # use Secreted Signaling
+    # use a subset of cell_chat_db for cell-cell communication analysis (important, which one?)
     # set the used database in the object
-    cellchat@DB <- CellChatDB.use
+    cellchat@DB <- subsetDB(cell_chat_db, search = "Secreted Signaling", key = "annotation") # use Secreted Signaling
     
     # subset the expression data of signaling genes for saving computation cost
     cellchat <- subsetData(cellchat) # This step is necessary even if using the whole database 
@@ -1890,7 +2160,7 @@ cellchat_function <- function(seurat_object, cluster_column="microglia_clusters"
     # finds genes that are expressed in the dataset (subsetData)
     # future::plan("multisession", workers = 4) # do parallel
     cellchat <- identifyOverExpressedGenes(cellchat) # Identify over-expressed signaling genes associated with each cell group
-    cellchat <- identifyOverExpressedInteractions(cellchat) # Identify over-expressed ligand-receptor interactions (pairs) within the used CellChatDB
+    cellchat <- identifyOverExpressedInteractions(cellchat) # Identify over-expressed ligand-receptor interactions (pairs) within the used cell_chat_db
 
     # project gene expression data onto PPI (Optional: when running it, USER should set `raw.use = FALSE` in the function `computeCommunProb()` in order to use the projected data)
     # cellchat <- projectData(cellchat, PPI.human)
@@ -1914,7 +2184,7 @@ cellchat_function <- function(seurat_object, cluster_column="microglia_clusters"
   plot_results <- function() {
     
     plot_function <- function(p_function, name) {
-      svg(file=paste0(output_dir, name, ".svg"))
+      svg(file = paste0(output_dir, name, ".svg"))
       
       # Plot
       p_function
@@ -1925,16 +2195,16 @@ cellchat_function <- function(seurat_object, cluster_column="microglia_clusters"
     
     plots_group <-  function() {
       
-      groupSize <- as.numeric(table(cellchat@idents))
+      group_size <- as.numeric(table(cellchat@idents))
       
       # Number of interactions
       # Strength of interactions
-      png(file=paste0(output_dir, "number_of_interactions", extension_plot))
-      par(mfrow = c(1,2), xpd=TRUE)
+      png(file = paste0(output_dir, "number_of_interactions", extension_plot))
+      par(mfrow = c(1, 2), xpd = TRUE)
       # label edge and weight scale are for appearance 
       # https://rdrr.io/github/sqjin/CellChat/man/netVisual_circle.html
-      netVisual_circle(cellchat@net$count, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Number of interactions")
-      netVisual_circle(cellchat@net$weight, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Interaction weights/strength")
+      netVisual_circle(cellchat@net$count, vertex.weight = group_size, weight.scale = TRUE, label.edge = FALSE, title.name = "Number of interactions")
+      netVisual_circle(cellchat@net$weight, vertex.weight = group_size, weight.scale = TRUE, label.edge = FALSE, title.name = "Interaction weights/strength")
       dev.off()
       
       message("plot saved in:", paste0(output_dir, "number_of_interactions", extension_plot))
@@ -1945,24 +2215,24 @@ cellchat_function <- function(seurat_object, cluster_column="microglia_clusters"
       mat <- cellchat@net$weight
       
       
-      png(file=paste0(output_dir, "other_plot", extension_plot))
-      par(mfrow = c(3,4), xpd=TRUE)
-      for (i in 1:nrow(mat)) {
+      png(file = paste0(output_dir, "other_plot", extension_plot))
+      par(mfrow = c(3, 4), xpd = TRUE)
+      for (i in seq_along(nrow(mat))) {
         mat2 <- matrix(0, nrow = nrow(mat), ncol = ncol(mat), dimnames = dimnames(mat))
         mat2[i, ] <- mat[i, ]
-        netVisual_circle(mat2, vertex.weight = groupSize, weight.scale = T, edge.weight.max = max(mat), title.name = rownames(mat)[i])
+        netVisual_circle(mat2, vertex.weight = group_size, weight.scale = TRUE, edge.weight.max = max(mat), title.name = rownames(mat)[i])
       }
       dev.off()
       
       message("plot saved in:", paste0(output_dir, "other_plot", extension_plot))
       
       for (pathway in cellchat@netP$pathways) {
-        pairLR.CXCL <- extractEnrichedLR(cellchat, signaling = pathways.show, geneLR.return = FALSE)
-        for (interaction_name in pairLR.CXCL) {
+        pair_lr_cxcl <- extractEnrichedLR(cellchat, signaling = pathways_show, geneLR.return = FALSE)
+        for (interaction_name in pair_lr_cxcl) {
           print(interaction_name)
-          print(paste0("circle_", pathway,"_", interaction_name))
-          plot_f(netVisual_individual(cellchat, signaling = pathways.show, pairLR.use = LR.show, layout = "circle"),
-                 paste0("circle_", pathway,"_", interaction_name))
+          print(paste0("circle_", pathway, "_", interaction_name))
+          plot_f(netVisual_individual(cellchat, signaling = pathways_show, pairLR.use = LR_show, layout = "circle"),
+                 paste0("circle_", pathway, "_", interaction_name))
         }
       }
     }
@@ -1971,38 +2241,38 @@ cellchat_function <- function(seurat_object, cluster_column="microglia_clusters"
     
     # signaling
     # pairLR
-    # vertex.receiver
+    # vertex_receiver
     # sources.use
     
     if (FALSE) {
-      pathways.show <- cellchat@netP$pathways[[1]]
-      pairLR.CXCL <- extractEnrichedLR(cellchat, signaling = pathways.show, geneLR.return = FALSE)
-      LR.show <- pairLR.CXCL[1,]
+      pathways_show <- cellchat@netP$pathways[[1]]
+      pair_lr_cxcl <- extractEnrichedLR(cellchat, signaling = pathways_show, geneLR.return = FALSE)
+      LR_show <- pair_lr_cxcl[1, ]
     }
 
     # pathway
-    for (pathways.show in cellchat@netP$pathways) {
+    for (pathways_show in cellchat@netP$pathways) {
 
-      pairLR.CXCL <- extractEnrichedLR(cellchat, signaling = pathways.show, geneLR.return = FALSE)
+      pair_lr_cxcl <- extractEnrichedLR(cellchat, signaling = pathways_show, geneLR.return = FALSE)
       
-      save_plot(netAnalysis_contribution(cellchat, signaling = pathways.show),
-                    paste0(output_dir, "contributions_", pathways.show, "", extension_plot))
+      save_plot(netAnalysis_contribution(cellchat, signaling = pathways_show),
+                    paste0(output_dir, "contributions_", pathways_show, "", extension_plot))
       
-      for (LR.show in pairLR.CXCL) {
+      for (LR_show in pair_lr_cxcl) {
         
         # LR show - ligand receptor
         # pathway show ->
-        plot_function(netVisual_individual(cellchat, signaling = pathways.show, pairLR.use = LR.show, layout = "circle"),
-                      paste0("circle_plots/", pathways.show, "_", LR.show))
+        plot_function(netVisual_individual(cellchat, signaling = pathways_show, pairLR.use = LR_show, layout = "circle"),
+                      paste0("circle_plots/", pathways_show, "_", LR_show))
         
         #
-        #plot_function(netVisual_individual(cellchat, signaling = pathways.show, pairLR.use = LR.show, layout = "chord"),
-        #              paste0("chord_plot_", pathways.show, "_", LR.show))
+        #plot_function(netVisual_individual(cellchat, signaling = pathways_show, pairLR.use = LR_show, layout = "chord"),
+        #              paste0("chord_plot_", pathways_show, "_", LR_show))
 
-        #for (vertex.receiver in seq_along(levels(cellchat@idents))) {
+        #for (vertex_receiver in seq_along(levels(cellchat@idents))) {
         # isnide this loop chord plots or circle plots
-        # plot_function(netVisual_aggregate(cellchat, signaling = pathways.show,  vertex.receiver = vertex.receiver), 
-        #              paste0("circle_plot_pathway_vertex_", pathways.show, "_", LR.show, "_", vertex.receiver,"", extension_plot))
+        # plot_function(netVisual_aggregate(cellchat, signaling = pathways_show,  vertex.receiver = vertex_receiver), 
+        #              paste0("circle_plot_pathway_vertex_", pathways_show, "_", LR_show, "_", vertex_receiver,"", extension_plot))
         #}
         # outside bubble plot o heatmap 
         
@@ -2014,15 +2284,15 @@ cellchat_function <- function(seurat_object, cluster_column="microglia_clusters"
         
       } # questo va fatto per microglia 
       
-      vertex.receiver <- seq(levels(cellchat@idents))
-      plot_function(netVisual_aggregate(cellchat, signaling = pathways.show,  vertex.receiver = vertex.receiver), 
-                    paste0("circle_plots/pathway_vertex_", pathways.show, "_", vertex.receiver))
-      plot_function(netVisual_aggregate(cellchat, signaling = pathways.show), 
-                    paste0("circle_plots/pathway_", pathways.show))
+      vertex_receiver <- seq(levels(cellchat@idents))
+      plot_function(netVisual_aggregate(cellchat, signaling = pathways_show,  vertex.receiver = vertex_receiver), 
+                    paste0("circle_plots/pathway_vertex_", pathways_show, "_", vertex_receiver))
+      plot_function(netVisual_aggregate(cellchat, signaling = pathways_show), 
+                    paste0("circle_plots/pathway_", pathways_show))
 
       # 
-      # plot_function(netAnalysis_signalingRole_network(cellchat, signaling = pathways.show, width = 8, height = 2.5, font.size = 10),
-      #             paste0("heatmap_plot_", pathways.show))
+      # plot_function(netAnalysis_signalingRole_network(cellchat, signaling = pathways_show, width = 8, height = 2.5, font.size = 10),
+      #             paste0("heatmap_plot_", pathways_show))
     }
 
     save_plot(netVisual_bubble(cellchat, sources.use = seq(levels(cellchat@idents)), targets.use = seq(levels(cellchat@idents)), remove.isolate = FALSE),
@@ -2030,10 +2300,10 @@ cellchat_function <- function(seurat_object, cluster_column="microglia_clusters"
     
       # poi per altro invece va fatto la stessa cosa, devo solo costruire solo 3 clusters, due microglia infiammata + oligo. oppure 
 
-    for (vertex.receiver in seq_along(levels(cellchat@idents))) {
+    for (vertex_receiver in seq_along(levels(cellchat@idents))) {
       # non riesco a capire cosa ci andrebbe come input
-      # save_plot(netVisual_hierarchy1(cellchat@data.signaling, vertex.receiver),
-      #          paste0(output_dir, "hierarchy_ident_", vertex.receiver, "", extension_plot))
+      # save_plot(netVisual_hierarchy1(cellchat@data.signaling, vertex_receiver),
+      #          paste0(output_dir, "hierarchy_ident_", vertex_receiver, "", extension_plot))
     }
 
 
@@ -2048,14 +2318,14 @@ cellchat_function <- function(seurat_object, cluster_column="microglia_clusters"
     # target use -> microglia
     # sources use -> astrocytes  
     
-    for (use in c(1,2,3,4,5)) {
+    for (use in c(1, 2, 3, 4, 5)) {
 
       plot_function(netVisual_chord_gene(cellchat, sources.use = use, targets.use = c(1:5),  small.gap = 1,
                                          big.gap = 10),
-                    paste0("chord_gene_cluster_sources_",use,"_target_all"))
+                    paste0("chord_gene_cluster_sources_", use, "_target_all"))
       plot_function(netVisual_chord_gene(cellchat, sources.use = c(1:5), targets.use = use,  small.gap = 1,
                                          big.gap = 10),
-                    paste0("chord_gene_cluster_sources_all_target_",use))
+                    paste0("chord_gene_cluster_sources_all_target_", use))
     }
     
 

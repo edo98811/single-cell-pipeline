@@ -4,7 +4,8 @@
 # for debugging (error when using do.call and browser)
 # https://stackoverflow.com/questions/44608323/crash-of-debugging-browser-in-r-rstudio-when-called-from-inside-do-call
 options(deparse.max.lines = 10)
-
+# install.packages("devtools")
+devtools::install_github("immunogenomics/presto")
 source("scripts/helper_functions.r")
 
 main <- function(pipeline_file = "pipeline_wgcna.json") {

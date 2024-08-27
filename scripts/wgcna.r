@@ -110,9 +110,9 @@ prepare_data <- function(seurat_object, column_data, subject_column = "subject",
 
     return(norm_counts)
 }
-    
+
 # Compute wgcna network matrix
-matrix_computation <- function(norm_counts, soft_power, save_net, output_dir, wgcna_file, type = "unsigned", TOMType = "signed", minModuleSize = 0, mergeCutHeight = 0.25, ...) {
+matrix_computation <- function(norm_counts, soft_power, save_net, output_dir, wgcna_file, network_type = "unsigned", TOMType = "signed", minModuleSize = 0, mergeCutHeight = 0.25, ...) {
     
     library(WGCNA)
 
@@ -129,7 +129,7 @@ matrix_computation <- function(norm_counts, soft_power, save_net, output_dir, wg
     bwnet <- blockwiseModules(norm_counts, 
         maxBlockSize = 12000, 
         TOMType = TOMType,
-        networkType = type,
+        networkType = network_type,
         saveTOMs = FALSE, 
         power = soft_power, 
         mergeCutHeight = mergeCutHeight, 
@@ -219,6 +219,5 @@ save_module_genes <- function(bwnet, norm_counts, column_data, output_dir) {
 
     write.xlsx(table(bwnet$colors), paste0(output_dir, "module_recap.xlsx"))
     message("module recap saved in: ", paste0(output_dir, "module_recap.xlsx"))
-
 }
 
