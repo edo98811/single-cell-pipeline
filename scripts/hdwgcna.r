@@ -21,7 +21,7 @@ hdwgcna <- function(seurat_obj, name = "test", ...) {
     # Select the genes that are expressed in at least 5% of cells in the test field in misc seurat obkect
     seurat_obj <- SetupForWGCNA(
         seurat_obj,
-        gene_select = "fraction", # the gene selection approach
+        gene_select = "variable", # the gene selection approach
         fraction = 0.05, # fraction of cells that a gene needs to be expressed in order to be included
         wgcna_name = "test" # the name of the hdWGCNA experiment
     )
@@ -60,7 +60,10 @@ hdwgcna <- function(seurat_obj, name = "test", ...) {
     # Questo posso anche non metterlo, serve se voglio fare il wgcna only per un subset delle cellule
     # Pero questo é molto utile prché riduce il lavoro che ho fatto per la wgcna normale 
     # quando ad esempio voglio lavorare solo con un subset
-    seurat_obj <- SetDatExpr(
+    # this is for all the the clusters, otherwise i can also decide to use only one cluster?
+    # subjects should thou be enough, as the cluster is selected in the prevous stel in the pipeline
+
+    seurat_obj <- SetDatExpr( 
         seurat_obj,
         group_name = c(
             "PD_001",
@@ -81,7 +84,7 @@ hdwgcna <- function(seurat_obj, name = "test", ...) {
     # Test different soft powers:
     seurat_obj <- TestSoftPowers(
         seurat_obj,
-        networkType = "unsigned" # you can also use "unsigned" or "signed hybrid"
+        networkType = "signed" # you can also use "unsigned" or "signed hybrid"
     )
     
     # plot the results:

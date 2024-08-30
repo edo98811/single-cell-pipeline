@@ -12,16 +12,23 @@ It specifies the parameters that are used in the pipeline, the settable paramete
 The structure is provided in the examples. at the beginning the single sections that will be run need to be selected. by specifying it like this in a `pipeline` section:
 
 - `preprocessing`: [true | false]
+Preprocessing step loads the data from a given folder, then it performs the preprocessing sstep with doubletfiner, the seurat objects are then optionally saved with the save parameter.
 - `integration`: [true | false]
+The step after preprocessing, here the list of seurat objects created in the previous step can be merged and integrated using harmony. The seurat object can be saved at the end of this step with the save parameter.
 - `clustering`: [true | false]
+What the clustering section does is create a subset if the parameter is requested, and then work with this subset. Cluster the seurat iobject with the given parameters, the results are plotted. If rename_clusters is set to true and the to_correct parameter is given, then the annotation can also be corrected. The seurat object can be saved at the end of this step with the save parameter.
 - `annotation`: [true | false]
+The annotation will be done with sctype, the parameters for the annotation are fixed on brain datasets but will be changed in the future. After annotation if correct is set to true and the to_correct parameter is given a manual correction can be performed. The annotation can also be competely manual if the parameter annoatate is set to false.  The seurat object can be saved at the end of this step with the save parameter.
 - `deg`: [true | false]
+The differentially expressed genes are found and the results saved, different commadns can be used, multiple analysis can be ran at the same time creating more than one field in the setting file
 - `wgcna`: [true | false]
+To run the wgcna analysis, the same concept as the deg applies, the analysis can be ran multiple times with multiple different settings
 - `enrichment`: [true | false]
+to run enrichment analysis, here too the analysis can be ran multiple times.
 
 The settings
-for `preprocessing`,`integration`,`clustering`,`annotation` -> need to be specified in the apposite section 
-for: `deg`,`wgcna`,`enrichment`: need to be specified in the subsection for the name of the analysis, for each pipeline these can be run multiple times, the folder with the results will be called with the same name of the subsection in which the settings are in.
+for `preprocessing`,`integration`,`clustering`,`annotation`: need to be specified in the apposite section 
+for: `deg`,`wgcna`,`enrichment`: need to be specified in the subsection for the name of the analysis, for each pipeline can be run multiple times. The folder with the results will be called with the same name of the subsection in which the settings are in.
 
 example: 
 ```
@@ -162,7 +169,7 @@ The settings file stores the default parameters for each pipeline that is run. A
 - `subset_id` [string] - ID of the subset for DEG analysis.
 - `o2` [string] - Placeholder parameter, currently set to "NA".
 - `condition` [string] - Condition to compare in DEG analysis (e.g., "PD").
-- `nothreshold` [string] - Whether to apply thresholds in DEG analysis (set to "false").
+- `nothreshold` [boolean] - Whether to apply thresholds in DEG analysis (set to "false").
 - `control` [string] - Control group in DEG analysis (e.g., "non_PD").
 - `condition_column` [string] - Column name for conditions in DEG analysis.
 - `extension_plot` [string] - File extension for saved DEG plots.

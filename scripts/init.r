@@ -28,7 +28,7 @@ main <- function(pipeline_file = "pipeline_wgcna.json") {
     if (pipeline$pipeline$deg)              deg(pipeline$global_variables, pipeline$deg)
     if (pipeline$pipeline$wgcna)            wgcna(pipeline$global_variables, pipeline$wgcna)
     if (pipeline$pipeline$enrichment)       enrichment(pipeline$global_variables, pipeline$enrichment)
-
+    if (pipeline$pipeline$own_script)       own_script(pipeline$global_variables, pipeline$own_script)
 }
 
 

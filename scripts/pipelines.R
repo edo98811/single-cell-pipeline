@@ -3,7 +3,7 @@
 
 
 preprocessing <- function(env_variables, preprocessing_settings) {
-    message("running preprocessing")
+    message("section: preprocessing")
     source("scripts/seurat_utils.r", local = TRUE)
 
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
@@ -20,12 +20,15 @@ preprocessing <- function(env_variables, preprocessing_settings) {
 
     assign("seurat_object", seurat_object, envir = .GlobalEnv)
 
-    if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+    if (parameters$save) {
+        saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+        message("object saved in: ", paste0(output_folder, parameters$save_name))
+    }
 }
 
 integration <- function(env_variables, integration_settings) {
 
-    message("running integration")
+    message("section: integration")
     source("scripts/seurat_utils.r", local = TRUE)
 
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
@@ -78,13 +81,16 @@ integration <- function(env_variables, integration_settings) {
                                         save = FALSE, name = "after_integration",
                                         extension_plot = extension_plot)
 
-    if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+    if (parameters$save) {
+        saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+        message("object saved in: ", paste0(output_folder, parameters$save_name))
+    }
     assign("seurat_object", seurat_object, envir = .GlobalEnv)
 }
 
 annotation <- function(env_variables, annotation_settings) {
 
-    message("running annotation")
+    message("section: annotation")
 
     source("scripts/seurat_utils.r", local = TRUE)
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
@@ -105,6 +111,7 @@ annotation <- function(env_variables, annotation_settings) {
     }
 
     ## Correction of the annotation 
+    if (isFALSE(parameters$to_correct) && parameters$correct) stop("to_correct is a required_parameter for annotation correction")
     if (parameters$correct) seurat_object <- correct_annotation(seurat_object, parameters$to_correct, 
                                         annotation, 
                                         new_annotation_column = corrected_annotation, 
@@ -116,14 +123,17 @@ annotation <- function(env_variables, annotation_settings) {
                                                 save = FALSE, run_UMAP = FALSE, name = paste0("scType_corrected_", m))
 
     # saveRDS(seurat_object, file = paste0(output_folder, "main_after_annotation.rds"))
-    if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+    if (parameters$save) {
+        saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+        message("object saved in: ", paste0(output_folder, parameters$save_name))
+    }
     assign("seurat_object", seurat_object, envir = .GlobalEnv)
     
 }
 
 clustering <- function(env_variables, clustering_settings) {
     
-    message("running clustering")
+    message("section: clustering")
     source("scripts/seurat_utils.r", local = TRUE)
 
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
@@ -131,36 +141,37 @@ clustering <- function(env_variables, clustering_settings) {
     parameters <- .update_parameters(clustering_settings,  load_settings(settings_path)$clustering)
    
     if (parameters$create_subset) {
-        if (length(parameters$subset) == 0) stop(" subsetting: invalit subset parameter")
+        if (length(parameters$subset) == 0) stop(" subsetting: invalid subset parameter")
 
         assign("seurat_object", create_object_from_cluster_id(seurat_object, 
                 parameters$subset, clusters_column = parameters$cluster_column),
                 envir = .GlobalEnv)
     }
 
-    if (parameters$clustering) {
+    if (parameters$clustering || parameters$clustering_plot)
         pc_number <- analyze_explained_variance(seurat_object, 
                                     dstd, 
-                                    reduction_to_inspect = "pca")
-                        # Perform Clustering
-        seurat_object <- clustering(seurat_object, 
+                                    reduction_to_inspect = r)
+
+    if (parameters$clustering)  seurat_object <- clustering(seurat_object, 
                                     reduction = r, 
                                     desired_resolution = d, 
                                     dimension = pc_number,
                                     save = FALSE, 
                                     column_name = c)
 
-        seurat_object <- visualization_UMAP(seurat_object, 
+    if (parameters$clustering_plot) seurat_object <- visualization_UMAP(seurat_object, 
                                             reduction_name = umap, 
                                             cluster_column = c, 
+                                            reduction = r,
                                             dimension = pc_number,
                                             save = FALSE, 
                                             run_UMAP = TRUE, 
                                             name = parameters$name,
                                             extension_plot = extension_plot)
-    }
 
     if (parameters$rename_clusters) {
+        if (isFALSE(parameters$to_correct)) stop("to_correct is a required_parameter for annotation correction")
 
         seurat_object <- correct_annotation(seurat_object, 
                                         parameters$to_correct, 
@@ -180,7 +191,10 @@ clustering <- function(env_variables, clustering_settings) {
                                         extension_plot = extension_plot)
     }    
 
-    if (parameters$save) saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+    if (parameters$save) {
+        saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
+        message("object saved in: ", paste0(output_folder, parameters$save_name))
+    }
     assign("seurat_object", seurat_object, envir = .GlobalEnv)
     return(seurat_object)
 
@@ -188,6 +202,7 @@ clustering <- function(env_variables, clustering_settings) {
 
 deg <- function(env_variables, deg_settings) {
 
+    message("section: differential gene expression analysis")
     source("scripts/seurat_utils.r", local = TRUE)
 
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
@@ -212,46 +227,46 @@ deg <- function(env_variables, deg_settings) {
 
         if (parameters$method %in% iterative_methods) {
             for (cluster in unique(seurat_object@meta.data[[parameters$cluster_column]])) {
-                do.call(find_and_plot_markers, 
+                try(do.call(find_and_plot_markers, 
                         c(list(seurat_object, 
                             cluster_id = cluster,
                             reduction_name = umap, 
                             name = names(deg_settings)[deg]),
-                            parameters[names(parameters) != "folder"]))
+                            parameters[names(parameters) != "folder"])))
             }
         } else if (parameters$method %in% normal_methods) {
-            do.call(find_and_plot_markers, 
+            try(do.call(find_and_plot_markers, 
                     c(list(seurat_object, 
                         reduction_name = umap, 
                         name = names(deg_settings)[deg]),
-                        parameters[names(parameters) != "folder"]))
+                        parameters[names(parameters) != "folder"])))
 
         } else if (parameters$method == "heatmap") {
 
-            many_plots(seurat_object, 
+            try(many_plots(seurat_object, 
                 which = c("heatmap"), 
                 assay = a,
                 cluster_column = parameters$cluster_column, 
                 name = names(deg_settings)[deg],
                 extension_plot = parameters$extension_plot,
-                markers = parameters$markers)
+                markers = parameters$markers))
  
         } else if (parameters$method == "volcano") {
             if (isFALSE(parameters$folder)) stop("folder is a required_parameter for volcano")
 
-            volcano_plot(parameters$folder,
-                extension_plot = parameters$extension_plot)
+            try(volcano_plot(parameters$folder,
+                extension_plot = parameters$extension_plot))
             
         } else if (parameters$method == "paper") {
             if (isFALSE(parameters$markers)) stop("markers is a required_parameter for dimred")
 
-            plots_for_paper(seurat_object,
+            try(plots_for_paper(seurat_object,
                 which = parameters$which_other, 
                 name = names(deg_settings)[deg],
                 extension_plot = parameters$extension_plot,
                 genes_to_plot = parameters$markers,
                 assay = a,               
-                cluster_column = parameters$cluster_column)
+                cluster_column = parameters$cluster_column))
             
         } else stop("deg analysis: not valid method")
     }
@@ -259,7 +274,7 @@ deg <- function(env_variables, deg_settings) {
 
 wgcna <- function(env_variables, wgcna_settings) {
 
-    message("running wgcna")
+    message("section: wgcna")
     source("scripts/wgcna.r", local = TRUE)
     source("scripts/seurat_utils.r", local = TRUE)  
 
@@ -271,36 +286,45 @@ wgcna <- function(env_variables, wgcna_settings) {
     for (wgcna in seq_along(wgcna_settings)) {
 
         parameters <- .update_parameters(wgcna_settings[[wgcna]], default_parameters)
-
+        
+        if (!isFALSE(parameters$cluster))  {
+            try(seurat_object_subset <- create_object_from_cluster_id(seurat_object, 
+                                                                    parameters$cluster,
+                                                                    assay = a,
+                                                                    clusters_column = c))
+        } else seurat_object_subset <- seurat_object
+        
         if (parameters$method == "WGCNA") {
-            if (!isFALSE(parameters$cluster))  {
-                seurat_object_subset <- create_object_from_cluster_id(seurat_object, 
-                                                                        parameters$cluster,
-                                                                        assay = a,
-                                                                        clusters_column = c)
-            } else seurat_object_subset <- seurat_object
-                    
-            do.call(wgcna_main, 
+
+            try(do.call(wgcna_main, 
                     c(list(seurat_object_subset, 
                     name = names(wgcna_settings)[wgcna]), 
-                    parameters))
+                    parameters)))
         }
         else if (parameters$method == "hdWGCNA") {
             source("scripts/hdwgcna.r", local = TRUE)
 
-            do.call(hdwgcna, 
-                    c(list(seurat_object, 
+            try(do.call(hdwgcna, 
+                    c(list(seurat_object_subset, 
                     name = names(wgcna_settings)[wgcna]), 
-                    parameters))
+                    parameters)))
             
         }
     }
 }
 
+own_script <- function(env_variables, own_settings) {
+    create_variables(.update_parameters(env_variables,  load_settings(settings_path
+    )$global_variables))
+    
+    parameters <- .update_parameters(own_settings,  load_settings(settings_path)$own_script)
+   
+    source(parameters$path)
+}
 
 enrichment <- function(env_variables, enrichment_settings) {
 
-    message("running enrichment")
+    message("section: enrichment")
     source("scripts/enrichment.r", local = TRUE)
     source("scripts/seurat_utils.r", local = TRUE)
 
@@ -312,12 +336,11 @@ enrichment <- function(env_variables, enrichment_settings) {
 
         parameters <- .update_parameters(enrichment_settings[[enrichment]], default_parameters)
         
-        do.call(enrichment_analysis, c(list(
+        try(do.call(enrichment_analysis, c(list(
                                     names(enrichment_settings)[enrichment], 
                                     parameters$markers_path), 
-                                    parameters[names(parameters) != "markers_path"]))
+                                    parameters[names(parameters) != "markers_path"])))
     } 
- 
 } 
  
 .update_parameters <- function(parameters, default) { 
@@ -333,9 +356,7 @@ enrichment <- function(env_variables, enrichment_settings) {
 
             # Else add it 
             parameters[[parameter]] <- default[[parameter]]
-        }
-        
-
+        }        
         message("   parameter ", parameter, ": ", parameters[[parameter]])
     }
     

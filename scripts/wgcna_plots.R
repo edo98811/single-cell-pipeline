@@ -141,8 +141,8 @@ violin_plots <- function(bwnet, norm_counts, column_data, extension_plot) {
             
             # Calls the violin plot function from seurat_utiles
             violin_plot(seurat_object, genes, name = paste0("WGCNA/test_2", color,
-                column), markers_analysisPD = "microglia_control_vs_pd_nogenetic_all",
-                markers_analysisGPD = "microglia_control_vs_geneticpd_all", extension_plot = extension_plot)
+                column), markers_analysis_pd = "microglia_control_vs_pd_nogenetic_all",
+                markers_analysis_gpd = "microglia_control_vs_geneticpd_all", extension_plot = extension_plot)
 
         }
 

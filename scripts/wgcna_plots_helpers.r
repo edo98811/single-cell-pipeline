@@ -156,7 +156,7 @@ make_heatmap <- function(bwnet, excel_filename, traits) {
     wb <- write_on_excel("t.statistic", as.data.frame(res$t), wb = wb)
     openxlsx::saveWorkbook(wb, excel_filename, overwrite = TRUE)
 
-    message("heatmap saved in: ", output_dir, excel_filename)
+    message("heatmap saved in: ", excel_filename)
 }
 
 # In case it is needed

@@ -36,7 +36,7 @@
 #' many_plots(seurat_object = my_seurat, which = c("dotplot", "heatmap"), clusters = c(1, 2, 3))
 #'
 #' @export
-many_plots <- function(seurat_object, which = c("dotplot", "heatmap"), clusters = NA, assay = "RNA",
+many_plots <- function(seurat_object, which = c("dotplot", "heatmap"), clusters = FALSE, assay = "RNA",
                    cluster_column = "harmony_clusters", name = "", markers = FALSE,
                    extension_plot = ".png", maxn_genes = 100, n_genes = 25, maxn_genes_per_plot = 100) {
   
@@ -51,8 +51,8 @@ many_plots <- function(seurat_object, which = c("dotplot", "heatmap"), clusters 
     stop("which argument must be a character vector containing 'dotplot' and/or 'heatmap'")
   }
   
-  if (!is.na(clusters) 
-      || (!is.integer(clusters) && !is.vector(markers))) {
+  if (!isFALSE(clusters) 
+      || (!is.integer(clusters) && !is.vector(clusters))) {
     stop("clusters argument must be an integer")
   }
   
@@ -70,7 +70,7 @@ many_plots <- function(seurat_object, which = c("dotplot", "heatmap"), clusters 
   
   if (!isFALSE(markers) 
       || (!is.character(markers) && !is.vector(markers))
-      || (!is.integer(clusters) && !is.vector(markers))) {
+      || (!is.integer(markers) && !is.vector(markers))) {
     stop("markers argument must be a character vector or NA")
   }
 
@@ -111,7 +111,7 @@ many_plots <- function(seurat_object, which = c("dotplot", "heatmap"), clusters 
     output_dir <- set_up_output(paste0(output_folder, "plot_heatmap_", name, "/"))
   
   # Arguments check
-  if (!is.na(clusters)[[1]] && is.vector(clusters)) {
+  if (!isFALSE(clusters) && is.vector(clusters)) {
     message("clusters provided")
     clusters <- as.character(clusters)
   } # Nota -> Na is considered vector of length 1
@@ -264,9 +264,6 @@ find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_n
                                   control = "non_PD", condition_column = "subject_pathology",
                                   extension_plot = ".png", ...) {
   
-  # Dependencies
-  check_packages(c("openxlsx", "Seurat"))
-  
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "markers_", name, "/"))
 
@@ -361,7 +358,7 @@ find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_n
                                expr[names(expr) %in% row.names(markers_excel)])
     }
     
-    write.xlsx(markers_excel, file = paste0(output_dir, "expressed_markers_", cluster_id, "_", name, ".xlsx"), sheetName = "marker_genes", append = TRUE)
+    openxlsx::write.xlsx(markers_excel, file = paste0(output_dir, "expressed_markers_", cluster_id, "_", name, ".xlsx"), sheetName = "marker_genes", append = TRUE)
     message(paste0("results saved in: ", output_dir, "expressed_markers_", cluster_id, ".xlsx"))
   }
 
@@ -397,22 +394,22 @@ plot_markers_from_df <- function(seurat_object, markers_location, reduction_name
                  " - subplot_n: ", subplot_n,
                  " - max_feature_plots: ", max_feature_plots,
                  " - max_genes_many_plots: ", max_genes_many_plots))
-  
-  # Package management
-  check_packages(c("readxl", "dplyr", "Seurat", "gridExtra", "openxlsx", "Matrix", "ggplot2"))
 
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "plot_markers_from_df_", name, "/"))
   
   # Load the markers
-  markers_df <- read_excel(markers_location)
+  markers_df <- readxl::read_excel(markers_location)
   
   # Saves the relative plots (either using many plots and a heatmap or the feature plots)
   if (feature_plot) {
     for (column in names(markers_df)) {
       
       # Skip if no data is present
-      if (is.character(column_list) && !any(column %in% column_list)) {message("skipping: ", column); next}
+      if (is.character(column_list) && !any(column %in% column_list)) {
+        message("skipping: ", column)
+        next
+      }
       
       # Extract the features that are present in the seurat object for each column
       features <- markers_df %>%
@@ -423,7 +420,10 @@ plot_markers_from_df <- function(seurat_object, markers_location, reduction_name
       message("Source: ", column, " - Features: ", paste(features, collapse = ", "))
       
       # Iterate thorugh the featres in batches of subplot_n and plot (max 11 plots)
-      if (length(features) == 0) {message("skipping, not enough features"); next}
+      if (length(features) == 0) {
+        message("skipping, not enough features")
+        next
+      }
       lapply(seq(1, min(length(features), subplot_n * max_feature_plots), by = subplot_n), function(start_index) {
         end_index <- min(start_index + subplot_n - 1, length(features))
         save_plot(FeaturePlot(seurat_object, features = features[start_index:end_index],
@@ -477,7 +477,8 @@ plot_markers_from_df <- function(seurat_object, markers_location, reduction_name
 volcano_plot <- function(markers_dir, count_threshold = 0, extension_plot = ".png") {
   
   # Check packages
-  check_packages(c("EnhancedVolcano", "readxl", "tools"))
+  library(tools)
+  library(EnhancedVolcano)
 
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "markers_", markers_dir, "/"), message)
@@ -511,8 +512,6 @@ volcano_plot <- function(markers_dir, count_threshold = 0, extension_plot = ".pn
 # Save a gene expression table for selected gene list
 gene_table <- function(seurat_object, gene_list, message = "resutls of gene analysis", name = "gabriel",
                        assay = "RNA", method = "subjects", name2 = "", cluster_column = "microglia_clusters") {
-  # Dependencies
-  check_packages(c("Seurat", "openxlsx", "readxl"))
   
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "specific_gene_analysis_", name2, "/"), message)
@@ -548,12 +547,13 @@ gene_table <- function(seurat_object, gene_list, message = "resutls of gene anal
   # Save df
   df <- cbind(row.names(df), df)
   colnames(df)[1] <- "gene"
-  write.xlsx(df, file = paste0(output_dir, method, name, "_analysis.xlsx"))
+  openxlsx::write.xlsx(df, file = paste0(output_dir, method, name, "_analysis.xlsx"))
 }
 
 violin_plot <- function(seurat_object, gene_list, name = "", n_min = 3,
                         markers_analysis_gpd = "", markers_analysis_pd = "", message = "results", extension_plot = ".png") {
-  
+  # Here pd and pd are only used to load info on the expression data 
+
   # Dependencies
   check_packages(c("Seurat", "ggplot2", "gridExtra", "purrr", "Matrix", "readxl"))
   
@@ -897,7 +897,7 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
         }
       )
       # handle case where raster is set to True
-      if (geom == "GeomPoint" && "GeomScattermore" %in% geoms){
+      if (geom == "GeomPoint" && "GeomScattermore" %in% geoms) {
         geom <- "GeomScattermore"
       }
       geoms <- which(x = geoms == geom)
@@ -1274,7 +1274,7 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
   
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "plots_misc_", name, "/"), message)
-  browser()
+
   # update_text_file(output_dir, message)
   if (!dir.exists(output_dir)) dir.create(output_dir)
   
@@ -1299,7 +1299,6 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
                 paste0(output_dir, name, "_pie_", subset_to_plot, extension_plot))
       
     }
-    
   }
   
   # TODO: da fare function definiton for barplots
@@ -1353,129 +1352,60 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
   if ("numberofcell_pie_chart_cluster_pathology" %in% which) pie_function("cluster_subject_pathology", cluster_column, "subject_pathology")
 
   
-  # Feature plots (to add)
-  if ("feature_plot" %in% which) {
+  # Feature plots 
+  if ("feature_plots" %in% which) {
+    message("feature_plots")
     
-    genes <- genes_to_plot %in% Features(seurat_object[["RNA"]])
+    genes <- genes_to_plot[genes_to_plot %in% Features(seurat_object[["RNA"]])]
 
     purrr::walk(seq(1, length(genes_to_plot), by = 9), function(gene) {
        save_plot(
         FeaturePlot(seurat_object, 
           features = genes_to_plot[gene:ifelse(gene + 9 < length(genes_to_plot), gene + 9, length(genes_to_plot))], 
           pt.size = 0.5, 
+          reduction = "umap_harmony_microglia",
           cols = c("lightgrey", "#0026ff")), 
         paste0(output_dir, "feature_plots_genes_", 
-          gene, ifelse(gene + 9 < length(genes_to_plot), gene + 9, length(genes_to_plot)), 
+          gene, "_", ifelse(gene + 9 < length(genes_to_plot), gene + 9, length(genes_to_plot)), 
           extension_plot
           ),
         x = 10, y = 10
         )
     })
   }
-  #
-  # Pie charts deprecated
-  if (FALSE) {
-    if ("numberofcell_pie_chart" %in% which) {
-      
-      for (pathology in unique(seurat_object@meta.data$subject_pathology)) {
-        
-        # Calculate the frequency of each level
-        level_counts <- table(seurat_object@meta.data[seurat_object@meta.data$subject_pathology == pathology, cluster_column])
-        
-        # Create a data frame for ggplot
-        pie_data <- data.frame(Level = names(level_counts),
-                               Frequency = as.vector(level_counts))
-  
-        # Create the cake plot
-       save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
-          geom_bar(width = 1, stat = "identity") +
-          coord_polar("y", start = 0) +
-          labs(title = paste0("Cell types ", pathology), fill = "Level") +
-          theme_void() +
-          theme(legend.position = "right"),
-          paste0(output_dir, pathology, "_pie", extension_plot))
-        
-      }
-  
-    }
-    # Cluster on legend, data from one subject
-    if ("numberofcell_pie_chart_subject" %in% which) {
-      
-      # One plot for each iteration (data coming from...)
-      for (subject in unique(seurat_object@meta.data$subject)) {
-        
-        # Calculate the frequency of each level (... on legend)
-        level_counts <- table(seurat_object@meta.data[seurat_object@meta.data$subject == subject, cluster_column])
-        
-        # Create a data frame for ggplot
-        pie_data <- data.frame(Level = names(level_counts),
-                               Frequency = as.vector(level_counts))
-        
-        # Create the cake plot
-        save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
-                    geom_bar(width = 1, stat = "identity") +
-                    coord_polar("y", start = 0) +
-                    labs(title = paste0("Cell types ", subject), fill = "Level") +
-                    theme_void() +
-                    theme(legend.position = "right"),
-                  paste0(output_dir, subject, "_pie_subjects", extension_plot))
-        
-      }
-      
-    }
-    # Subject on legend, data from one cluster
-    if ("numberofcell_pie_chart_cluster_subject" %in% which) {
-      
-      for (cluster in unique(seurat_object@meta.data[[cluster_column]])) {
-        
-        # Calculate the frequency of each level
-        level_counts <- table(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == cluster, "subject"])
-  
-        # Create a data frame for ggplot
-        pie_data <- data.frame(Level = names(level_counts),
-                               Frequency = as.vector(level_counts))
-        
-        # Create the cake plot
-        save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
-                    geom_bar(width = 1, stat = "identity") +
-                    coord_polar("y", start = 0) +
-                    labs(title = paste0("Cell types ", cluster), fill = "Level") +
-                    theme_void() +
-                    theme(legend.position = "right"),
-                  paste0(output_dir, cluster, "_pie_subjects", extension_plot))
-        
-      }
-    
-    }
-    # Pathology on legend, data from one cluster
-    if ("numberofcell_pie_chart_cluster_pathology" %in% which) {
-      
-      # One plot for each iteration (data coming from...)
-      for (cluster in unique(seurat_object@meta.data[[cluster_column]])) {
-        
-        # Calculate the frequency of each level (... on legend)
-        level_counts <- table(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == cluster, "subject_pathology"])
-  
-        # Create a data frame for ggplot
-        pie_data <- data.frame(Level = names(level_counts),
-                               Frequency = as.vector(level_counts))
-        
-        # Create the cake plot
-        save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
-                    geom_bar(width = 1, stat = "identity") +
-                    coord_polar("y", start = 0) +
-                    labs(title = paste0("Cell types ", cluster), fill = "Level") +
-                    theme_void() +
-                    theme(legend.position = "right"),
-                  paste0(output_dir, cluster, "_pie_pathology", extension_plot))
-        
-      }
-    }
+  # Feature plots 
+  if ("ridge_plots" %in% which) {
+    message("ridge plots")
+    genes <- genes_to_plot[genes_to_plot %in% Features(seurat_object[["RNA"]])]
+
+    purrr::walk(seq(1, length(genes_to_plot), by = 9), function(gene) {
+      browser()
+      save_plot(
+        RidgePlot(seurat_object, 
+          features = genes_to_plot[gene:ifelse(gene + 9 < length(genes_to_plot), gene + 9, length(genes_to_plot))],
+          layer = "data",
+          assay = assay
+          ),
+        paste0(output_dir, "ridge_plots_genes_", 
+          gene, "_", ifelse(gene + 9 < length(genes_to_plot), gene + 9, length(genes_to_plot)), 
+          extension_plot
+          ),
+        x = 10, y = 10
+        )
+        # counts <- lapply(seq(10), function(gene) {
+        #   if (genes_to_plot[gene] %in% rownames(seurat_object@assays[[assay]]$data))
+        #     counts <- sum(seurat_object@assays[[assay]]$data[ 
+        #       genes_to_plot[gene], # rownames -> genes
+        #     ] > 0)
+        # })
+        # names(counts) <- genes_to_plot[seq(10)]
+
+    })
   }
+  
   # TODO: Pathology on legend, data from counts of one gene
   if ("numberofcell_pie_chart_gene_pathology" %in% which) {
     
-    stop("numberofcell_pie_chart_gene_pathology not implemented")
     # One plot for each iteration (data coming from...)
     for (gene in genes_to_plot) {
       
@@ -1490,14 +1420,14 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
       # Iterate thrugh the pathologies to count how much that gene appears in each pathology
       # cant be an abs value because number o subjects for each path is different, it must be avg
       # problem: there are a lot fo nonzero elemtns, the mean does not work, the um does not work what can I use, if i can even use something)
-      gene_count <- lapply(seurat_object@meta.data$subject_pathology, function(pathology) {
-        browser()
-        counts <- mean(seurat_object@assays[[assay]]$data[ 
+      gene_count <- lapply(levels(factor(seurat_object@meta.data$subject_pathology)), function(pathology) {
+        counts <- sum(seurat_object@assays[[assay]]$data[ 
           gene, # rownames -> genes
           rownames(seurat_object@meta.data[seurat_object@meta.data$subject_pathology == pathology, ]) # columnames -> cells
-        ])
+        ] 
+        > 0) / # how many cells have a gene expression for this specific gene over 0? / tot cells of category
+        length(rownames(seurat_object@meta.data[seurat_object@meta.data$subject_pathology == pathology, ]))
       })
-
       # for (pathology in seurat_object@meta.data$subject_pathology) {
       #   # Calculate the frequency of each level (... on legend)
       #   gene_counts <- mean(seurat_object@assays[[assay]]$data[ 
@@ -1507,17 +1437,15 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
       # }
       
       # Create a data frame for ggplot
-      pie_data <- data.frame(Level = names(gene_count),
-                             Frequency = as.vector(gene_count))
+      pie_data <- data.frame(Pathology = levels(factor(seurat_object@meta.data$subject_pathology)),
+                             Frequency = unlist(gene_count))
       
       # Create the cake plot
-      save_plot(pie_plot <- ggplot(pie_data, aes(x = "", y = Frequency, fill = Level)) +
-                  geom_bar(width = 1, stat = "identity") +
-                  coord_polar("y", start = 0) +
-                  labs(title = paste0("Cell types ", cluster), fill = "Level") +
-                  theme_void() +
+      save_plot(ggplot(pie_data, aes(x = Pathology, y = Frequency, fill = Pathology)) +
+                  geom_bar(stat = "identity") +
+                  labs(title = paste0("Cell types ", gene), fill = "Pathology") +
                   theme(legend.position = "right"),
-                paste0(output_dir, cluster, "_pie_pathology", extension_plot))
+                paste0(output_dir, gene, "_bar_pathology", extension_plot))
       
     }
   }
@@ -1559,10 +1487,10 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
     level_counts <- lapply(cell_types, function(x) {
       
       counts <- lapply(pathologies, function(y) {
-
-        pathology_counts <- nrow(seurat_object@meta.data[seurat_object@meta.data[[cluster_column]] == x & seurat_object@meta.data$subject_pathology == y, ])
-        
-        return(pathology_counts)
+        pathology_counts <- nrow(seurat_object@meta.data[
+          seurat_object@meta.data[[cluster_column]] == x &
+          seurat_object@meta.data$subject_pathology == y, 
+        ])   
       }) 
       
       return(counts)
