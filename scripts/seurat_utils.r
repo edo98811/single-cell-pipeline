@@ -91,9 +91,6 @@ many_plots <- function(seurat_object, which = c("dotplot", "heatmap"), clusters 
   }
   }
 
-  # Dependencies
-  check_packages(c("openxlsx", "Seurat"))
-  
   # Messages
   cat("Plotting (heatmap)  \n")
   message(paste0("Parameters: which: ", paste(which, collapse = ", "),
@@ -226,7 +223,7 @@ many_plots <- function(seurat_object, which = c("dotplot", "heatmap"), clusters 
       # r colors: https://www.datanovia.com/en/blog/awesome-list-of-657-r-color-names/
       
       # Save plotted features in a dataframe
-      write.xlsx(as.data.frame(markers_filtered), file = paste0(output_dir, "markers.xlsx"), sheetName = "marker_genes", append = TRUE)
+      openxlsx::write.xlsx(as.data.frame(markers_filtered), file = paste0(output_dir, "markers.xlsx"), sheetName = "marker_genes", append = TRUE)
       message(paste0("results saved in: ", output_dir, "markers.xlsx"))
       
     }
@@ -551,12 +548,8 @@ gene_table <- function(seurat_object, gene_list, message = "resutls of gene anal
 }
 
 violin_plot <- function(seurat_object, gene_list, name = "", n_min = 3,
-                        markers_analysis_gpd = "", markers_analysis_pd = "", message = "results", extension_plot = ".png") {
-  # Here pd and pd are only used to load info on the expression data 
-
-  # Dependencies
-  check_packages(c("Seurat", "ggplot2", "gridExtra", "purrr", "Matrix", "readxl"))
-  
+                        markers_analysis = "", message = "results", extension_plot = ".png") {
+  # Here markers are only used to load info on the expression data 
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "violin_plots_", name, "/"), message)
   
@@ -567,21 +560,21 @@ violin_plot <- function(seurat_object, gene_list, name = "", n_min = 3,
   sorting_dataframe <- seurat_object@meta.data$subject_pathology
 
   # Load DEGs table
-  if (!markers_analysis_pd == "") {
+  if (!markers_analysis == "") {
     message(paste0("loading... ", output_folder, "markers_", markers_analysis_pd, 
                    "/expressed_markers_all_", markers_analysis_pd, ".xlxs"))
-    markers_table_pd <- read_excel(paste0(output_folder, "markers_", markers_analysis_pd, 
+    markers_table_pd <- openxlsx::read_excel(paste0(output_folder, "markers_", markers_analysis_pd, 
                                     "/expressed_markers_all_", markers_analysis_pd, ".xlsx"))
 
-    message(paste0("loading... ", output_folder, "markers_", markers_analysis_gpd, 
-                           "/expressed_markers_all_", markers_analysis_gpd, ".xlxs"))
-    markers_table_gpd <- read_excel(paste0(output_folder, "markers_", markers_analysis_gpd, 
-                                    "/expressed_markers_all_", markers_analysis_gpd, ".xlsx"))
+    # message(paste0("loading... ", output_folder, "markers_", markers_analysis_gpd, 
+    #                        "/expressed_markers_all_", markers_analysis_gpd, ".xlxs"))
+    # markers_table_gpd <- read_excel(paste0(output_folder, "markers_", markers_analysis_gpd, 
+    #                                 "/expressed_markers_all_", markers_analysis_gpd, ".xlsx"))
   }
   else message("no DEGs table given")
 
   # Iterate through the genes and create violin-plot
-  walk2(data.frame(count_matrix), colnames(count_matrix), function(expr_list, gene) {
+  purrr::walk2(data.frame(count_matrix), colnames(count_matrix), function(expr_list, gene) {
 
     # Matching with condition 
     expr_df <- data.frame(cbind(expr_list, sorting_dataframe))
@@ -596,14 +589,14 @@ violin_plot <- function(seurat_object, gene_list, name = "", n_min = 3,
       
       # Read values
       qvalue_pd <- format(as.numeric(markers_table_pd[markers_table_pd$gene == gene, "p_val_adj"], scientific = TRUE, digits = 4))
-      qvalue_gpd <- format(as.numeric(markers_table_gpd[markers_table_gpd$gene == gene, "p_val_adj"], scientific = TRUE, digits = 4))
+      # qvalue_gpd <- format(as.numeric(markers_table_gpd[markers_table_gpd$gene == gene, "p_val_adj"], scientific = TRUE, digits = 4))
       log2fc_pd <- format(as.numeric(markers_table_pd[markers_table_pd$gene == gene, "avg_log2FC"], scientific = TRUE, digits = 4))
-      log2fc_gpd <- format(as.numeric(markers_table_gpd[markers_table_gpd$gene == gene, "avg_log2FC"], scientific = TRUE, digits = 4))
+      # log2fc_gpd <- format(as.numeric(markers_table_gpd[markers_table_gpd$gene == gene, "avg_log2FC"], scientific = TRUE, digits = 4))
       
       # Prepare text
       text <- paste0("cells which show expression: ", c2, "/", c1, "\n",
-                     "genetic PD adj_pvalue: ", qvalue_gpd, " - log2FC: ", log2fc_gpd, "\n",
-                     "PD         adj_pvalue: ", qvalue_pd, " - log2FC: ", log2fc_pd)
+                     # "genetic PD adj_pvalue: ", qvalue_gpd, " - log2FC: ", log2fc_gpd, "\n",
+                     "adj_pvalue: ", qvalue_pd, " - log2FC: ", log2fc_pd)
       # message(text)
     }
     else 
@@ -628,9 +621,6 @@ violin_plot <- function(seurat_object, gene_list, name = "", n_min = 3,
 # Saves a table with the average expression vales of the data
 avg_expression <- function(seurat_object, gene_list, name = "") {
   
-  # Dependencies
-  check_packages(c("Seurat", "ggplot2", "gridExtra", "purrr", "Matrix", "readxl"))
-  
   # Destination Folder
   output_dir <- set_up_output(paste0(output_folder, "avg_expression_", name, "/"), message)
   
@@ -652,7 +642,7 @@ avg_expression <- function(seurat_object, gene_list, name = "") {
   }
 
   # Save excel
-  write.xlsx(means, file = paste0(output_dir, "means_", name, ".xlsx"))
+  openxlsx::write.xlsx(means, file = paste0(output_dir, "means_", name, ".xlsx"))
   message(paste0("results saved in: ", output_dir, "means_", name, ".xlsx"))
 }
   
@@ -1248,10 +1238,7 @@ create_object_from_cluster_id <- function(seurat_object, clusters, assay = "RNA"
   # Check arguments
   if (!is.vector(clusters)) stop("clusters must be a vector")
   if (is.na(new_idents)) new_idents <- "seurat_clusters"
-  
-  # Install packages
-  check_packages(c("readxl", "dplyr", "Seurat", "purrr", "openxlsx", "Matrix", "ggplot2"))
-  
+
   # Set corrrect identity column
   Idents(seurat_object) <- clusters_column
   subset_seurat_object <- subset(seurat_object, idents = clusters)
@@ -1875,7 +1862,7 @@ scType_annotation <- function(seurat_object,
     sctype_scores$type[as.numeric(as.character(sctype_scores$scores)) < sctype_scores$ncells / 6] <- "Unknown"
     
     # Save results in table
-    write.xlsx(sctype_scores, paste0(output_dir, name, "results.xlsx"), sheetName = "results", append = TRUE)
+    openxlsx::write.xlsx(sctype_scores, paste0(output_dir, name, "results.xlsx"), sheetName = "results", append = TRUE)
     message(paste0("scType: annotation results saved in: ", output_dir))
     
     # Subset annotation results
@@ -1971,9 +1958,6 @@ trajectory_analysis <- function(seurat_object, extension_plot = ".png", name = "
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "monocle", name, "/"))
   
-  # Other dependencies
-  check_packages(c("ggplot2", "dplyr"))
-  
   # Seuart wraper 
   # devtools::install_github("satijalab/seurat-wrappers")
   remotes::install_github("satijalab/seurat-wrappers@community-vignette")
@@ -2012,9 +1996,7 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
                               clusters_to_analyze = c(), subject_column = "subject",
                               name = "test", save_object = TRUE, load_object = FALSE,
                               obj_name = "cellchat_object.rds", extension_plot = ".png") {
-  # Dependencies
-  check_packages(c("devtools", "Seurat"))
-  
+
   #devtools::install_github("jinworks/CellChat")
   #devtools::install_github("jokergoo/circlize")
   #devtools::install_github("jokergoo/ComplexHeatmap")
@@ -2275,9 +2257,8 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
   else compute_cellchat()
   
   plot_results()
-  
-  library("openxlsx")
-  write.xlsx(subsetCommunication(cellchat), paste0(output_dir, "interactions_dataframe.xlsx"))
+
+  openxlsx::write.xlsx(subsetCommunication(cellchat), paste0(output_dir, "interactions_dataframe.xlsx"))
 
   
   # cellChat <- createCellChat(object = seurat_object, group.by = "ident", assay = "RNA")

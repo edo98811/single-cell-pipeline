@@ -6,7 +6,7 @@ source("scripts/wgcna_plots_helpers.r", local = TRUE)
 
 plot_functions <- function(bwnet, norm_counts, column_data, output_dir, extension_plot = ".png",
 reduction_name = "umap_microglia_harmony_reduction", module_of_interest = c(""),
-hub_genes_threshold = c(0.3, 1), which = c(""), cluster = FALSE, deg_to_use = "PD", ...) {
+hub_genes_threshold = c(0.3, 1), which = c(""), cluster = FALSE, ...) {
     
     if (!is.character(which) || !is.vector(which)) stop("which argument must be a character vector")
 
@@ -19,11 +19,11 @@ hub_genes_threshold = c(0.3, 1), which = c(""), cluster = FALSE, deg_to_use = "P
             "heatmap_mri" = heatmap_mri(bwnet, norm_counts, column_data),
             "heatmap_zscore" = heatmap_zscore(bwnet, norm_counts, column_data),
             "violin_plots" = violin_plots(bwnet, norm_counts, column_data),
-            "histogram_plot" = histogram_plot(bwnet, norm_counts, column_data, cluster, deg_to_use, extension_plot, ...),
+            "histogram_plot" = histogram_plot(bwnet, norm_counts, column_data, cluster, extension_plot, ...),
             "histogram_plot_significance" = histogram_plot_significance(bwnet, norm_counts, column_data, extension_plot, ...),
             "significance_membership_scatter" = significance_membership_scatter(bwnet, norm_counts, column_data, hub_genes_threshold, cluster, extension_plot, ...),
-            "significance_log2fc_scatter" = significance_log2fc_scatter(bwnet, norm_counts, column_data, cluster, deg_to_use, extension_plot, ...),
-            "correlation_avglog2fc_scatter" = correlation_avglog2fc_scatter(bwnet, norm_counts, column_data, cluster, deg_to_use, extension_plot, ...),
+            "significance_log2fc_scatter" = significance_log2fc_scatter(bwnet, norm_counts, column_data, cluster, extension_plot, ...),
+            "correlation_avglog2fc_scatter" = correlation_avglog2fc_scatter(bwnet, norm_counts, column_data, cluster, extension_plot, ...),
             "corr_matrix" = corr_matrix(bwnet, norm_counts, column_data),
             "significance_membership_model" = significance_membership_model(bwnet, norm_counts, column_data, ...),
             warning(function_name, ": Invalid function name"))
@@ -154,10 +154,10 @@ violin_plots <- function(bwnet, norm_counts, column_data, extension_plot) {
 }
 
 # Define function for histogram_plot
-histogram_plot <- function(bwnet, norm_counts, column_data, cluster, deg_to_use, extension_plot, ...) {
+histogram_plot <- function(bwnet, norm_counts, column_data, cluster, extension_plot, ...) {
     message("histogram_plot")
 
-    deg_results <- load_log2fc_df(cluster, deg_to_use, ...)
+    deg_results <- load_log2fc_df(cluster, ...)
 
     plot_df <- merge(data.frame(bwnet$colors), deg_results,
         by = "row.names", all = FALSE)
@@ -176,7 +176,7 @@ histogram_plot <- function(bwnet, norm_counts, column_data, cluster, deg_to_use,
                 legend.position = "none",      
                 axis.text.x = element_text(angle = 45, hjust = 1)  
                 )
-        , paste0(output_dir, deg_to_use, "_boxplot", extension_plot))
+        , paste0(output_dir, "_boxplot", extension_plot))
 
     save_plot(
         ggplot(
@@ -188,7 +188,7 @@ histogram_plot <- function(bwnet, norm_counts, column_data, cluster, deg_to_use,
                 legend.position = "none",           
                 axis.text.x = element_text(angle = 45, hjust = 1) 
                 ),
-        paste0(output_dir, deg_to_use, "_violin", extension_plot))
+        paste0(output_dir, "_violin", extension_plot))
 
 }
 
@@ -232,11 +232,11 @@ histogram_plot_significance <- function(bwnet, norm_counts, column_data, extensi
 }
 
 
-membership_log2fc_scatter <- function(bwnet, norm_counts, column_data, cluster, deg_to_use, extension_plot, ...) {
+membership_log2fc_scatter <- function(bwnet, norm_counts, column_data, cluster, extension_plot, ...) {
     message("membership_log2fc_scatter")
 
     module_membership_measure <- load_module_membership(bwnet, norm_counts) 
-    deg_results <- load_log2fc_df(cluster, deg_to_use, ...)
+    deg_results <- load_log2fc_df(cluster, ...)
     plot_df <- merge_dataframes(data.frame(bwnet$colors), deg_results, module_membership_measure)
 
     for (module in unique(bwnet$colors)) {
@@ -297,11 +297,11 @@ membership_log2fc_scatter <- function(bwnet, norm_counts, column_data, cluster, 
 }
 
 
-significance_log2fc_scatter <- function(bwnet, norm_counts, column_data, cluster, deg_to_use, extension_plot, ...) {
+significance_log2fc_scatter <- function(bwnet, norm_counts, column_data, cluster, extension_plot, ...) {
     message("significance_log2fc_scatter")
 
     gene_significance <- load_significance(norm_counts, ...)
-    deg_results <- load_log2fc_df(cluster, deg_to_use, ...)
+    deg_results <- load_log2fc_df(cluster, ...)
     plot_df <- merge_dataframes(data.frame(bwnet$colors), deg_results, gene_significance)
     
 
@@ -403,7 +403,7 @@ significance_membership_scatter <- function(bwnet, norm_counts, column_data, hub
 }
 
 
-significance_avglog2fc_scatter <- function(bwnet, norm_counts, column_data, cluster, deg_to_use, extension_plot, ...) {
+significance_avglog2fc_scatter <- function(bwnet, norm_counts, column_data, cluster, extension_plot, ...) {
     
     message("correlation_avglog2fc_scatter")
 
@@ -429,7 +429,7 @@ significance_avglog2fc_scatter <- function(bwnet, norm_counts, column_data, clus
         y = heatmap_data[, (length(heatmap_data) - ncol(traits) + 1):length(heatmap_data)],
         x = heatmap_data[, 1:(length(heatmap_data) - ncol(traits))])$cor
 
-    deg_results <- load_log2fc_df(cluster, deg_to_use, ...)
+    deg_results <- load_log2fc_df(cluster, ...)
 
     plot_df <- tibble::column_to_rownames(merge(data.frame(bwnet$colors), deg_results,
         by = "row.names", all = FALSE), var = "Row.names")
@@ -459,7 +459,7 @@ significance_avglog2fc_scatter <- function(bwnet, norm_counts, column_data, clus
                 ggrepel::geom_text_repel(aes(label = color), size = 3) +
                 theme_grey() + 
                 theme(legend.position = "none"),
-            paste0(output_dir, deg_to_use, "correlation_avg_log2fc_scores_scatter/", region, "_scatter_plot", extension_plot))
+            paste0(output_dir, "correlation_avg_log2fc_scores_scatter/", region, "_scatter_plot", extension_plot))
     }
 }
 

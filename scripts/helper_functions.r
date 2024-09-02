@@ -405,8 +405,8 @@ ttest_mridata_new <- function(filename = "ttest_results_onlyneeded_without_outli
 
   # Save data to excel
   library("xlsx")
-  write.xlsx(ttest_results[order(as.numeric(ttest_results$p.value)),], paste0("MRIdata/", filename, ".xlsx"))
-  write.xlsx(data, "MRIdata/regions.xlsx")
+  openxlsx::write.xlsx(ttest_results[order(as.numeric(ttest_results$p.value)), ], paste0("MRIdata/", filename, ".xlsx"))
+  openxlsx::write.xlsx(data, "MRIdata/regions.xlsx")
   message("results saved in: ", paste0("MRIdata/", filename, ".xlsx"))
   
   warning("raincloud to implement")

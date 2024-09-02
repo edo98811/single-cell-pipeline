@@ -48,37 +48,22 @@ write_on_excel <- function(sheet_name, data, wb = NULL, mode = "pvalue") {
 # anche senza fare in modo che funzioni per i clusters, magari pensare ad un
 # mod di aggiungerlo, ma non priorita
 load_log2fc <- function(
-    markers_analysis_pd = "microglia_control_vs_pd_nogenetic",
-    markers_analysis_gpd = "microglia_control_vs_geneticpd", 
+    markers_analysis = "microglia_control_vs_pd_nogenetic",
     cluster = FALSE, ...) {
-
-    library("openxlsx")
     
     if (isFALSE(cluster)) {
-        message(paste0("loading... ", output_folder, "markers_", markers_analysis_pd,
-            "/expressed_markers_all_", markers_analysis_pd, ".xlxs"))
-        markers_table_pd <- read.xlsx(paste0(output_folder, "markers_", markers_analysis_pd,
-            "/expressed_markers_all_", markers_analysis_pd, ".xlsx"))
-
-        message(paste0("loading... ", output_folder, "markers_", markers_analysis_gpd,
-            "/expressed_markers_all_", markers_analysis_gpd, ".xlxs"))
-        markers_table_gpd <- read.xlsx(paste0(output_folder, "markers_", markers_analysis_gpd,
-            "/expressed_markers_all_", markers_analysis_gpd, ".xlsx"))
+        message(paste0("loading... ", output_folder, "markers_", markers_analysis,
+            "/expressed_markers_all_", markers_analysis, ".xlxs"))
+        markers_table <- openxlsx::read.xlsx(paste0(output_folder, "markers_", markers_analysis,
+            "/expressed_markers_all_", markers_analysis, ".xlsx"))
     } else {
-        message(paste0("loading... ", output_folder, "markers_", markers_analysis_pd,
-            "/expressed_markers_", cluster, "_", markers_analysis_pd, ".xlxs"))
-        markers_table_pd <- read.xlsx(paste0(output_folder, "markers_", markers_analysis_pd,
-            "/expressed_markers_", cluster, "_", markers_analysis_pd, ".xlsx"))
-
-        message(paste0("loading... ", output_folder, "markers_", markers_analysis_gpd,
-            "/expressed_markers_", cluster, "_", markers_analysis_gpd, ".xlxs"))
-        markers_table_gpd <- read.xlsx(paste0(output_folder, "markers_", markers_analysis_gpd,
-            "/expressed_markers_", cluster, "_", markers_analysis_gpd, ".xlsx"))
+        message(paste0("loading... ", output_folder, "markers_", markers_analysis,
+            "/expressed_markers_", cluster, "_", markers_analysis, ".xlxs"))
+        markers_table <- openxlsx::read.xlsx(paste0(output_folder, "markers_", markers_analysis,
+            "/expressed_markers_", cluster, "_", markers_analysis, ".xlsx"))
     }
     
-    return(list(
-        GPD = tibble::column_to_rownames(as.data.frame(markers_table_gpd), var = "gene"),
-        PD = tibble::column_to_rownames(as.data.frame(markers_table_pd), var = "gene")))
+    return(tibble::column_to_rownames(as.data.frame(markers_table), var = "gene"))
 }
 
 merge_dataframes <- function(data1, data2, data3) {
@@ -123,9 +108,9 @@ load_significance <- function(norm_counts, type = "zscore", ...) {
     gene_significance <- cor(norm_counts, traits, use = "p")
 }
 
-load_log2fc_df <- function(cluster, deg_to_use = "PD", ...) {
+load_log2fc_df <- function(cluster, ...) {
 
-    plot_df <- load_log2fc(cluster, ...)[[deg_to_use]]
+    plot_df <- load_log2fc(cluster, ...)
 
     plot_df$abs_avg_log2FC <- abs(plot_df$avg_log2FC)
 
