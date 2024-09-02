@@ -21,7 +21,7 @@ hdwgcna <- function(seurat_obj, name = "test", ...) {
     # Select the genes that are expressed in at least 5% of cells in the test field in misc seurat obkect
     seurat_obj <- SetupForWGCNA(
         seurat_obj,
-        gene_select = "variable", # the gene selection approach
+        gene_select = "fraction", # the gene selection approach
         fraction = 0.05, # fraction of cells that a gene needs to be expressed in order to be included
         wgcna_name = "test" # the name of the hdWGCNA experiment
     )
