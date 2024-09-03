@@ -176,6 +176,8 @@ The settings file stores the default parameters for each pipeline that is run. A
 - `folder` [boolean] - Whether to save DEG results in a separate folder.
 
 
-# Pipeline file Documentation 
+## To write your own script
 
-The pipeline file is the one that defined the 
+to write your own script, the own script parametr needs to be set to true, the global settings can be set and also the specific settings (but in this case there no practical difference between the two, apart from the way they need to be accessed)
+The global settings are accessed by simply writing the variable name how it is written in the pipeline file, the sepcific settings are accessed with parameters$variable_name.
+If you want the seurat object to be preloaded for you you can just set it in the gloab variables, otherwie just dont set anything or leave it to false. 

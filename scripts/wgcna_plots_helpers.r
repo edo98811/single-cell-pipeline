@@ -2,13 +2,13 @@
 # mail: efilippi@uni-mainz.de
 
 
-write_on_excel <- function(sheet_name, data, wb = NULL, mode = "pvalue") {
+write_on_excel <- function(sheet_name, data, wb = NULL, mode = "") {
 
     library(openxlsx)
     
     # Create a new workbook and add a worksheet
     if (is.null(wb)) wb <- openxlsx::createWorkbook()
-    # detach("package:openxlsx", unload=TRUE)
+    
     openxlsx::addWorksheet(wb, sheet_name)
 
     # Write the data to the worksheet
@@ -27,7 +27,7 @@ write_on_excel <- function(sheet_name, data, wb = NULL, mode = "pvalue") {
             style = c("#78b7ff", "#ffffff", "#F8696B"),
             gradient = TRUE
         )
-    else if (mode == "pvalue") {
+    else if (mode == "pvalue") 
         openxlsx::conditionalFormatting(
             wb, 
             sheet = sheet_name, 
@@ -38,9 +38,7 @@ write_on_excel <- function(sheet_name, data, wb = NULL, mode = "pvalue") {
             style = createStyle(bgFill = "yellow"),
             gradient = TRUE
         )
-    }
         
-    # Save the workbook
     return(wb)
 }
 
@@ -137,7 +135,7 @@ make_heatmap <- function(bwnet, excel_filename, traits) {
         x = heatmap_data[, 1:(length(heatmap_data) - ncol(traits))], method = "kendall")
 
     wb <- write_on_excel("correlation", as.data.frame(res$cor), mode = "colorscale")
-    wb <- write_on_excel("p.value", as.data.frame(res$p), wb = wb)
+    wb <- write_on_excel("p.value", as.data.frame(res$p), wb = wb, mode = "pvalue")
     wb <- write_on_excel("t.statistic", as.data.frame(res$t), wb = wb)
     openxlsx::saveWorkbook(wb, excel_filename, overwrite = TRUE)
 

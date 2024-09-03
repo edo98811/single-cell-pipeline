@@ -495,7 +495,6 @@ run_asyncronously <- function(func, ..., output_file = "output.txt") {
   cat("Function is running in the background. Check ", paste0(getwd(), "output.txt"), " for progress./n")
 }
 
-
 load_rcc_data <- function(file_path) {
 
   # library(data.table)
@@ -526,4 +525,19 @@ load_txt_data <- function() {
     # Convert Ensembl IDs to gene names
     rownames(data) <- mapIds(org.Hs.eg.db, keys = rownames(data), column = "SYMBOL", keytype = "ENSEMBL", multiVals = "first")
     seurat_obj <- CreateSeuratObject(counts = data)
+}
+
+factorize_columns <- function(seurat_object) {
+  purrr::walk(colnames(seurat_object@meta.data), function(column) {
+    if (is.character(seurat_object@meta.data[[column]])) 
+      seurat_object@meta.data[[column]] <- factor(seurat_object@meta.data[[column]])
+  })
+}
+
+detach_packages <- function(packages_to_detach) {
+  for (pkg in packages_to_detach) {
+    if (paste0("package:", pkg) %in% search()) {
+        detach(paste0("package:", pkg), unload = TRUE, character.only = TRUE)
+    }
+  }
 }

@@ -11,6 +11,7 @@ preprocessing <- function(env_variables, preprocessing_settings) {
     parameters <- .update_parameters(preprocessing_settings,  load_settings(settings_path)$preprocessing)
 
     # Preparation of subjects info
+    if (isFALSE(data_folder)) stop("Data folder not set and required to load data")
     data_preparation <- preparation_for_data_loading(data_folder, count_matrix_pattern, patient_info)
 
     # Seurat object creation and quality control

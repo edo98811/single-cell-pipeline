@@ -18,7 +18,7 @@ main <- function(pipeline_file = "pipeline_wgcna.json") {
     setup_globals(general_settings$folder_destination, general_settings$data_folder, pipeline$general$settings_path)
 
     # Load microglia object if needed
-    if (!pipeline$pipeline$preprocessing)   load_seurat_object(general_settings$seurat_object)
+    if (!isFALSE(general_settings$seurat_object))   load_seurat_object(general_settings$seurat_object)
 
     # Pipeline
     if (pipeline$pipeline$preprocessing)    preprocessing(pipeline$global_variables, pipeline$preprocessing)
@@ -75,6 +75,7 @@ setup_globals <- function(folder, data_folder, settings_path) {
         message("Directory created: ", folder)
     }
     assign("data_folder", data_folder, envir = .GlobalEnv)
+    if (isFALSE(data_folder)) message("data folder not set.")
     assign("settings_path", settings_path, envir = .GlobalEnv)
 }
 

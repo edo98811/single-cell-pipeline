@@ -1990,6 +1990,8 @@ trajectory_analysis <- function(seurat_object, extension_plot = ".png", name = "
             paste0(output_dir, "pseudotime_traj_graph", extension_plot))
   save_plot(plot_cells(cds, color_cells_by = "pseudotime", show_trajectory_graph = FALSE), 
             paste0(output_dir, "pseudotime", extension_plot))
+            
+  detach("package:openxlsx", unload=TRUE)
 }
 
 cellchat_function <- function(seurat_object, cluster_column = "microglia_clusters", 
