@@ -100,16 +100,25 @@ load_mri_traits <- function(wgcna_subjects = list(), regions = c(), type = "zsco
 }
 
 load_significance <- function(norm_counts, type = "zscore", ...) {
-
     traits <- load_mri_traits(type = type, ...)
-
-    gene_significance <- cor(norm_counts, traits, use = "p")
+    tryCatch({
+        gene_significance <- cor(norm_counts, traits, use = "p")
+        return(gene_significance)
+    }, 
+    error = function(e) {
+        if (grepl("incompatible dimensions", e$message)) {
+            stop("Error incompatible dimensions: Maybe your Seurat object contains different samples as the ones in the traits dataset?", "\n",
+                "subjects in seurat object: ", rownames("norm_counts"), "\n",
+                "subjects in seurat object: ", rownames("norm_counts"))
+        } else {
+            stop(e)
+        }
+    })
 }
 
 load_log2fc_df <- function(cluster, ...) {
 
     plot_df <- load_log2fc(cluster, ...)
-
     plot_df$abs_avg_log2FC <- abs(plot_df$avg_log2FC)
 
     return(plot_df)
@@ -117,13 +126,10 @@ load_log2fc_df <- function(cluster, ...) {
 
 load_module_membership <- function(bwnet, norm_counts) {
 
-    module_membership_measure <- cor(norm_counts, bwnet$MEs, use = "p")  # ahh ho invertito e quindo ho una direzione divers
+    module_membership_measure <- cor(norm_counts, bwnet$MEs, use = "p") 
 }
 
 make_heatmap <- function(bwnet, excel_filename, traits) {
-    
-    library(tibble)
-    library(openxlsx)
 
     heatmap_data <- bwnet$MEs %>%
         merge(traits, by = "row.names") %>%

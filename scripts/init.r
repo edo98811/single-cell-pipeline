@@ -8,6 +8,34 @@ options(deparse.max.lines = 10)
 devtools::install_github("immunogenomics/presto")
 source("scripts/helper_functions.r")
 
+#' Main Function to run the Pipeline
+#'
+#' It reads a configuration file in JSON format and runs the specified steps, including preprocessing, 
+#' integration, clustering, annotation, differential expression analysis, WGCNA, and enrichment analysis.
+#'
+#' @param pipeline_file The name of the JSON file containing the pipeline configuration.
+#'
+#' @details
+#' This function sources required scripts, loads the Seurat object if necessary, and runs the specified steps 
+#' of the pipeline based on the settings provided in the JSON file. The pipeline can include the following steps:
+#' * Preprocessing
+#' * Integration
+#' * Clustering
+#' * Annotation
+#' * Differential expression (DEG)
+#' * WGCNA
+#' * Enrichment analysis
+#' 
+#' Additionally, custom scripts can be executed as part of the pipeline.
+#'
+#' @return None. This function is used for its side effects, which include generating plots, saving Seurat objects, and writing output files.
+#'
+#' @examples
+#' \dontrun{
+#' main("pipeline_1.json")
+#' }
+#'
+#' @export
 main <- function(pipeline_file = "pipeline_wgcna.json") {
     source("scripts/pipelines.r", local = TRUE)
 
@@ -18,8 +46,12 @@ main <- function(pipeline_file = "pipeline_wgcna.json") {
     setup_globals(general_settings$folder_destination, general_settings$data_folder, pipeline$general$settings_path)
 
     # Load microglia object if needed
-    if (!isFALSE(general_settings$seurat_object))   load_seurat_object(general_settings$seurat_object)
+    if (!isFALSE(general_settings$seurat_object) && isFALSE(general_settings$preprocessing))   load_seurat_object(general_settings$seurat_object)
 
+    lapply(c("preprocessing", "integration", "clustering", "annotation", "deg", "wgcna", "enrichment", "own_script"), function(name) {
+        if (name %in% names(pipeline$pipeline)) 
+            pipeline$pipeline[[name]] <- FALSE
+    })
     # Pipeline
     if (pipeline$pipeline$preprocessing)    preprocessing(pipeline$global_variables, pipeline$preprocessing)
     if (pipeline$pipeline$integration)      integration(pipeline$global_variables, pipeline$integration)
@@ -30,7 +62,6 @@ main <- function(pipeline_file = "pipeline_wgcna.json") {
     if (pipeline$pipeline$enrichment)       enrichment(pipeline$global_variables, pipeline$enrichment)
     if (pipeline$pipeline$own_script)       own_script(pipeline$global_variables, pipeline$own_script)
 }
-
 
 check_packages <- function(list_of_packages) {
 

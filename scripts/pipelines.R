@@ -293,8 +293,20 @@ wgcna <- function(env_variables, wgcna_settings) {
                                                                     parameters$cluster,
                                                                     assay = a,
                                                                     clusters_column = c))
+            message("Seurat object subsetted according to required clusters")
         } else seurat_object_subset <- seurat_object
         
+        if (!isFALSE(parameters$wgcna_subjects))  {
+            tryCatch({seurat_object_subset <- create_object_from_cluster_id(seurat_object_subset, 
+                                                                    names(parameters$wgcna_subjects),
+                                                                    assay = a,
+                                                                    clusters_column = parameters$subject_column)
+                message("Seurat object subsetted according to required subjects")
+            }, 
+            error = function(e) {
+                warning(" Could not subset seurat object according to subjects given, error: ", e)
+            })
+        }   
         if (parameters$method == "WGCNA") {
 
             try(do.call(wgcna_main, 

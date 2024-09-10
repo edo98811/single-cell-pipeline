@@ -12,5 +12,7 @@ pipeline <-  "pipeline_complete_all.json"
 main(pipeline)
 pipeline <-  "pipeline_complete_microglia.json"
 main(pipeline)
+pipeline <-  "pipeline_complete_microglia_selection.json"
+main(pipeline)
 pipeline <-  "pipeline_hdwgcna_subset_run.json"
 main(pipeline)

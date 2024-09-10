@@ -12,8 +12,8 @@
 #' @param  subject_pathology_column
 #' @param  subject_column
 #' @param  extension_plot
-#' @param  markers_analysisGPD
-#' @param  markers_analysisPD
+#' @param  markers_analysis_gpd
+#' @param  markers_analysis_pd
 #' @param  hub_genes_list
 #' @param  hub_genes_threshold
 #' @param  module_of_interest
@@ -27,8 +27,8 @@ wgcna_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", s
 
     # Check types of arguments
     if (!inherits(seurat_object, "Seurat")) stop("seurat_object must be a Seurat object")
-    if (!is.character(name)) stop("name argument must be a character")
-    if (!is.character(wgcna_file)) stop("wgcna_file argument must be a character")
+    if (!is.character(name)) stop("name argument must be a character type")
+    if (!is.character(wgcna_file)) stop("wgcna_file argument must be a character type")
     if (!is.logical(save_net)) stop("save_net argument must be a logical value")
     if (!is.logical(load_net)) stop("load_net argument must be a logical value")
     if (!isFALSE(soft_power) && !is.numeric(soft_power)) stop("soft_power argument must be a numeric value or FALSE")
@@ -47,7 +47,7 @@ wgcna_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", s
     norm_counts <- prepare_data(seurat_object, column_data, ...)
 
     # Soft power
-    if (isFALSE(soft_power) & !load_net)
+    if (isFALSE(soft_power) && !load_net)
         soft_power <- soft_power_intuition(norm_counts, output_dir, ...)
 
     # Matrix computation
@@ -65,6 +65,9 @@ wgcna_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", s
 # Prepare info on subjects
 prepare_column_data <- function(seurat_object, subject_pathology_column = "subject_pathology", subject_column = "subject", ...) {
 
+    if (!is.character(subject_pathology_column)) stop("subject_pathology_column argument must be a character type type")
+    if (!is.character(subject_column)) stop("subject_column argument must be a character type")
+
     # Extract metadata from seurat object
     meta_data <- seurat_object@meta.data
 
@@ -78,6 +81,8 @@ prepare_column_data <- function(seurat_object, subject_pathology_column = "subje
 
 # Prepare the count matrix
 prepare_data <- function(seurat_object, column_data, subject_column = "subject", ...) {
+
+    if (!is.character(subject_column)) stop("wgcna prepare data: subject_column argument must be a character type")
 
     library(DESeq2)
 
@@ -141,8 +146,10 @@ matrix_computation <- function(norm_counts, soft_power, save_net, output_dir, wg
     cor <- temp_cor
     
     # Save in file
-    if (save_net)
+    if (save_net) {
         saveRDS(bwnet, paste0(output_dir, wgcna_file))
+        message("object saved in: ", paste0(output_dir, wgcna_file))
+    }
 
     # Return data
     return(bwnet)
@@ -220,4 +227,3 @@ save_module_genes <- function(bwnet, norm_counts, column_data, output_dir) {
     write.xlsx(table(bwnet$colors), paste0(output_dir, "module_recap.xlsx"))
     message("module recap saved in: ", paste0(output_dir, "module_recap.xlsx"))
 }
-

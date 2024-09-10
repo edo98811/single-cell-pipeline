@@ -34,13 +34,14 @@ enrichment_analysis <- function(name, markers_path,
   # go options: BP, CC, MF, ALL
 
   # Check types of arguments
-  if (!is.character(name) || length(name) != 1) stop("name argument must be a single character string")
-  if (!is.character(markers_path) || length(markers_path) != 1) stop("markers_path argument must be a single character string")
-  if (!is.integer(count_threshold) || length(count_threshold) != 1) stop("count_threshold argument must be a single numeric value")
-  if (!is.integer(module_threshold) || length(module_threshold) != 1) stop("module_threshold argument must be a single numeric value")
-  if (!((is.logical(wgcna_exclude) && isFALSE(wgcna_exclude)) || is.character(wgcna_exclude))) stop("wgcna_exclude argument must be either FALSE or a character vector")
-  if (!((is.logical(wgcna_module) && isFALSE(wgcna_module)) || is.character(wgcna_module))) stop("wgcna_module argument must be either FALSE or a character vector")
-  if (!((is.logical(cluster) && isFALSE(cluster)) || is.numeric(cluster))) stop("cluster argument must be either FALSE or a numerical vector or single numerical value")
+  if (!is.character(name) || length(name) != 1) stop(" wgcna_main: name argument must be a single character string")
+  if (!is.character(markers_path) || length(markers_path) != 1) stop(" wgcna_main: markers_path argument must be a single character string")
+  if (!is.integer(count_threshold) || length(count_threshold) != 1) stop(" wgcna_main: count_threshold argument must be a single numeric value")
+  if (!is.integer(module_threshold) || length(module_threshold) != 1) stop(" wgcna_main: module_threshold argument must be a single numeric value")
+  if (!((is.logical(wgcna_exclude) && isFALSE(wgcna_exclude)) || is.character(wgcna_exclude))) stop(" wgcna_main: wgcna_exclude argument must be either FALSE or a character vector")
+  if (!((is.logical(modules_significance_table) && isFALSE(modules_significance_table)) || is.character(modules_significance_table))) stop(" wgcna_main: modules_significance_table argument must be either FALSE or a character vector")
+  if (!((is.logical(wgcna_module) && isFALSE(wgcna_module)) || is.character(wgcna_module))) stop(" wgcna_main: wgcna_module argument must be either FALSE or a character vector")
+  if (!((is.logical(cluster) && isFALSE(cluster)) || is.numeric(cluster))) stop(" wgcna_main: cluster argument must be either FALSE or a numerical vector or single numerical value")
 
   
   # Set up   output dir
@@ -805,15 +806,13 @@ prepare_genes <- function(excel_file, count_threshold, scoring = "log2FC", ...) 
   if (!is.character(scoring) || length(scoring) != 1 || !(scoring %in% c("log2FC", "spvalue", "paper"))) 
     stop("scoring argument must be a single character string and one of 'log2FC', 'spvalue', or 'paper'")
 
-  
-  library("readxl")
-
   # Read the Excel file and filter out low quality data
-  data <- read_excel(excel_file)
+  data <- readxl::read_excel(excel_file)
   data <- data[data$pct.1 > count_threshold & data$pct.2 > count_threshold, ]
   
   # Extract the data
-  genes <- data$gene
+  
+  trycatch(genes <- data$gene, error = function(e) {stop("load gene data in enrichment: The exel file does not have a gene column")})
   if (scoring == "log2FC") scores <- data$avg_log2FC
   else if (scoring == "spvalue") scores <- sign(data$avg_log2FC) * (-log10(data$p_val))
   else if (scoring == "paper") scores <- data$avg_log2FC * (-log10(data$p_val))

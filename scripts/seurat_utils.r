@@ -41,64 +41,34 @@ many_plots <- function(seurat_object, which = c("dotplot", "heatmap"), clusters 
                    extension_plot = ".png", maxn_genes = 100, n_genes = 25, maxn_genes_per_plot = 100) {
   
   # Check arguments
-  if (TRUE) {
-  if (!inherits(seurat_object, "Seurat")) {
-    stop("seurat_object must be a Seurat object")
-  }
-  
+  if (!inherits(seurat_object, "Seurat")) stop("seurat_object must be a Seurat object")
   if (!is.character(which) 
-      || !all(which %in% c("dotplot", "heatmap"))) {
-    stop("which argument must be a character vector containing 'dotplot' and/or 'heatmap'")
-  }
-  
+      || !all(which %in% c("dotplot", "heatmap"))) stop("which argument must be a character vector containing 'dotplot' and/or 'heatmap'")
   if (!isFALSE(clusters) 
-      || (!is.integer(clusters) && !is.vector(clusters))) {
-    stop("clusters argument must be an integer")
-  }
-  
-  if (!is.character(assay)) {
-    stop("assay argument must be a string")
-  }
-  
-  if (!is.character(cluster_column)) {
-    stop("cluster_column argument must be a string (or int)")
-  }
-  
-  if (!is.character(name)) {
-    stop("name argument must be a character")
-  }
-  
+      || (!is.integer(clusters) && !is.vector(clusters))) stop("clusters argument must be an integer")
+  if (!is.character(assay)) stop("assay argument must be a string")
+  if (!is.character(cluster_column)) stop("cluster_column argument must be a string (or int)")
+  if (!is.character(name)) stop("name argument must be a character")
   if (!isFALSE(markers) 
       || (!is.character(markers) && !is.vector(markers))
-      || (!is.integer(markers) && !is.vector(markers))) {
-    stop("markers argument must be a character vector or NA")
-  }
+      || (!is.integer(markers) && !is.vector(markers))) stop("markers argument must be a character vector or False")
+  if (!is.character(extension_plot)) stop("extension_plot argument must be a string")
+  if (!is.numeric(maxn_genes) || maxn_genes <= 0) stop("maxn_genes argument must be a positive numeric value")
+  if (!is.numeric(n_genes) || n_genes <= 0) stop("n_genes argument must be a positive numeric value")
+  if (!is.numeric(maxn_genes_per_plot) || maxn_genes_per_plot <= 0) stop("maxn_genes_per_plot argument must be a positive numeric value")
 
-  if (!is.character(extension_plot)) {
-    stop("extension_plot argument must be a string")
-  }
-  
-  if (!is.numeric(maxn_genes) || maxn_genes <= 0) {
-    stop("maxn_genes argument must be a positive numeric value")
-  }
-  
-  if (!is.numeric(n_genes) || n_genes <= 0) {
-    stop("n_genes argument must be a positive numeric value")
-  }
-  
-  if (!is.numeric(maxn_genes_per_plot) || maxn_genes_per_plot <= 0) {
-    stop("maxn_genes_per_plot argument must be a positive numeric value")
-  }
-  }
 
   # Messages
-  cat("Plotting (heatmap)  \n")
   message(paste0("Parameters: which: ", paste(which, collapse = ", "),
                  " - clusters: ", clusters,
                  " - assay: ", assay,
                  " - cluster_column: ", cluster_column,
                  " - name: ", name,
-                 " - markers: ", paste(markers, collapse = ", ")))
+                 " - markers: ", markers,
+                 " - extension_plot: ", extension_plot,
+                 " - maxn_genes: ", maxn_genes,
+                 " - n_genes: ", n_genes,
+                 " - maxn_genes_per_plot: ", maxn_genes_per_plot))
   
 
   # Set up output dir, make it second level if the name is an absolute path 
@@ -380,17 +350,18 @@ plot_markers_from_df <- function(seurat_object, markers_location, reduction_name
   
   # Messages 
   cat("Plotting markers from given df... \n")
-  message(paste0("Parameters: - reduction_name: ", reduction_name,
-                 " - markers_location: ", markers_location,
+  message(paste0("Parameters: markers_location: ", markers_location,
+                 " - reduction_name: ", reduction_name,
                  " - name: ", name,
-                 " - many_plot: ", many_plot,   # makes the heatmap
+                 " - many_plot: ", many_plot,
                  " - feature_plot: ", feature_plot,
                  " - extension_plot: ", extension_plot,
-                 " - heatmap_by_column: ", heatmap_by_column,  # creates a different heatmap for each column 
+                 " - heatmap_by_column: ", heatmap_by_column,
                  " - cluster_column: ", cluster_column,
                  " - subplot_n: ", subplot_n,
                  " - max_feature_plots: ", max_feature_plots,
-                 " - max_genes_many_plots: ", max_genes_many_plots))
+                 " - max_genes_many_plots: ", max_genes_many_plots,
+                 " - column_list: ", column_list))
 
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "plot_markers_from_df_", name, "/"))
@@ -443,7 +414,10 @@ plot_markers_from_df <- function(seurat_object, markers_location, reduction_name
       for (column in names(markers_df)) {
         
         # Skip if no data is present
-        if (is.character(column_list) && !any(column %in% column_list)) {message("skipping: ", column); next}
+        if (is.character(column_list) && !any(column %in% column_list)) {
+          message("skipping: ", column)
+          next
+        }
         
         # Extract the features that are present in the seurat object for each column
         features <- markers_df %>%
@@ -685,8 +659,11 @@ clustering <- function(seurat_object, reduction = "pca",
   
   # Message
   cat("Clustering.... \n")
-  message(paste0("Parameters: dimensions used for clustering: ", dimensions,
-                 " - reduction used: ", reduction))
+  message(paste0("Parameters: reduction: ", reduction,
+                 " - dimensions: ", dimensions,
+                 " - desired_resolution: ", desired_resolution,
+                 " - save: ", save,
+                 " - column_name: ", column_name))
   
   # build the graph
   seurat_object <- FindNeighbors(seurat_object, reduction = reduction, dims = 1:dimensions, verbose = FALSE)
@@ -756,14 +733,14 @@ clustering <- function(seurat_object, reduction = "pca",
 visualization_UMAP <- function(seurat_object, reduction_name = "umap_",
                                           reduction = "pca", dimensions = 16, 
                                           cluster_column = "seurat_clusters",
-                                          plots = NA, save = FALSE, 
+                                          plots = FALSE, save = FALSE, 
                                           run_UMAP = TRUE, name = "", 
                                           message = "results", extension_plot = ".png",
                                           daniela = FALSE) {
   
   # Setting plot names
-  if (is.na(name)) name <- reduction_name
-  if (is.na(plots)) {
+  if (length(name) == 1) name <- reduction_name
+  if (isFALSE(plots)) {
     plots <- c(
       paste0(name, "_by_pathology", extension_plot),
       paste0(name, "_clusters", extension_plot),
@@ -780,12 +757,16 @@ visualization_UMAP <- function(seurat_object, reduction_name = "umap_",
   # Function info
   cat(paste0("Visualisation and UMAP... \n"))
   
-  message(paste0("Parameters: run UMAP: ", run_UMAP,
-                 " - dimensions used: ", dimensions,
-                 " - reduction used: ", reduction,
-                 " - reduction name saved: ", reduction_name,
+  message(paste0("Parameters: reduction_name: ", reduction_name,
+                 " - reduction: ", reduction,
+                 " - dimensions: ", dimensions,
+                 " - cluster_column: ", cluster_column,
+                 " - plots: ", plots,
                  " - save: ", save,
-                 " - name: ", name))
+                 " - run_UMAP: ", run_UMAP,
+                 " - name: ", name,
+                 " - message: ", message,
+                 " - extension_plot: ", extension_plot))
   
   # UMAP
   if (run_UMAP) seurat_object <- RunUMAP(seurat_object, dims = 1:dimensions, reduction = reduction, 
@@ -951,7 +932,7 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
       # Source -> https://github.com/chris-mcginnis-ucsf/DoubletFinder
       ## Pre-process Seurat object (standard) --------------------------------------------------------------------------------------
       seurat_object <- NormalizeData(seurat_object)
-      seurat_object <- FindVariableFeatures(seurat_object, selection.method = "vst", nfeatures = 2000)
+      seurat_object <- FindVariableFeatures(seurat_object)
       seurat_object <- ScaleData(seurat_object)
       seurat_object <- RunPCA(seurat_object)
       seurat_object <- RunUMAP(seurat_object, dims = 1:10)
@@ -970,12 +951,12 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
       # bcmvn_ <- find.pK(sweep.stats)
       
       ## Homotypic Doublet Proportion Estimate -------------------------------------------------------------------------------------
-      homotypic.prop <- modelHomotypic(seurat_object@meta.data$seurat_clusters)           ## ex: annotations <- seurat_object@meta.data$ClusteringResults
-      nExp_poi <- round(perc_doublet * nrow(seurat_object@meta.data))                       ## Assuming 7.5% doublet formation rate - tailor for your dataset
-      nExp_poi.adj <- round(nExp_poi * (1 - homotypic.prop))
+      # homotypic.prop <- modelHomotypic(seurat_object@meta.data$seurat_clusters)           ## ex: annotations <- seurat_object@meta.data$ClusteringResults
+      n_exp_poi <- round(perc_doublet * nrow(seurat_object@meta.data))                    ## Assuming 7.5% doublet formation rate - tailor for your dataset
+      # nExp_poi.adj <- round(nExp_poi * (1 - homotypic.prop))                              ## adjuste pvalue for hih confidenc of identifying doublets
       
       ## Run DoubletFinder with varying classification stringencies ----------------------------------------------------------------
-      seurat_object <- doubletFinder(seurat_object, PCs = 1:10, pN = 0.25, pK = 0.09, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
+      seurat_object <- doubletFinder(seurat_object, PCs = 1:10, pN = 0.25, pK = 0.09, nExp = n_exp_poi, reuse.pANN = FALSE, sct = FALSE)
       
       ## Save Plots ---------------------------------------------------------------------------------------------------------------
       if (!dir.exists(paste0(output_dir, "/exdimred/"))) dir.create(paste0(output_dir, "/exdimred/"))
@@ -994,7 +975,7 @@ seurat_objects_and_quality_control <- function(count_matrix_files, subjects_info
     
     empty_drops <- function(seurat_object) {
       
-      e.out <- emptyDrops(counts(count_data), lower = 100, test.ambient = TRUE)
+      e_out <- emptyDrops(counts(count_data), lower = 100, test.ambient = TRUE)
       
     }
     
@@ -1253,7 +1234,53 @@ create_object_from_cluster_id <- function(seurat_object, clusters, assay = "RNA"
   return(subset_seurat_object)
 }
 
-# To create the plots that can be used in a paper
+#' Generate Plots for Publication from Seurat Object
+#'
+#' This function generates a variety of plots (bar plots, pie charts, feature plots, ridge plots, etc.)
+#' from a Seurat object for use in publications. It can create cell type plots, subject-wise plots, and
+#' other visualizations based on metadata from the Seurat object.
+#'
+#' @param seurat_object A Seurat object containing the single-cell RNA-seq data.
+#' @param which A character vector specifying the types of plots to generate. Options include:
+#'        "numberofcell_barplot", "numberofcell_pie_chart", "numberofcell_barplot_subject", 
+#'        "numberofcell_pie_chart_subject", "numberofcell_pie_chart_cluster_subject", 
+#'        "numberofcell_pie_chart_cluster_pathology", "feature_plots", "ridge_plots".
+#' @param genes_to_plot A character vector specifying genes to plot in feature or ridge plots.
+#' @param cluster_column A character string specifying the column name in the Seurat object's metadata 
+#'        that contains the clustering information (default is "microglia_clusters").
+#' @param extension_plot A character string specifying the file extension for the output plots (default is ".png").
+#' @param name A character string that can be used to prefix the output plot filenames.
+#' @param assay The assay to use for gene expression data (default is "RNA").
+#' 
+#' @return This function generates and saves the specified plots to a directory.
+#' 
+#' @details 
+#' The function creates different types of visualizations based on the input Seurat object and metadata. 
+#' It allows flexibility in terms of generating pie charts, bar plots, feature plots, and ridge plots. 
+#' Additionally, the function saves these plots with user-defined names and extensions.
+#'
+#' Available plot types:
+#' \itemize{
+#'   \item \code{numberofcell_barplot}: Bar plot showing the number of cells per cluster.
+#'   \item \code{numberofcell_pie_chart}: Pie chart showing the proportion of cells per cluster.
+#'   \item \code{numberofcell_barplot_subject}: Bar plot showing the number of cells per cluster for each subject.
+#'   \item \code{numberofcell_pie_chart_subject}: Pie chart showing the proportion of cells per cluster for each subject.
+#'   \item \code{numberofcell_pie_chart_cluster_subject}: Pie chart showing the proportion of cells per cluster, with subjects in the legend.
+#'   \item \code{numberofcell_pie_chart_cluster_pathology}: Pie chart showing the proportion of cells per pathology, with clusters in the legend.
+#'   \item \code{feature_plots}: Feature plots for the specified genes, showing gene expression patterns across clusters.
+#'   \item \code{ridge_plots}: Ridge plots for the specified genes, showing gene expression distribution across clusters.
+#' }
+#'
+#' @examples
+#' \dontrun{
+#'   # Generate bar and pie charts for a Seurat object
+#'   plots_for_paper(seurat_object, which = c("numberofcell_barplot", "numberofcell_pie_chart"))
+#' 
+#'   # Generate feature plots for specific genes
+#'   plots_for_paper(seurat_object, which = "feature_plots", genes_to_plot = c("Gene1", "Gene2"))
+#' }
+#'
+#' @export
 plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "numberofcell_pie_chart", 
                                                      "numberofcell_barplot_subject", "numberofcell_pie_chart_subject",
                                                      "numberofcell_pie_chart_cluster_subject", "numberofcell_pie_chart_cluster_pathology"), 
@@ -1616,7 +1643,8 @@ normalization_and_scaling <- function(seurat_object, save = FALSE, vf_plot = TRU
                  " - variable features: ", variable_features,
                  " - scaling: ", scaling,
                  " - variable features plot: ", vf_plot,
-                 " - save seurat object: ", save))
+                 " - save: ", save,
+                 " - check_for_norm: ", check_for_norm))
     
     # Normalization, feature selection and scaling
     if (normalization) seurat_object <- NormalizeData(seurat_object, verbose = FALSE)
@@ -1730,19 +1758,20 @@ run_pca <- function(seurat_object, plot = FALSE, save = FALSE, assay = "default"
 #' @export
 layer_integration <- function(seurat_object, save = FALSE, assay = "RNA",
                               new_reduction = "integrated.harmony", reduction_method = "harmony",
-                              make_default = FALSE,  orig_reduction = "pca", new_assay = NA) {
+                              make_default = FALSE,  orig_reduction = "pca", new_assay = FALSE) {
   
   # Messages
   cat("Integrating layers...\n")
-  message(paste0("Parameters: new_assay: ", assay,
-                 " - new_reduction: ", new_reduction, 
+  message(paste0("Parameters: save: ", save,
+                 " - assay: ", assay,
+                 " - new_reduction: ", new_reduction,
                  " - reduction_method: ", reduction_method,
                  " - make_default: ", make_default,
                  " - orig_reduction: ", orig_reduction,
-                 " - save: ", save))
+                 " - new_assay: ", new_assay))
   
   # Assign variables
-  if (is.na(new_assay)) new_assay <- assay
+  if (isFALSE(new_assay)) new_assay <- assay
   
   # If the input is a list, then the object are merged with integratedata
   if (is.list(seurat_object)) {
@@ -1819,13 +1848,11 @@ scType_annotation <- function(seurat_object,
     # Message
     cat("Running scType annotation...\n")
     message(paste0("Parameters: assay: ", assay,
-                   " - assignment_name: ", assignment_name, 
-                   " - clusters_column: ", clusters_column))
+                  " - assignment_name: ", assignment_name, 
+                  " - clusters_column: ", clusters_column, 
+                  " - name: ", name))
     
     # Dependencies
-    check_packages(c("dplyr", "openxlsx", "HGNChelper"))
-    library("dplyr")
-    library("openxlsx")
     library("HGNChelper")
 
     # Create directory
@@ -1856,7 +1883,9 @@ scType_annotation <- function(seurat_object,
         es_max_cl <- sort(rowSums(es_max[, rownames(seurat_object@meta.data[seurat_object@meta.data[[clusters_column]] == cl, ])]), decreasing = TRUE)
         head(data.frame(cluster = cl, type = names(es_max_cl), scores = es_max_cl, ncells = sum(seurat_object@meta.data[[clusters_column]] == cl)), 10)
     }))
-    sctype_scores <- cl_results %>% group_by(cluster) %>% top_n(n = 1, wt = scores)
+
+    sctype_scores <- cl_results[order(cl_results$cluster, -cl_results$scores), ]  # Sort by cluster and scores (descending)
+    sctype_scores <- sctype_scores[!duplicated(sctype_scores$cluster), ]          # Keep only top scoring row per cluster
     
     # Set low-confident (low ScType score) clusters to "unknown"
     sctype_scores$type[as.numeric(as.character(sctype_scores$scores)) < sctype_scores$ncells / 6] <- "Unknown"
