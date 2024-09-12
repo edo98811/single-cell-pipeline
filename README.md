@@ -2,7 +2,7 @@
 It works using pipeline files to describe the steps that are needed, the script is then simply launched from main like this: 
 
 ```
-source("scripts/init.r")
+source("R/init.r")
 
 main("path/pipeline_file.json")
 ```
@@ -28,10 +28,34 @@ Preprocessing step loads the data from a given folder, then it performs the prep
 The step after preprocessing, here the list of seurat objects created in the previous step can be merged and integrated using harmony. The seurat object can be saved at the end of this step with the save parameter.
 - `clustering`: [true | false]
 What the clustering section does is create a subset if the parameter is requested, and then work with this subset. Cluster the seurat iobject with the given parameters, the results are plotted. If rename_clusters is set to true and the to_correct parameter is given, then the annotation can also be corrected. The seurat object can be saved at the end of this step with the save parameter.
+Te steps that can be performed by this function are: 
+  - create subset
+  - plot_before_clustering 
+  - clustering 
+  - clustering_plot
+  - rename_clusters
+  - plot_renamed_clusters (always true)
+All of these or only one of these can be ran as well.
 - `annotation`: [true | false]
 The annotation will be done with sctype, the parameters for the annotation are fixed on brain datasets but will be changed in the future. After annotation if correct is set to true and the to_correct parameter is given a manual correction can be performed. The annotation can also be competely manual if the parameter annoatate is set to false.  The seurat object can be saved at the end of this step with the save parameter.
 - `deg`: [true | false]
 The differentially expressed genes are found and the results saved, different commadns can be used, multiple analysis can be ran at the same time creating more than one field in the setting file
+  deg methods
+  - `condition_and_clusters`
+  - `condition_and_clusters_vf`
+  - `condition_and_clusters_DESeq2`
+  - `default`
+  - `default_vf`
+  - `default_LR`
+  - `condition`
+  - `condition_vf`
+  - `condition_DESeq2`
+  other
+  - `heatmap`: this creates an heatmap, ither from a list of markers or from the differentially expressed markers (if the markers parameters is not defined) The needed parameters for this are: cluster_column, markers
+  - `volcano`: this method is used to create a volcano plot in the folder of the deg analysis that is set as "folder" parameter, folder parameter is only used for this method
+  - `paper`
+  - `plot_markers_from_df`
+
 - `wgcna`: [true | false]
 To run the wgcna analysis, the same concept as the deg applies, the analysis can be ran multiple times with multiple different settings
 - `enrichment`: [true | false]

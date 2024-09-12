@@ -340,110 +340,6 @@ find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_n
   
 }
 
-# Plot a selection of markers from a df (saved in different columns)
-plot_markers_from_df <- function(seurat_object, markers_location, reduction_name = "umap_microglia_harmony_reduction", name  = "",
-                                 many_plot = TRUE, feature_plot = FALSE, extension_plot = ".png",
-                                 heatmap_by_column = FALSE, cluster_column = "microglia_clusters", subplot_n = 9, 
-                                 max_feature_plots = 11, max_genes_many_plots = 100,
-                                 column_list = FALSE) {
-  
-  
-  # Messages 
-  cat("Plotting markers from given df... \n")
-  message(paste0("Parameters: markers_location: ", markers_location,
-                 " - reduction_name: ", reduction_name,
-                 " - name: ", name,
-                 " - many_plot: ", many_plot,
-                 " - feature_plot: ", feature_plot,
-                 " - extension_plot: ", extension_plot,
-                 " - heatmap_by_column: ", heatmap_by_column,
-                 " - cluster_column: ", cluster_column,
-                 " - subplot_n: ", subplot_n,
-                 " - max_feature_plots: ", max_feature_plots,
-                 " - max_genes_many_plots: ", max_genes_many_plots,
-                 " - column_list: ", column_list))
-
-  # Set up output dir
-  output_dir <- set_up_output(paste0(output_folder, "plot_markers_from_df_", name, "/"))
-  
-  # Load the markers
-  markers_df <- readxl::read_excel(markers_location)
-  
-  # Saves the relative plots (either using many plots and a heatmap or the feature plots)
-  if (feature_plot) {
-    for (column in names(markers_df)) {
-      
-      # Skip if no data is present
-      if (is.character(column_list) && !any(column %in% column_list)) {
-        message("skipping: ", column)
-        next
-      }
-      
-      # Extract the features that are present in the seurat object for each column
-      features <- markers_df %>%
-        pull(column) %>%
-        .[. %in% rownames(seurat_object)] 
-      
-      # Message
-      message("Source: ", column, " - Features: ", paste(features, collapse = ", "))
-      
-      # Iterate thorugh the featres in batches of subplot_n and plot (max 11 plots)
-      if (length(features) == 0) {
-        message("skipping, not enough features")
-        next
-      }
-      lapply(seq(1, min(length(features), subplot_n * max_feature_plots), by = subplot_n), function(start_index) {
-        end_index <- min(start_index + subplot_n - 1, length(features))
-        save_plot(FeaturePlot(seurat_object, features = features[start_index:end_index],
-                              cols = c("lightgrey", "blue"),
-                              reduction = reduction_name),
-                  paste0(output_dir, "feature_plot_", column, "_", 
-                         start_index, "_", end_index, 
-                         extension_plot)
-                  , x = 10, y = 10) 
-      })
-    }
-  }
-  
-  
-  # Heatmap
-  if (many_plot) {
-    if (heatmap_by_column || is.character(column_list)) {
-      
-      # Iterate through the columns
-      for (column in names(markers_df)) {
-        
-        # Skip if no data is present
-        if (is.character(column_list) && !any(column %in% column_list)) {
-          message("skipping: ", column)
-          next
-        }
-        
-        # Extract the features that are present in the seurat object for each column
-        features <- markers_df %>%
-          pull(column) %>%
-          .[. %in% rownames(seurat_object)] 
-        
-        # Create the heatmap, plots at most max_genes_many_plots genes
-        many_plots(seurat_object_microglia, which = c("heatmap"), assay = "RNA",
-                   cluster_column = cluster_column, name = paste0(output_dir, column), markers = features,
-                   maxn_genes = max_genes_many_plots)
-      }
-    } else {
-      
-      # Selects all the features that are also present in the object
-      features <- unlist(c(markers_df), use.names = FALSE) %>%
-        .[. %in% rownames(seurat_object)]
-      
-      # Create the heatmap, plots at most max_genes_many_plots genes
-      many_plots(seurat_object_microglia, which = c("heatmap"), assay = "RNA",
-                 cluster_column = cluster_column, name = output_dir, markers = features,
-                 maxn_genes = max_genes_many_plots)
-      
-    }
-  }
-}
-
 # Volcano plot from gene table
 volcano_plot <- function(markers_dir, count_threshold = 0, extension_plot = ".png") {
   
@@ -734,8 +630,7 @@ visualization_UMAP <- function(seurat_object, reduction_name = "umap_",
                                           reduction = "pca", dimensions = 16, 
                                           cluster_column = "seurat_clusters",
                                           plots = FALSE, save = FALSE, 
-                                          run_UMAP = TRUE, name = "", 
-                                          message = "results", extension_plot = ".png",
+                                          run_UMAP = TRUE, name = "", extension_plot = ".png",
                                           daniela = FALSE) {
   
   # Setting plot names
@@ -761,11 +656,10 @@ visualization_UMAP <- function(seurat_object, reduction_name = "umap_",
                  " - reduction: ", reduction,
                  " - dimensions: ", dimensions,
                  " - cluster_column: ", cluster_column,
-                 " - plots: ", plots,
+                 # " - plots: ", plots,
                  " - save: ", save,
                  " - run_UMAP: ", run_UMAP,
                  " - name: ", name,
-                 " - message: ", message,
                  " - extension_plot: ", extension_plot))
   
   # UMAP
@@ -1234,6 +1128,151 @@ create_object_from_cluster_id <- function(seurat_object, clusters, assay = "RNA"
   return(subset_seurat_object)
 }
 
+# Plot a selection of markers from a df (saved in different columns)
+#' Plot Markers from a DataFrame
+#'
+#' This function generates various types of plots (e.g., feature plots or heatmaps) based on markers provided in a DataFrame.
+#' The markers are matched with the features present in the Seurat object, and plots are generated for visualizing the expression of these markers across the clusters or cells.
+#'
+#' @param seurat_object A Seurat object containing the data to be plotted.
+#' @param markers_location A file path to an Excel file containing the markers to be plotted, where each column contains a set of marker genes.
+#' @param reduction_name A character string specifying the reduction to use for plotting (default is "umap_microglia_harmony_reduction").
+#' @param name A character string that will be used to name the output directory and the plots.
+#' @param many_plot A logical value indicating whether to generate many plots, including a heatmap (default is TRUE).
+#' @param feature_plot A logical value indicating whether to generate feature plots (default is FALSE).
+#' @param extension_plot A character string specifying the file extension for the saved plots (default is ".png").
+#' @param heatmap_by_column A logical value indicating whether to generate a separate heatmap for each column in the marker DataFrame (default is FALSE).
+#' @param cluster_column A character string specifying the column in the Seurat object metadata that contains the cluster identities (default is "microglia_clusters").
+#' @param subplot_n An integer specifying the number of features to display in each subplot (default is 9).
+#' @param max_feature_plots An integer specifying the maximum number of feature plots to generate (default is 11).
+#' @param max_genes_many_plots An integer specifying the maximum number of genes to display in the heatmap (default is 100).
+#' @param column_list A logical value or character vector. If it is a character vector, the function will only consider columns in the marker DataFrame that match the vector elements (default is FALSE).
+#'
+#' @details
+#' This function takes a Seurat object and a DataFrame of markers (in an Excel file) and plots the markers in various ways, including feature plots and heatmaps. The markers must be present in the Seurat object, and plots are saved in the specified output directory.
+#'
+#' The function supports two main types of plots:
+#' - **Feature plots**: For each column in the marker DataFrame, the function generates feature plots, displaying the expression of marker genes across the cells, colored according to their expression levels.
+#' - **Heatmaps**: If `many_plot` is TRUE, the function generates heatmaps to display the expression of marker genes across clusters or cells.
+#'
+#' @return The function saves the generated plots to the specified output directory but does not return a value.
+#'
+#' @examples
+#' \dontrun{
+#' plot_markers_from_df(seurat_object = my_seurat_obj,
+#'                      markers_location = "path/to/markers.xlsx",
+#'                      reduction_name = "umap",
+#'                      name = "marker_plots",
+#'                      feature_plot = TRUE,
+#'                      heatmap_by_column = TRUE,
+#'                      cluster_column = "cell_clusters")
+#' }
+#' 
+#' @export
+plot_markers_from_df <- function(seurat_object, markers_location, reduction_name = "umap_microglia_harmony_reduction", name  = "",
+                                 many_plot = TRUE, feature_plot = FALSE, extension_plot = ".png",
+                                 heatmap_by_column = FALSE, cluster_column = "microglia_clusters", subplot_n = 9, 
+                                 max_feature_plots = 11, max_genes_many_plots = 100,
+                                 column_list = FALSE, assay ="RNA") {
+  
+  
+  # Messages 
+  cat("Plotting markers from given df... \n")
+  message(paste0("Parameters: markers_location: ", markers_location,
+                 " - reduction_name: ", reduction_name,
+                 " - name: ", name,
+                 " - many_plot: ", many_plot,
+                 " - feature_plot: ", feature_plot,
+                 " - extension_plot: ", extension_plot,
+                 " - heatmap_by_column: ", heatmap_by_column,
+                 " - cluster_column: ", cluster_column,
+                 " - subplot_n: ", subplot_n,
+                 " - max_feature_plots: ", max_feature_plots,
+                 " - max_genes_many_plots: ", max_genes_many_plots,
+                 " - assay: ", assay,
+                 " - column_list: ", column_list))
+
+  # Set up output dir
+  output_dir <- set_up_output(paste0(output_folder, "plot_markers_from_df_", name, "/"))
+  
+  # Load the markers
+  markers_df <- readxl::read_excel(markers_location)
+  
+  # Saves the relative plots (either using many plots and a heatmap or the feature plots)
+  if (feature_plot) {
+    for (column in names(markers_df)) {
+      
+      # Skip if no data is present
+      if (is.character(column_list) && !any(column %in% column_list)) {
+        message("skipping: ", column)
+        next
+      }
+      
+      # Extract the features that are present in the seurat object for each column
+      features <- markers_df %>%
+        pull(column) %>%
+        .[. %in% rownames(seurat_object)] 
+      
+      # Message
+      message("Source: ", column, " - Features: ", paste(features, collapse = ", "))
+      
+      # Iterate thorugh the featres in batches of subplot_n and plot (max 11 plots)
+      if (length(features) == 0) {
+        message("skipping, not enough features")
+        next
+      }
+      lapply(seq(1, min(length(features), subplot_n * max_feature_plots), by = subplot_n), function(start_index) {
+        end_index <- min(start_index + subplot_n - 1, length(features))
+        save_plot(FeaturePlot(seurat_object, features = features[start_index:end_index],
+                              cols = c("lightgrey", "blue"),
+                              reduction = reduction_name),
+                  paste0(output_dir, "feature_plot_", column, "_", 
+                         start_index, "_", end_index, 
+                         extension_plot)
+                  , x = 10, y = 10) 
+      })
+    }
+  }
+  
+  
+  # Heatmap
+  if (many_plot) {
+    if (heatmap_by_column || is.character(column_list)) {
+      
+      # Iterate through the columns
+      for (column in names(markers_df)) {
+        
+        # Skip if no data is present
+        if (is.character(column_list) && !any(column %in% column_list)) {
+          message("skipping: ", column)
+          next
+        }
+        
+        # Extract the features that are present in the seurat object for each column
+        features <- markers_df %>%
+          pull(column) %>%
+          .[. %in% rownames(seurat_object)] 
+        
+        # Create the heatmap, plots at most max_genes_many_plots genes
+        many_plots(seurat_object_microglia, which = c("heatmap"), assay = assay,
+                   cluster_column = cluster_column, name = paste0(output_dir, column), markers = features,
+                   maxn_genes = max_genes_many_plots)
+      }
+    } else {
+      
+      # Selects all the features that are also present in the object
+      features <- unlist(c(markers_df), use.names = FALSE) %>%
+        .[. %in% rownames(seurat_object)]
+      
+      # Create the heatmap, plots at most max_genes_many_plots genes
+      many_plots(seurat_object_microglia, which = c("heatmap"), assay = assay,
+                 cluster_column = cluster_column, name = output_dir, markers = features,
+                 maxn_genes = max_genes_many_plots)
+      
+    }
+  }
+}
+
 #' Generate Plots for Publication from Seurat Object
 #'
 #' This function generates a variety of plots (bar plots, pie charts, feature plots, ridge plots, etc.)
@@ -1284,7 +1323,8 @@ create_object_from_cluster_id <- function(seurat_object, clusters, assay = "RNA"
 plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "numberofcell_pie_chart", 
                                                      "numberofcell_barplot_subject", "numberofcell_pie_chart_subject",
                                                      "numberofcell_pie_chart_cluster_subject", "numberofcell_pie_chart_cluster_pathology"), 
-                            genes_to_plot = c(""), cluster_column = "microglia_clusters", extension_plot = ".png", name = "", assay = "RNA") {
+                            genes_to_plot = c(""), cluster_column = "microglia_clusters", extension_plot = ".png", name = "", assay = "RNA",
+                            reduction_name = "umap_harmony_microglia", subplot_n = 9) {
   
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "plots_misc_", name, "/"), message)
@@ -1372,15 +1412,15 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
     
     genes <- genes_to_plot[genes_to_plot %in% Features(seurat_object[["RNA"]])]
 
-    purrr::walk(seq(1, length(genes_to_plot), by = 9), function(gene) {
+    purrr::walk(seq(1, length(genes_to_plot), by = subplot_n), function(gene) {
        save_plot(
         FeaturePlot(seurat_object, 
-          features = genes_to_plot[gene:ifelse(gene + 9 < length(genes_to_plot), gene + 9, length(genes_to_plot))], 
+          features = genes_to_plot[gene:ifelse(gene + subplot_n < length(genes_to_plot), gene + subplot_n, length(genes_to_plot))], 
           pt.size = 0.5, 
-          reduction = "umap_harmony_microglia",
+          reduction = reduction_name,
           cols = c("lightgrey", "#0026ff")), 
         paste0(output_dir, "feature_plots_genes_", 
-          gene, "_", ifelse(gene + 9 < length(genes_to_plot), gene + 9, length(genes_to_plot)), 
+          gene, "_", ifelse(gene + subplot_n < length(genes_to_plot), gene + subplot_n, length(genes_to_plot)), 
           extension_plot
           ),
         x = 10, y = 10
@@ -1392,16 +1432,16 @@ plots_for_paper <- function(seurat_object, which = c("numberofcell_barplot", "nu
     message("ridge plots")
     genes <- genes_to_plot[genes_to_plot %in% Features(seurat_object[["RNA"]])]
 
-    purrr::walk(seq(1, length(genes_to_plot), by = 9), function(gene) {
-      browser()
+    purrr::walk(seq(1, length(genes_to_plot), by = subplot_n), function(gene) {
+
       save_plot(
         RidgePlot(seurat_object, 
-          features = genes_to_plot[gene:ifelse(gene + 9 < length(genes_to_plot), gene + 9, length(genes_to_plot))],
+          features = genes_to_plot[gene:ifelse(gene + subplot_n < length(genes_to_plot), gene + subplot_n, length(genes_to_plot))],
           layer = "data",
           assay = assay
           ),
         paste0(output_dir, "ridge_plots_genes_", 
-          gene, "_", ifelse(gene + 9 < length(genes_to_plot), gene + 9, length(genes_to_plot)), 
+          gene, "_", ifelse(gene + subplot_n < length(genes_to_plot), gene + subplot_n, length(genes_to_plot)), 
           extension_plot
           ),
         x = 10, y = 10
@@ -2023,6 +2063,40 @@ trajectory_analysis <- function(seurat_object, extension_plot = ".png", name = "
   detach("package:openxlsx", unload=TRUE)
 }
 
+#' Run CellChat Analysis on Seurat Object
+#'
+#' This function performs a CellChat analysis on a Seurat object. It allows you to analyze specific clusters and subjects, save or load a precomputed CellChat object, and create plots related to the analysis.
+#'
+#' @param seurat_object A Seurat object containing single-cell RNA-seq data. This is the primary input for the CellChat analysis.
+#' @param cluster_column Character. The name of the column in the Seurat object metadata that contains the cluster assignments. Default is "microglia_clusters".
+#' @param clusters_to_analyze Character vector. A vector of cluster names or IDs to analyze. If left empty (`c()`), all clusters will be analyzed.
+#' @param subject_column Character. The name of the column in the Seurat object metadata that contains the subject names. Default is "subject".
+#' @param name Character. A name to identify the analysis, used for labeling and saving output files. Default is "test".
+#' @param save_object Logical. If `TRUE`, the CellChat object will be saved to disk after analysis. Default is `TRUE`.
+#' @param load_object Logical. If `TRUE`, a precomputed CellChat object will be loaded from a file instead of running the analysis. Default is `FALSE`.
+#' @param obj_name Character. The filename of the saved or loaded CellChat object. Default is "cellchat_object.rds".
+#' @param extension_plot Character. The file extension for saved plots (e.g., ".png", ".pdf"). Default is ".png".
+#'
+#' @return A CellChat object containing the results of the analysis. If `save_object` is `TRUE`, the object will also be saved to disk as `obj_name`.
+#' 
+#' @details 
+#' This function performs a CellChat analysis to study cell-cell communication within specific clusters in a Seurat object. It allows customization of which clusters and subjects to analyze, whether to save or load a precomputed object, and the format of the output plots.
+#'
+#' @examples
+#' \dontrun{
+#'   # Example usage:
+#'   cellchat_function(seurat_object, 
+#'                     cluster_column = "seurat_clusters", 
+#'                     clusters_to_analyze = c("Cluster_1", "Cluster_2"), 
+#'                     subject_column = "subject", 
+#'                     name = "CellChat_analysis", 
+#'                     save_object = TRUE, 
+#'                     load_object = FALSE, 
+#'                     obj_name = "cellchat_results.rds", 
+#'                     extension_plot = ".png")
+#' }
+#'
+#' @export
 cellchat_function <- function(seurat_object, cluster_column = "microglia_clusters", 
                               clusters_to_analyze = c(), subject_column = "subject",
                               name = "test", save_object = TRUE, load_object = FALSE,
@@ -2034,16 +2108,13 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
   #devtools::install_github("immunogenomics/presto")
   library("CellChat")
   library("patchwork")
-  options(stringsAsFactors = FALSE)
+  # options(stringsAsFactors = FALSE)
   
   # Set op output dir
   output_dir <- set_up_output(paste0(output_folder, "cellchat_", name, "/"), message)
   if (!dir.exists(paste0(output_dir, "circle_plots"))) dir.create(paste0(output_dir, "circle_plots"))
   
-  # Setting up global objects
-  data_input <- NA
-  meta <- NA
-  cellchat <- NA # https://rdrr.io/github/sqjin/CellChat/man/CellChat-class.html
+ # source: https://rdrr.io/github/sqjin/CellChat/man/CellChat-class.html
   
   ## Main ----
   main <- function() {
@@ -2056,12 +2127,18 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
   }
   
   ## Functions ----
+  # prepare the seurat object for the subsequent cell communication analysis
   prepare_data <- function() {
     
     # Preparing data
-    data_input <<- seurat_object[["RNA"]]$data 
+    assign("data_input", 
+      seurat_object[["RNA"]]$data,
+      envir = parent.frame()
+    ) 
+
     Idents(seurat_object) <- cluster_column
     
+    # Add 1 to all idents if 0 is present 
     if ("0" %in% as.character(unique(seurat_object@meta.data[[cluster_column]]))) {
       
       new_idents <- as.character(
@@ -2073,15 +2150,21 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
       levels(seurat_object@meta.data[[cluster_column]]) <- new_idents
     }
 
+    # update the cluster column in the 
     Idents(seurat_object) <- cluster_column
     labels <- Idents(seurat_object)
     
-    # Create a dataframe of the cell labels ()
-    meta <<- data.frame(labels = factor(as.character(labels)),
-                       samples = factor(seurat_object@meta.data[[subject_column]]), 
-                       row.names = names(labels)) 
+    # Create a dataframe of the cell labels 
+    assign("meta", 
+      data.frame(labels = factor(as.character(labels)),
+        samples = factor(seurat_object@meta.data[[subject_column]]), 
+        row.names = names(labels)),
+      envir = parent.frame()
+    )
+
   }
   
+  # main loop for computing the cellchat object
   compute_cellchat <- function() {
     
     cellchat <- createCellChat(object = data_input, meta = meta, group.by = "labels")
@@ -2117,11 +2200,12 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
     cellchat <- aggregateNet(cellchat) 
     cellchat <- netAnalysis_computeCentrality(cellchat, slot.name = "netP")
     
-    cellchat <<- cellchat
+    assign("cellchat", cellchat, envir = parent.frame())
     
     if (save_object) saveRDS(cellchat, paste0(output_dir, obj_name))
   }
 
+  # function to plot all the results
   plot_results <- function() {
     
     plot_function <- function(p_function, name) {
@@ -2172,7 +2256,7 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
         for (interaction_name in pair_lr_cxcl) {
           print(interaction_name)
           print(paste0("circle_", pathway, "_", interaction_name))
-          plot_f(netVisual_individual(cellchat, signaling = pathways_show, pairLR.use = LR_show, layout = "circle"),
+          plot_f(netVisual_individual(cellchat, signaling = pathways_show, pairLR.use = lr_show, layout = "circle"),
                  paste0("circle_", pathway, "_", interaction_name))
         }
       }
@@ -2188,7 +2272,7 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
     if (FALSE) {
       pathways_show <- cellchat@netP$pathways[[1]]
       pair_lr_cxcl <- extractEnrichedLR(cellchat, signaling = pathways_show, geneLR.return = FALSE)
-      LR_show <- pair_lr_cxcl[1, ]
+      lr_show <- pair_lr_cxcl[1, ]
     }
 
     # pathway
@@ -2199,21 +2283,21 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
       save_plot(netAnalysis_contribution(cellchat, signaling = pathways_show),
                     paste0(output_dir, "contributions_", pathways_show, "", extension_plot))
       
-      for (LR_show in pair_lr_cxcl) {
+      for (lr_show in pair_lr_cxcl) {
         
         # LR show - ligand receptor
         # pathway show ->
-        plot_function(netVisual_individual(cellchat, signaling = pathways_show, pairLR.use = LR_show, layout = "circle"),
-                      paste0("circle_plots/", pathways_show, "_", LR_show))
+        plot_function(netVisual_individual(cellchat, signaling = pathways_show, pairLR.use = lr_show, layout = "circle"),
+                      paste0("circle_plots/", pathways_show, "_", lr_show))
         
         #
-        #plot_function(netVisual_individual(cellchat, signaling = pathways_show, pairLR.use = LR_show, layout = "chord"),
-        #              paste0("chord_plot_", pathways_show, "_", LR_show))
+        #plot_function(netVisual_individual(cellchat, signaling = pathways_show, pairLR.use = lr_show, layout = "chord"),
+        #              paste0("chord_plot_", pathways_show, "_", lr_show))
 
         #for (vertex_receiver in seq_along(levels(cellchat@idents))) {
         # isnide this loop chord plots or circle plots
         # plot_function(netVisual_aggregate(cellchat, signaling = pathways_show,  vertex.receiver = vertex_receiver), 
-        #              paste0("circle_plot_pathway_vertex_", pathways_show, "_", LR_show, "_", vertex_receiver,"", extension_plot))
+        #              paste0("circle_plot_pathway_vertex_", pathways_show, "_", lr_show, "_", vertex_receiver,"", extension_plot))
         #}
         # outside bubble plot o heatmap 
         
@@ -2282,7 +2366,7 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
   }
   ## Script ----
 
-  prepare_data()
+  meta <- prepare_data()
   
   if (load_object) cellchat <- readRDS(paste0(output_dir, obj_name))
   else compute_cellchat()

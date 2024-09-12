@@ -68,10 +68,9 @@ heatmap_zscore <- function(bwnet, norm_counts, column_data) {
 # Define function for TOM
 tom <- function(bwnet, norm_counts, column_data) {
     message("TOM")
-    library(WGCNA)
 
-    adjacency_matrix <- adjacency(norm_counts, power = soft_power, type = "signed")
-    tom <- 1 - TOMsimilarity(adjacency_matrix)
+    adjacency_matrix <- WGCNA::adjacency(norm_counts, power = soft_power, type = "signed")
+    tom <- 1 - WGCNA::TOMsimilarity(adjacency_matrix)
     saveRDS(TOM, paste0(output_dir, "TOM.rds"))
     save_plot(TOMplot(TOM, bwnet$dendrograms[[1]]))
     # 6B. Intramodular analysis: Identifying driver genes ---------------
@@ -92,8 +91,6 @@ tom <- function(bwnet, norm_counts, column_data) {
 # Define function for dendro
 dendro <- function(bwnet, norm_counts, column_data, extension_plot) {
     message("dendro")
-
-    library(WGCNA)
 
     png(file = paste0(output_dir, "modules_dendrogram", extension_plot))
     plotDendroAndColors(bwnet$dendrograms[[1]], cbind(bwnet$unmergedColors, bwnet$colors),
@@ -467,13 +464,11 @@ significance_avglog2fc_scatter <- function(bwnet, norm_counts, column_data, clus
 corr_matrix <- function(bwnet, norm_counts, column_data) {
 message("corr_matrix")
 
-    library(openxlsx)
-
     # TODO: check if implemented
     cor_matrix <- cor(bwnet$MEs)
 
 
-    wb <- write_on_excel("correllation", as.data.frame(cor_matrix))
+    wb <- write_on_excel("correlation", as.data.frame(cor_matrix))
     openxlsx::saveWorkbook(wb, paste0(output_dir, "module_correlation.xlsx"), overwrite = TRUE)
 
     # Define color palette

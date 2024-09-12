@@ -68,7 +68,7 @@ match_names <- function(subjects_df, matrices_paths) {
   return(filtered_paths)
 }
 # saves a plot in the desired dimention in the desired path
-save_plot <- function(plotting_function, plotname, x=7, y=7, title=NA){
+save_plot <- function(plotting_function, plotname, x = 7, y = 7, title = NA){
   check_packages(c("ggplot2", "stringr"))
   
   plot <- force(plotting_function)
@@ -76,7 +76,7 @@ save_plot <- function(plotting_function, plotname, x=7, y=7, title=NA){
   # Conditions  on specific plots
   plot_func_name <- str_split(as.character(substitute(plotting_function)), "[(]")[[1]]
   if (plot_func_name =="DotPlot") {
-    plot <- plot + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+    plot <- plot + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
     plot <- plot + theme(axis.text.x = element_text(size = 6)) 
   }
   if (plot_func_name =="DoHeatmap") {

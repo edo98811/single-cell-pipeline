@@ -6,7 +6,7 @@
 options(deparse.max.lines = 10)
 # install.packages("devtools")
 devtools::install_github("immunogenomics/presto")
-source("scripts/helper_functions.r")
+source("R/helper_functions.r")
 
 #' Main Function to run the Pipeline
 #'
@@ -37,7 +37,7 @@ source("scripts/helper_functions.r")
 #'
 #' @export
 main <- function(pipeline_file = "pipeline_wgcna.json") {
-    source("scripts/pipelines.r", local = TRUE)
+    source("R/pipelines.r", local = TRUE)
 
     # Load settings
     pipeline <- load_settings(paste0("pipelines/", pipeline_file))
@@ -46,21 +46,37 @@ main <- function(pipeline_file = "pipeline_wgcna.json") {
     setup_globals(general_settings$folder_destination, general_settings$data_folder, pipeline$general$settings_path)
 
     # Load microglia object if needed
-    if (!isFALSE(general_settings$seurat_object) && isFALSE(general_settings$preprocessing))   load_seurat_object(general_settings$seurat_object)
+    if (!isFALSE(general_settings$seurat_object) && isFALSE(pipeline$pipeline$preprocessing)) {
+        load_seurat_object(general_settings$seurat_object)
+        plot_info()
+    }
 
-    lapply(c("preprocessing", "integration", "clustering", "annotation", "deg", "wgcna", "enrichment", "own_script"), function(name) {
-        if (name %in% names(pipeline$pipeline)) 
-            pipeline$pipeline[[name]] <- FALSE
+    purrr::walk(c(
+            "preprocessing", 
+            "integration", 
+            "clustering", 
+            "annotation", 
+            "deg", 
+            "wgcna", 
+            "enrichment", 
+            "own_script",
+            "cellchat"
+        ), 
+        function(name) {
+            # If the name of the function is defined in the pipeline parts and it is set to true this function is ran
+            if (name %in% names(pipeline$pipeline))
+                if (pipeline$pipeline[[name]]) get(name)(pipeline$global_variables, pipeline[[name]])
+            # pipeline$pipeline[[name]] <- FALSE
     })
     # Pipeline
-    if (pipeline$pipeline$preprocessing)    preprocessing(pipeline$global_variables, pipeline$preprocessing)
-    if (pipeline$pipeline$integration)      integration(pipeline$global_variables, pipeline$integration)
-    if (pipeline$pipeline$clustering)       clustering(pipeline$global_variables, pipeline$clustering)
-    if (pipeline$pipeline$annotation)       annotation(pipeline$global_variables, pipeline$annotation)
-    if (pipeline$pipeline$deg)              deg(pipeline$global_variables, pipeline$deg)
-    if (pipeline$pipeline$wgcna)            wgcna(pipeline$global_variables, pipeline$wgcna)
-    if (pipeline$pipeline$enrichment)       enrichment(pipeline$global_variables, pipeline$enrichment)
-    if (pipeline$pipeline$own_script)       own_script(pipeline$global_variables, pipeline$own_script)
+    # if (pipeline$pipeline$preprocessing)    preprocessing(pipeline$global_variables, pipeline$preprocessing)
+    # if (pipeline$pipeline$integration)      integration(pipeline$global_variables, pipeline$integration)
+    # if (pipeline$pipeline$clustering)       clustering(pipeline$global_variables, pipeline$clustering)
+    # if (pipeline$pipeline$annotation)       annotation(pipeline$global_variables, pipeline$annotation)
+    # if (pipeline$pipeline$deg)              deg(pipeline$global_variables, pipeline$deg)
+    # if (pipeline$pipeline$wgcna)            wgcna(pipeline$global_variables, pipeline$wgcna)
+    # if (pipeline$pipeline$enrichment)       enrichment(pipeline$global_variables, pipeline$enrichment)
+    # if (pipeline$pipeline$own_script)       own_script(pipeline$global_variables, pipeline$own_script)
 }
 
 check_packages <- function(list_of_packages) {

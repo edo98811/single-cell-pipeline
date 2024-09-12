@@ -100,17 +100,17 @@ prepare_data <- function(seurat_object, column_data, subject_column = "subject",
     }
 
     # Create dds and preprocessing + filtering (come giustifico questo input)
-    dds <- DESeqDataSetFromMatrix(countData = subject_data, colData = column_data,
+    dds <- DESeq2::DESeqDataSetFromMatrix(countData = subject_data, colData = column_data,
         design = ~1)  # not spcifying model 
 
     dds75 <- dds[rowSums(counts(dds) >= 15) >= nrow(column_data) * 0.75, ]
     message("number of genes: ", nrow(dds75)) 
 
     # Perform variance stabilization
-    dds_norm <- vst(dds75, fitType = "local")
+    dds_norm <- DESeq2::vst(dds75, fitType = "local")
 
     # Get normalized counts
-    norm_counts <- assay(dds_norm) %>%
+    norm_counts <- DESeq2::assay(dds_norm) %>%
         t()
 
     return(norm_counts)

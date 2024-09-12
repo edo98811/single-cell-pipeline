@@ -8,12 +8,12 @@
 
 # All folders except scripts
 */
-!scripts/
+!R/
 !pipelines_template/
 !settings_template/
 
-scripts/mri_others.r
-scripts/mri_old.r
+R/mri_others.r
+R/mri_old.r
 dockerfile
 
 # History files

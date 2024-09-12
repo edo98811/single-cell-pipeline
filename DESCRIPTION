@@ -1,0 +1,5 @@
+Package: single-cell-pipeline
+Type: Package
+Title: Package to automatize the analysis of single cell data
+Version: 0.0.1.0
+RoxygenNote: 7.3.2

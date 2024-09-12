@@ -4,7 +4,7 @@
 
 preprocessing <- function(env_variables, preprocessing_settings) {
     message("section: preprocessing")
-    source("scripts/seurat_utils.r", local = TRUE)
+    source("R/seurat_utils.r", local = TRUE)
 
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
       
@@ -30,7 +30,7 @@ preprocessing <- function(env_variables, preprocessing_settings) {
 integration <- function(env_variables, integration_settings) {
 
     message("section: integration")
-    source("scripts/seurat_utils.r", local = TRUE)
+    source("R/seurat_utils.r", local = TRUE)
 
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
       
@@ -93,7 +93,7 @@ annotation <- function(env_variables, annotation_settings) {
 
     message("section: annotation")
 
-    source("scripts/seurat_utils.r", local = TRUE)
+    source("R/seurat_utils.r", local = TRUE)
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
       
     parameters <- .update_parameters(annotation_settings,  load_settings(settings_path)$annotation)
@@ -135,7 +135,7 @@ annotation <- function(env_variables, annotation_settings) {
 clustering <- function(env_variables, clustering_settings) {
     
     message("section: clustering")
-    source("scripts/seurat_utils.r", local = TRUE)
+    source("R/seurat_utils.r", local = TRUE)
 
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
       
@@ -147,6 +147,21 @@ clustering <- function(env_variables, clustering_settings) {
         assign("seurat_object", create_object_from_cluster_id(seurat_object, 
                 parameters$subset, clusters_column = parameters$cluster_column),
                 envir = .GlobalEnv)
+    }
+
+    if (parameters$before_clustering_plot) {
+        pc_number <- analyze_explained_variance(seurat_object, 
+                                    dstd, 
+                                    reduction_to_inspect = r)
+
+        seurat_object <- visualization_UMAP(seurat_object, 
+                                            reduction_name = parameters$umap_before_clustering, 
+                                            cluster_column = c, 
+                                            reduction = r,
+                                            save = FALSE, 
+                                            run_UMAP = FALSE, 
+                                            name = paste0(parameters$name, "_before_clustering"),
+                                            extension_plot = extension_plot)
     }
 
     if (parameters$clustering || parameters$clustering_plot)
@@ -196,15 +211,15 @@ clustering <- function(env_variables, clustering_settings) {
         saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
         message("object saved in: ", paste0(output_folder, parameters$save_name))
     }
+
     assign("seurat_object", seurat_object, envir = .GlobalEnv)
-    return(seurat_object)
 
 }
 
 deg <- function(env_variables, deg_settings) {
 
     message("section: differential gene expression analysis")
-    source("scripts/seurat_utils.r", local = TRUE)
+    source("R/seurat_utils.r", local = TRUE)
 
     create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
     default_parameters <- load_settings(settings_path)$deg
@@ -249,26 +264,48 @@ deg <- function(env_variables, deg_settings) {
                 assay = a,
                 cluster_column = parameters$cluster_column, 
                 name = names(deg_settings)[deg],
-                extension_plot = parameters$extension_plot,
+                extension_plot = extension_plot,
                 markers = parameters$markers))
  
         } else if (parameters$method == "volcano") {
             if (isFALSE(parameters$folder)) stop("folder is a required_parameter for volcano")
 
             try(volcano_plot(parameters$folder,
-                extension_plot = parameters$extension_plot))
+                extension_plot = extension_plot))
             
         } else if (parameters$method == "paper") {
-            if (isFALSE(parameters$markers)) stop("markers is a required_parameter for dimred")
+            if (isFALSE(parameters$markers)) stop("markers is a required_parameter for plots_for_paper")
 
             try(plots_for_paper(seurat_object,
                 which = parameters$which_other, 
                 name = names(deg_settings)[deg],
-                extension_plot = parameters$extension_plot,
+                extension_plot = extension_plot,
                 genes_to_plot = parameters$markers,
                 assay = a,               
-                cluster_column = parameters$cluster_column))
+                cluster_column = parameters$cluster_column,
+                reduction_name = umap,
+                subplot_n = parameters$subplot_n))
             
+        } else if (parameters$method == "plot_markers_from_df") {
+            if (isFALSE(parameters$markers)) stop("markers is a required_parameter for plot_markers_from_df")
+            if (!(is.character(file_path) && grepl("\\.xlsx?$", file_path, ignore.case = TRUE)))  stop("markers must point to an excel file for plot_markers_from_df")
+
+            try(plot_markers_from_df(seurat_object,
+                name = names(deg_settings)[deg],
+                extension_plot = extension_plot,
+                markers_location = parameters$markers,
+                assay = a,               
+                cluster_column = parameters$cluster_column,
+                reduction_name = umap,
+                subplot_n = parameters$subplot_n,
+                many_plot = parameters$many_plot, 
+                feature_plot = parameters$feature_plot,
+                heatmap_by_column = parameters$heatmap_by_column, 
+                subplot_n = parameters$subplot_n, 
+                max_feature_plots = parameters$max_feature_plots, 
+                max_genes_many_plots = parameters$max_genes_many_plots,
+                column_list = parameters$column_list))
+                
         } else stop("deg analysis: not valid method")
     }
 }
@@ -276,8 +313,8 @@ deg <- function(env_variables, deg_settings) {
 wgcna <- function(env_variables, wgcna_settings) {
 
     message("section: wgcna")
-    source("scripts/wgcna.r", local = TRUE)
-    source("scripts/seurat_utils.r", local = TRUE)  
+    source("R/wgcna.r", local = TRUE)
+    source("R/seurat_utils.r", local = TRUE)  
 
     create_variables(.update_parameters(env_variables,  load_settings(settings_path
     )$global_variables))
@@ -315,7 +352,7 @@ wgcna <- function(env_variables, wgcna_settings) {
                     parameters)))
         }
         else if (parameters$method == "hdWGCNA") {
-            source("scripts/hdwgcna.r", local = TRUE)
+            source("R/hdwgcna.r", local = TRUE)
 
             try(do.call(hdwgcna, 
                     c(list(seurat_object_subset, 
@@ -338,8 +375,8 @@ own_script <- function(env_variables, own_settings) {
 enrichment <- function(env_variables, enrichment_settings) {
 
     message("section: enrichment")
-    source("scripts/enrichment.r", local = TRUE)
-    source("scripts/seurat_utils.r", local = TRUE)
+    source("R/enrichment.r", local = TRUE)
+    source("R/seurat_utils.r", local = TRUE)
 
     create_variables(.update_parameters(env_variables,  load_settings(settings_path
     )$global_variables))
@@ -355,7 +392,86 @@ enrichment <- function(env_variables, enrichment_settings) {
                                     parameters[names(parameters) != "markers_path"])))
     } 
 } 
- 
+
+cellchat <- function(env_variables, cellchat_settings) {
+
+    message("section: cellchat")
+    source("R/seurat_utils.r", local = TRUE)
+
+    create_variables(.update_parameters(env_variables,  load_settings(settings_path
+    )$global_variables))
+    default_parameters <- load_settings(settings_path)$cellchat 
+
+    #for (cellchat in seq_along(cellchat_settings)) { 
+
+    # parameters <- .update_parameters(cellchat_settings[[cellchat]], default_parameters) 
+    parameters <- .update_parameters(cellchat_settings, default_parameters) 
+
+    try(do.call(cellchat_function(), c(list(
+                            names(cellchat_settings)[cellchat], 
+                            parameters,
+                            extension_plot = extension_plot))))
+    #}
+}
+
+plot_info <- function() {
+
+  if (!requireNamespace("Seurat", quietly = TRUE)) {
+    stop("The Seurat package must be installed.")
+  }
+
+  # Print general information
+  cat("\n\nLoaded Seurat Object Summary:\n")
+  
+  # Number of cells
+  num_cells <- ncol(seurat_object)
+  cat("Number of cells:", num_cells, "\n")
+  
+  # Number of features
+  num_features <- nrow(seurat_object)
+  cat("Number of features:", num_features, "\n")
+  
+  # Print metadata
+  cat("Metadata columns:\n")
+  print(colnames(seurat_object@meta.data))
+  
+  # Print identities
+  cat("Identity classes (idents):\n")
+  if (!is.null(seurat_object@active.ident)) {
+    print(table(seurat_object@active.ident))
+  } else {
+    cat("No active identities found.\n")
+  }
+  
+  # Print reductions
+  cat("Reductions:\n")
+  reductions <- names(seurat_object@reductions)
+  if (length(reductions) > 0) {
+    print(reductions)
+  } else {
+    cat("No reductions found.\n")
+  }
+  
+  # Print assays
+  cat("Assays:\n")
+  assays <- names(seurat_object@assays)
+  if (length(assays) > 0) {
+    print(assays)
+  } else {
+    cat("No assays found.\n")
+  }
+  
+  # Print other fields
+  cat("Other fields in the Seurat object:\n")
+  other_fields <- setdiff(names(seurat_object@misc), c("active.ident", "reductions", "assays", "meta.data"))
+  if (length(other_fields) > 0) {
+    print(other_fields)
+  } else {
+    cat("No additional fields found.\n")
+  }
+  cat("\n\n")
+}
+
 .update_parameters <- function(parameters, default) { 
 
     message("setting parameters")
@@ -370,7 +486,11 @@ enrichment <- function(env_variables, enrichment_settings) {
             # Else add it 
             parameters[[parameter]] <- default[[parameter]]
         }        
-        message("   parameter ", parameter, ": ", parameters[[parameter]])
+        # message("   parameter ", parameter, ": ", parameters[[parameter]])
+        message("   parameter ", parameter, ": ", 
+            ifelse(is.vector(parameters[[parameter]]), 
+            paste(parameters[[parameter]], collapse = ", "), 
+            as.character(parameters[[parameter]])))
     }
     
     return(parameters)
