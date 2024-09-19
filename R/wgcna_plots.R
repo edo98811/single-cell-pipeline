@@ -2,7 +2,7 @@
 # mail: efilippi@uni-mainz.de
 
 
-source("scripts/wgcna_plots_helpers.r", local = TRUE)
+source("R/wgcna_plots_helpers.r", local = TRUE)
 
 plot_functions <- function(bwnet, norm_counts, column_data, output_dir, extension_plot = ".png",
 reduction_name = "umap_microglia_harmony_reduction", module_of_interest = c(""),
@@ -13,19 +13,19 @@ hub_genes_threshold = c(0.3, 1), which = c(""), cluster = FALSE, ...) {
     
     for (function_name in which) {
         switch(function_name,
-            "heatmap_pathology" = heatmap_group(bwnet, norm_counts, column_data),
-            "TOM" = tom(bwnet, norm_counts, column_data),
-            "dendro" = dendro(bwnet, norm_counts, column_data, extension_plot),
-            "heatmap_mri" = heatmap_mri(bwnet, norm_counts, column_data),
-            "heatmap_zscore" = heatmap_zscore(bwnet, norm_counts, column_data),
-            "violin_plots" = violin_plots(bwnet, norm_counts, column_data),
-            "histogram_plot" = histogram_plot(bwnet, norm_counts, column_data, cluster, extension_plot, ...),
-            "histogram_plot_significance" = histogram_plot_significance(bwnet, norm_counts, column_data, extension_plot, ...),
-            "significance_membership_scatter" = significance_membership_scatter(bwnet, norm_counts, column_data, hub_genes_threshold, cluster, extension_plot, ...),
-            "significance_log2fc_scatter" = significance_log2fc_scatter(bwnet, norm_counts, column_data, cluster, extension_plot, ...),
-            "correlation_avglog2fc_scatter" = correlation_avglog2fc_scatter(bwnet, norm_counts, column_data, cluster, extension_plot, ...),
-            "corr_matrix" = corr_matrix(bwnet, norm_counts, column_data),
-            "significance_membership_model" = significance_membership_model(bwnet, norm_counts, column_data, ...),
+            "heatmap_pathology" = try(heatmap_group(bwnet, norm_counts, column_data)),
+            "TOM" = try(tom(bwnet, norm_counts, column_data)),
+            "dendro" = try(dendro(bwnet, norm_counts, column_data, extension_plot)),
+            "heatmap_mri" = try(heatmap_mri(bwnet, norm_counts, column_data)),
+            "heatmap_zscore" = try(heatmap_zscore(bwnet, norm_counts, column_data)),
+            "violin_plots" = try(violin_plots(bwnet, norm_counts, column_data)),
+            "histogram_plot" = try(histogram_plot(bwnet, norm_counts, column_data, cluster, extension_plot, ...)),
+            "histogram_plot_significance" = try(histogram_plot_significance(bwnet, norm_counts, column_data, extension_plot, ...)),
+            "significance_membership_scatter" = try(significance_membership_scatter(bwnet, norm_counts, column_data, hub_genes_threshold, cluster, extension_plot, ...)),
+            "significance_log2fc_scatter" = try(significance_log2fc_scatter(bwnet, norm_counts, column_data, cluster, extension_plot, ...)),
+            "correlation_avglog2fc_scatter" = try(correlation_avglog2fc_scatter(bwnet, norm_counts, column_data, cluster, extension_plot, ...)),
+            "corr_matrix" = try(corr_matrix(bwnet, norm_counts, column_data)),
+            "significance_membership_model" = try(significance_membership_model(bwnet, norm_counts, column_data, ...)),
             warning(function_name, ": Invalid function name"))
     }
 }
@@ -33,10 +33,7 @@ hub_genes_threshold = c(0.3, 1), which = c(""), cluster = FALSE, ...) {
 # Define function for heatmap
 heatmap_group <- function(bwnet, norm_counts, column_data) {
     message("heatmap")
-
-    library(tibble)
-
-
+    browser()
     traits_binary <- data.frame(lapply(unique(column_data$pathology), function(x) {
         as.numeric(column_data$pathology == x)
     }))
@@ -51,7 +48,7 @@ heatmap_group <- function(bwnet, norm_counts, column_data) {
 # Define function for heatmapMRI
 heatmap_mri <- function(bwnet, norm_counts, column_data) {
     message("heatmap mri")
-
+    browser()
     traits <- load_mri_traits(type = "mri", ...)
     make_heatmap(bwnet, paste0(output_dir, "trait_correlation_heatmap_mri.xlsx"), traits)
 }
@@ -59,7 +56,7 @@ heatmap_mri <- function(bwnet, norm_counts, column_data) {
 # Define function for heatmapMRI zscore
 heatmap_zscore <- function(bwnet, norm_counts, column_data) {
     message("heatmap zscore")
-
+    browser()
     traits <- load_mri_traits(type = "zscore", ...)
     make_heatmap(bwnet, paste0(output_dir, "trait_correlation_heatmap_zscore.xlsx"), traits)
 
@@ -400,7 +397,7 @@ significance_membership_scatter <- function(bwnet, norm_counts, column_data, hub
 }
 
 
-significance_avglog2fc_scatter <- function(bwnet, norm_counts, column_data, cluster, extension_plot, ...) {
+correlation_avglog2fc_scatter  <- function(bwnet, norm_counts, column_data, cluster, extension_plot, ...) {
     
     message("correlation_avglog2fc_scatter")
 

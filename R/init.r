@@ -7,7 +7,7 @@ options(deparse.max.lines = 10)
 # install.packages("devtools")
 devtools::install_github("immunogenomics/presto")
 source("R/helper_functions.r")
-
+library("dplyr")
 #' Main Function to run the Pipeline
 #'
 #' It reads a configuration file in JSON format and runs the specified steps, including preprocessing, 
@@ -36,21 +36,24 @@ source("R/helper_functions.r")
 #' }
 #'
 #' @export
-main <- function(pipeline_file = "pipeline_wgcna.json") {
+main <- function(pipeline_file) {
     source("R/pipelines.r", local = TRUE)
 
+
     # Load settings
-    pipeline <- load_settings(paste0("pipelines/", pipeline_file))
+    pipeline <- load_settings(pipeline_file)
     general_settings <- .update_parameters(pipeline$general,  load_settings(pipeline$general$settings_path)$general)
+    global_variables <- .update_parameters(pipeline$global_variables,  load_settings(pipeline$general$settings_path)$global_variables)
+    
 
     setup_globals(general_settings$folder_destination, general_settings$data_folder, pipeline$general$settings_path)
 
-    # Load microglia object if needed
-    if (!isFALSE(general_settings$seurat_object) && isFALSE(pipeline$pipeline$preprocessing)) {
+    # Load seurat object if seurat object defined (not false) and preprocessing not required (not true)
+    if (!isFALSE(general_settings$seurat_object) && !isTRUE(pipeline$pipeline$preprocessing)) {
         load_seurat_object(general_settings$seurat_object)
         plot_info()
     }
-
+   
     purrr::walk(c(
             "preprocessing", 
             "integration", 
@@ -60,13 +63,15 @@ main <- function(pipeline_file = "pipeline_wgcna.json") {
             "wgcna", 
             "enrichment", 
             "own_script",
-            "cellchat"
+            "cellchat_analysis"
         ), 
         function(name) {
+
             # If the name of the function is defined in the pipeline parts and it is set to true this function is ran
             if (name %in% names(pipeline$pipeline))
-                if (pipeline$pipeline[[name]]) get(name)(pipeline$global_variables, pipeline[[name]])
-            # pipeline$pipeline[[name]] <- FALSE
+                if (pipeline$pipeline[[name]] && !is.null(pipeline[[name]])) get(name)(global_variables, pipeline[[name]])
+                else if (is.null(pipeline[[name]])) stop("If you want to run a section you have to define it in the pipeline file")
+
     })
     # Pipeline
     # if (pipeline$pipeline$preprocessing)    preprocessing(pipeline$global_variables, pipeline$preprocessing)
@@ -97,7 +102,7 @@ check_packages <- function(list_of_packages) {
 }
 
 load_settings <- function(file_path) {
-    
+
     check_packages(c("jsonlite"))
     message("loading config file: ", file_path)
     # Check if the file exists

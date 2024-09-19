@@ -37,7 +37,6 @@ wgcna_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", s
     message(paste0("Parameters: name: ", name, " - wgcna_file: ", wgcna_file, " - save_net: ",
         save_net, " - load_net: ", load_net, " - soft_power: ", soft_power))
 
-    library(magrittr)
 
     # Set folders
     output_dir <- set_up_output(paste0(output_folder, "wgcna_", name, "/"), message)
@@ -55,7 +54,7 @@ wgcna_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", s
     else bwnet <- matrix_computation(norm_counts, soft_power, save_net, output_dir, wgcna_file, ...)
 
     # Plots and other functions
-    source("scripts/wgcna_plots.r", local = TRUE)
+    source("R/wgcna_plots.r", local = TRUE)
     plot_functions(bwnet, norm_counts, column_data, output_dir, ...)
     save_module_genes(bwnet, norm_counts, column_data, output_dir)
 
@@ -110,7 +109,7 @@ prepare_data <- function(seurat_object, column_data, subject_column = "subject",
     dds_norm <- DESeq2::vst(dds75, fitType = "local")
 
     # Get normalized counts
-    norm_counts <- DESeq2::assay(dds_norm) %>%
+    norm_counts <- assay(dds_norm) %>%
         t()
 
     return(norm_counts)
@@ -159,8 +158,6 @@ matrix_computation <- function(norm_counts, soft_power, save_net, output_dir, wg
 soft_power_intuition <- function(norm_counts, output_dir, extension_plot = ".png", ...) {
 
     library(WGCNA)
-    library(ggplot2)
-    library(gridExtra)
 
     power <- c(c(1:10), seq(from = 12, to = 50, by = 2))
 

@@ -34,18 +34,18 @@ enrichment_analysis <- function(name, markers_path,
   # go options: BP, CC, MF, ALL
 
   # Check types of arguments
-  if (!is.character(name) || length(name) != 1) stop(" wgcna_main: name argument must be a single character string")
-  if (!is.character(markers_path) || length(markers_path) != 1) stop(" wgcna_main: markers_path argument must be a single character string")
-  if (!is.integer(count_threshold) || length(count_threshold) != 1) stop(" wgcna_main: count_threshold argument must be a single numeric value")
-  if (!is.integer(module_threshold) || length(module_threshold) != 1) stop(" wgcna_main: module_threshold argument must be a single numeric value")
-  if (!((is.logical(wgcna_exclude) && isFALSE(wgcna_exclude)) || is.character(wgcna_exclude))) stop(" wgcna_main: wgcna_exclude argument must be either FALSE or a character vector")
-  if (!((is.logical(modules_significance_table) && isFALSE(modules_significance_table)) || is.character(modules_significance_table))) stop(" wgcna_main: modules_significance_table argument must be either FALSE or a character vector")
-  if (!((is.logical(wgcna_module) && isFALSE(wgcna_module)) || is.character(wgcna_module))) stop(" wgcna_main: wgcna_module argument must be either FALSE or a character vector")
-  if (!((is.logical(cluster) && isFALSE(cluster)) || is.numeric(cluster))) stop(" wgcna_main: cluster argument must be either FALSE or a numerical vector or single numerical value")
+  if (!is.character(name) || length(name) != 1) stop(" enrichment: name argument must be a single character string")
+  if (!is.character(markers_path) || length(markers_path) != 1) stop(" enrichment: markers_path argument must be a single character string")
+  if (!is.integer(count_threshold) || length(count_threshold) != 1) stop(" enrichment: count_threshold argument must be a single numeric value")
+  if (!is.integer(module_threshold) || length(module_threshold) != 1) stop(" enrichment: module_threshold argument must be a single numeric value")
+  if (!((is.logical(wgcna_exclude) && isFALSE(wgcna_exclude)) || is.character(wgcna_exclude))) stop(" enrichment: wgcna_exclude argument must be either FALSE or a character vector")
+  if (!((is.logical(modules_significance_table) && isFALSE(modules_significance_table)) || is.character(modules_significance_table))) stop(" enrichment: modules_significance_table argument must be either FALSE or a character vector")
+  if (!((is.logical(wgcna_module) && isFALSE(wgcna_module)) || is.character(wgcna_module))) stop(" enrichment: wgcna_module argument must be either FALSE or a character vector")
+  # if (!((is.logical(cluster) && isFALSE(cluster)) || is.numeric(cluster))) stop(" enrichment: cluster argument must be either FALSE or a numerical vector or single numerical value")
 
   
   # Set up   output dir
-  output_dir <- set_up_output(paste0(output_folder, "GSEA_", name, "/"), message)
+  output_dir <- set_up_output(paste0(output_folder, "Enrichment_", name, "/"), message)
   
   # Messages
   cat("Running Enrichment analysis...\n")
@@ -58,12 +58,8 @@ enrichment_analysis <- function(name, markers_path,
                  " - wgcna_modules: ", paste(wgcna_module, collapse = ", "),
                  " - cluster: ", paste(cluster, collapse = ", ")))
   
-  # Check useful packages
-  check_packages(c("Seurat", "tools"))
-  library("Seurat")
-  library("rlang")
-
-  if (!isFALSE(modules_significance_table) && !isFALSE(wgcna_folder)) wgcna_module <- .select_mdoules_to_enrich(filename = paste0(output_folder, wgcna_folder, modules_significance_table))
+ 
+  if (!isFALSE(modules_significance_table) && !isFALSE(wgcna_folder)) wgcna_module <- .select_mdoules_to_enrich(filename = file.path(output_folder, wgcna_folder, modules_significance_table))
   
   # List excel files
   excel_files <- list.files(paste0(output_folder, markers_path), pattern = "\\.xlsx$", full.names = TRUE)
@@ -106,7 +102,7 @@ enrichment_analysis <- function(name, markers_path,
         module_genes <- c(readxl::read_excel(paste0(output_folder, wgcna_folder, "/module_genes.xlsx"), sheet = sheet_name))[[1]]
         
         # Name of this analysis
-        analysis_name <- paste0(file_path_sans_ext(basename(file)), "_", sheet_name)
+        analysis_name <- paste0(tools::file_path_sans_ext(basename(file)), "_", sheet_name)
         
         # If the module contains enough genes use GSEA otherwise panther
         if (length(module_genes) < module_threshold) {
@@ -158,7 +154,7 @@ enrichment_analysis <- function(name, markers_path,
           gene_rankings_subset <- gene_rankings[!names(gene_rankings) %in% module_genes]
           
           # Name of this analyis
-          analysis_name <- paste0(file_path_sans_ext(basename(file)),  "_no_", sheet_name)
+          analysis_name <- paste0(tools::file_path_sans_ext(basename(file)),  "_no_", sheet_name)
           
           # Run GSEA and enrichr on genes 
           result <- run_enrichment(which = c("gsea", "panther", "enrichr"), output_dir, analysis_name, 
@@ -172,13 +168,13 @@ enrichment_analysis <- function(name, markers_path,
     else {
       
       # Messages
-      message("Running enrichment on all data given")
+      message("Running enrichment on all genes")
       
       # Name of this analysis (will be used to create folder name)
-      analysis_name <- file_path_sans_ext(basename(file))
+      analysis_name <- tools::file_path_sans_ext(basename(file))
       
       # Run GSEA and enrichr on genes 
-      result <- run_enrichment(which = c("panther"), output_dir, analysis_name, 
+      result <- run_enrichment(which = c("gsea", "panther"), output_dir, analysis_name, 
                                all_genes = gene_rankings, 
                                subset = .select_genes_for_enrich(gene_rankings, ...), ...)
     }
@@ -264,7 +260,7 @@ cluster_profiler <- function(gene_rankings, go, type, output_dir, analysis_name,
   library("org.Hs.eg.db")
   
   # Run GSEA
-  if (type == "gsea")  result <- gseGO(geneList = gene_rankings, 
+  if (type == "gsea")  result <- clusterProfiler::gseGO(geneList = gene_rankings, 
                                    ont = go, 
                                    keyType = "SYMBOL", 
                                    minGSSize = min_gs_size, 
@@ -274,7 +270,7 @@ cluster_profiler <- function(gene_rankings, go, type, output_dir, analysis_name,
                                    OrgDb = "org.Hs.eg.db")
 
   # Run over representation analysis
-  else if (type == "ora") result <- enrichGO(gene = gene_rankings, 
+  else if (type == "ora") result <- clusterProfiler::enrichGO(gene = gene_rankings, 
                                              ont = go, 
                                              universe = universe,
                                              keyType = "SYMBOL", 
@@ -307,8 +303,7 @@ over_expression <- function(genes, go, type, output_dir, analysis_name,
   message("Running over-expression analysis with ", type)
   
   # Dependencies
-  check_packages(c("rbioapi"))
-  
+  library("rbioapi")
   # Method
   if (type == "enrichr") {
     
@@ -454,9 +449,9 @@ enrichment_save_results <- function(output_dir, type, analysis_name, result, raw
   
   # Save data
   message("saving results:")
-  if (raw) saveRDS(result, file = paste0(output_subdir, "raw_", hash(filename), ".rds"))
-  if (type == "panther") openxlsx::write.xlsx(result$result, file = paste0(output_subdir, "results", hash(filename), ".xlsx"))
-  else  openxlsx::write.xlsx(result@result, file = paste0(output_subdir, "results", hash(filename), ".xlsx"))
+  if (raw) saveRDS(result, file = paste0(output_subdir, "raw_", rlang::hash(filename), ".rds"))
+  if (type == "panther") openxlsx::write.xlsx(result$result, file = paste0(output_subdir, "results", rlang::hash(filename), ".xlsx"))
+  else  openxlsx::write.xlsx(result@result, file = paste0(output_subdir, "results", rlang::hash(filename), ".xlsx"))
   # message
   message(paste0("results saved in: ", output_subdir))
   
@@ -557,7 +552,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
     # Check that there are no duplicate columns
     source <- source %>%
       dplyr::group_by(across(all_of(labels))) %>%
-      dplyr::filter(n() == 1) %>%
+      dplyr::filter(dplyr::n() == 1) %>%
       dplyr::ungroup()
 
     # Create dataframe to plot
@@ -663,7 +658,7 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
   horizontal_barplot <- function(df, columns, pvalue = "pValue", color_limits = FALSE) {
     # Check if the columns argument is valid
     if (length(columns) != 3) {
-      stop("Please provide exactly two column names.")
+      stop("Please provide exactly three column names.")
     }
 
     col_length <- columns[1]
@@ -699,15 +694,15 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
 
   if (class(gse) == "gseaResult") {
     tryCatch({
-      save_plot(dotplot(gse, show_category = 10, split = ".sign") + facet_grid(. ~ .sign),
-                paste0(output_subdir, "dotplot_", hash(filename), extension_plot), x = 10, y = 12)
+      save_plot(dotplot(gse, split = ".sign") + facet_grid(. ~ .sign),
+                paste0(output_subdir, "dotplot_", rlang::hash(filename), extension_plot), x = 10, y = 12)
       #save_plot(heatplot(gse) + ggtitle("heatplot for GSEA"),
       #          paste0(output_dir, "heatplot_", result_name, extension_plot), x = 5, y = 3)
       
       save_plot(ridgeplot(gse) + labs(x = "log2FC distribution"),
-                paste0(output_subdir, "ridgeplot_", hash(filename), extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "ridgeplot_", rlang::hash(filename), extension_plot), x = 10, y = 12)
       save_plot(volcano_plot(as.data.frame(gse@result)),
-                paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "volcano_", rlang::hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
       message("The plots could not be created, probably the enrichment didn't find anything significant, error: \n", e)
     })
@@ -719,9 +714,9 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
       gse <- pairwise_termsim(gse) # https://rdrr.io/bioc/enrichplot/man/pairwise_termsim.html
       message("Following warning message ok to ignore: https://github.com/YuLab-SMU/ggtree/issues/577")
       save_plot(treeplot(gse),
-                paste0(output_subdir,  "tree_plot_", hash(filename), extension_plot), x = 10, y = 10)
+                paste0(output_subdir,  "tree_plot_", rlang::hash(filename), extension_plot), x = 10, y = 10)
       save_plot(emapplot(gse),
-                paste0(output_subdir,  "enrichment_map_", hash(filename), extension_plot), x = 10, y = 10)
+                paste0(output_subdir,  "enrichment_map_", rlang::hash(filename), extension_plot), x = 10, y = 10)
     }, error = function(e) {
       message("The plots could not be created, probably the enrichment didn't find anything significant, error: \n", e)
     })
@@ -729,14 +724,15 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
   
   if (type == "ora") {
     tryCatch({
-      save_plot(horizontal_barplot(as.data.frame(gse@result), c("pvalue", "Count", "Description")),
-                paste0(output_subdir, "horizontal_barplot_", hash(filename), extension_plot), x = 10, y = 12)
+      save_plot(horizontal_barplot(as.data.frame(gse@result), c("pvalue", "Count", "Description")), pvalue = "pvalue",
+                paste0(output_subdir, "horizontal_barplot_", rlang::hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
-      message("An error occurred (horizontal_barplot):  \n", e)
+      message("An error occurred (horizontal_barplot) ora:  \n", e)
+      
     })
     tryCatch({
       save_plot(volcano_plot(as.data.frame(gse@result), y = "pvalue", x = "Count", labels = "Description", fc_threshold = 0),
-                paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "volcano_", rlang::hash(filename), extension_plot), x = 10, y = 12)
       
     }, error = function(e) {
       message("An error occurred (volcano):  \n", e)
@@ -746,20 +742,21 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
   if (type == "panther") {
     tryCatch({
       save_plot(horizontal_barplot(as.data.frame(gse$result), c("pValue", "signed_fold_enrichment", "term.label")),
-                paste0(output_subdir, "horizontal_barplot_", hash(filename), extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "horizontal_barplot_", rlang::hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
-      message("An error occurred (horizontal_barplot):  \n", e)
+      message("An error occurred (horizontal_barplot) panther:  \n", e)
+      
     })
     tryCatch({
       save_plot(volcano_plot(as.data.frame(gse$result), y = "pValue", x = "signed_fold_enrichment", labels = "term.label", fc_threshold = 0),
-                paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "volcano_", rlang::hash(filename), extension_plot), x = 10, y = 12)
       
     }, error = function(e) {
-      message("An error occurred (volcano):  \n", e)
+      message("An error occurred (volcano) panther:  \n", e)
     })
     tryCatch({
       save_plot(volcano_plot(as.data.frame(gse$result), y = "pValue", x = "signed_fold_enrichment", labels = "term.label", fc_threshold = 0),
-                paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "volcano_", rlang::hash(filename), extension_plot), x = 10, y = 12)
       
     }, error = function(e) {
       message("An error occurred (volcano):  \n", e)
@@ -769,21 +766,23 @@ enrichment_plotting <- function(output_subdir, type, filename, gse,
   if (type == "enrichr") {
     tryCatch({
       save_plot(horizontal_barplot(as.data.frame(gse@result), c("Count", "pvalue", "Description"), pvalue = "pvalue"),
-                paste0(output_subdir, "horizontal_barplot_", hash(filename), extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "horizontal_barplot_", rlang::hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
-      message("An error occurred (horizontal_barplot):  \n", e)
+      message("An error occurred (horizontal_barplot) enrichr:  \n", e)
+      
     })
     tryCatch({
       save_plot(horizontal_barplot(as.data.frame(gse@result), c("pvalue", "Count", "Description"), pvalue = "pvalue"),
-                paste0(output_subdir, "horizontal_barplot_count", hash(filename), extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "horizontal_barplot_count", rlang::hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
       message("An error occurred (horizontal_barplot):  \n", e)
+      
     })
     tryCatch({
       save_plot(volcano_plot(as.data.frame(gse@result), y = "pvalue", x = "Count", labels = "Description", fc_threshold = 0),
-                paste0(output_subdir, "volcano_", hash(filename), extension_plot), x = 10, y = 12)
+                paste0(output_subdir, "volcano_", rlang::hash(filename), extension_plot), x = 10, y = 12)
     }, error = function(e) {
-      message("An error occurred (volcano):  \n", e)
+      message("An error occurred (volcano) enrichr:  \n", e)
     })
   }
 
@@ -812,7 +811,7 @@ prepare_genes <- function(excel_file, count_threshold, scoring = "log2FC", ...) 
   
   # Extract the data
   
-  trycatch(genes <- data$gene, error = function(e) {stop("load gene data in enrichment: The exel file does not have a gene column")})
+  tryCatch(genes <- data$gene, error = function(e) {stop("load gene data in enrichment: The exel file does not have a gene column")})
   if (scoring == "log2FC") scores <- data$avg_log2FC
   else if (scoring == "spvalue") scores <- sign(data$avg_log2FC) * (-log10(data$p_val))
   else if (scoring == "paper") scores <- data$avg_log2FC * (-log10(data$p_val))
@@ -849,5 +848,6 @@ prepare_genes <- function(excel_file, count_threshold, scoring = "log2FC", ...) 
   message("modules_significance_table set to true")
   message("loading table with significance informations: ", filename)
   data <- openxlsx::read.xlsx(filename, rowNames = TRUE)
-  filtered_data <- rownames(data[data$Pr...t.. < 0.05, ])
+  # filtered_data <- rownames(data[data$Pr...t.. < 0.05, ])
+  filtered_data <- rownames(data[data$r.squared > 0.9, ])
 }

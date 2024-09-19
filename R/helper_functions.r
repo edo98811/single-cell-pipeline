@@ -518,13 +518,13 @@ load_rcc_data <- function(file_path) {
 load_txt_data <- function() {
     data <- read.table(file_path, header = TRUE, sep = " ")
 
-    # Load the packages
-    library(AnnotationDbi)
-    library(org.Hs.eg.db)
+    # # Load the packages
+    # library(AnnotationDbi::AnnotationDbi)
+    # library(org.Hs.eg.db)
     
     # Convert Ensembl IDs to gene names
-    rownames(data) <- mapIds(org.Hs.eg.db, keys = rownames(data), column = "SYMBOL", keytype = "ENSEMBL", multiVals = "first")
-    seurat_obj <- CreateSeuratObject(counts = data)
+    rownames(data) <- AnnotationDbi::mapIds(org.Hs.eg.db::org.Hs.eg.db, keys = rownames(data), column = "SYMBOL", keytype = "ENSEMBL", multiVals = "first")
+    seurat_obj <- Seurat::CreateSeuratObject(counts = data)
 }
 
 factorize_columns <- function(seurat_object) {

@@ -88,7 +88,7 @@ load_mri_traits <- function(wgcna_subjects = list(), regions = c(), type = "zsco
     }
     
     # Compute membershio measure
-    source("scripts/mri_wgcna.r", local = TRUE)
+    source("R/mri_wgcna.r", local = TRUE)
 
     if (type == "zscore") {
         traits <- zscore_for_wgcna(data_source_mri, regions, wgcna_subjects)

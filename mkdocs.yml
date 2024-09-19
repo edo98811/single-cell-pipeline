@@ -1,0 +1,7 @@
+site_name: single-cell-tool
+nav:
+  - Main: index.md
+  - about.md
+theme:
+  name: readthedocs
+  highlightjs: true

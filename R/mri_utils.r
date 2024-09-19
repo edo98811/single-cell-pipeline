@@ -19,7 +19,6 @@ create_data_description <- function(regions) {
 
 # Loads the data on the patients
 load_patient_info <- function(filename) {
-    library("xlsx")
 
     return( 
         do.call("rbind", 

@@ -160,7 +160,7 @@ correlation_heatmaps <- function() {
         "rostralmiddlefrontal"
         )
 
-    source("scripts/wgcna_plots_helpers.r", local = TRUE)
+    source("R/wgcna_plots_helpers.r", local = TRUE)
 
     traits <- load_mri_traits(wgcna_subjects = wgcna_subjects, regions = regions)
 

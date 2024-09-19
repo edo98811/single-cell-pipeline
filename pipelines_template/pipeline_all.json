@@ -43,7 +43,7 @@
         "method": "volcano",
         "folder": "microglia_control_vs_pd"
       },
-      "many_plots": {
+      "plot_heatmap": {
         "cluster_column": "microglia_clusters"
       }
     },

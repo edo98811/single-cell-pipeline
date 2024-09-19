@@ -15,6 +15,7 @@
 R/mri_others.r
 R/mri_old.r
 dockerfile
+own_script.r
 
 # History files
 .Rhistory

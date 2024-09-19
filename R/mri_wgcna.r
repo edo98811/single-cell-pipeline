@@ -2,7 +2,7 @@
 # mail: efilippi@uni-mainz.de
 
 
-source("scripts/mri_utils.r", local = TRUE)
+source("R/mri_utils.r", local = TRUE)
 
 # Load data for the mri needed for the wgcna function
 mri_for_wgcna <- function(data_source = "aparc", regions = c(), wgcna_subjects = list()) {
