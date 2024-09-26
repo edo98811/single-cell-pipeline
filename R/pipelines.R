@@ -22,8 +22,12 @@ preprocessing <- function(env_variables, preprocessing_settings) {
     assign("seurat_object", seurat_object, envir = .GlobalEnv)
 
     if (parameters$save) {
-        saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
-        message("object saved in: ", paste0(output_folder, parameters$save_name))
+        if (!isFALSE(parameters$save_name)) {
+            saveRDS(seurat_object, file = parameters$save_name)
+            message("object saved in: ", parameters$save_name)
+        } else {
+            warning(" main pipeline: If save is set to true and save_name to false the seurat object cannot be saved")
+        }
     }
 }
 
@@ -83,8 +87,12 @@ integration <- function(env_variables, integration_settings) {
                                         extension_plot = extension_plot)
 
     if (parameters$save) {
-        saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
-        message("object saved in: ", paste0(output_folder, parameters$save_name))
+        if (!isFALSE(parameters$save_name)) {
+            saveRDS(seurat_object, file = parameters$save_name)
+            message("object saved in: ", parameters$save_name)
+        } else {
+            warning(" main pipeline: If save is set to true and save_name to false the seurat object cannot be saved")
+        }
     }
     assign("seurat_object", seurat_object, envir = .GlobalEnv)
 }
@@ -103,12 +111,11 @@ annotation <- function(env_variables, annotation_settings) {
                                         clusters_column = c,
                                         assignment_name = annotation)
     # Plot after annotation
-        
     if (parameters$annotation_plots) {
         pc_number <- analyze_explained_variance(seurat_object, dstd, reduction_to_inspect = r) 
         seurat_object <- visualization_UMAP(seurat_object, reduction_name = umap, 
                                     cluster_column = annotation, dimension = pc_number,
-                                    save = FALSE, run_UMAP = FALSE, name = "scType_annotation")
+                                    save = FALSE, run_umap = FALSE, name = "scType_annotation")
     }
 
     ## Correction of the annotation 
@@ -121,12 +128,16 @@ annotation <- function(env_variables, annotation_settings) {
     # Plot after correction
     if (parameters$corrected_annotation_plots) seurat_object <- visualization_UMAP(seurat_object, reduction_name = umap, 
                                                 cluster_column = corrected_annotation, dimension = pc_number,
-                                                save = FALSE, run_UMAP = FALSE, name = paste0("scType_corrected_", m))
+                                                save = FALSE, run_umap = FALSE, name = file.path("scType_corrected_", m))
 
-    # saveRDS(seurat_object, file = paste0(output_folder, "main_after_annotation.rds"))
+    # saveRDS(seurat_object, file = file.path(output_folder, "main_after_annotation.rds"))
     if (parameters$save) {
-        saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
-        message("object saved in: ", paste0(output_folder, parameters$save_name))
+        if (!isFALSE(parameters$save_name)) {
+            saveRDS(seurat_object, file = parameters$save_name)
+            message("object saved in: ", parameters$save_name)
+        } else {
+            warning(" main pipeline: If save is set to true and save_name to false the seurat object cannot be saved")
+        }
     }
     assign("seurat_object", seurat_object, envir = .GlobalEnv)
     
@@ -160,7 +171,7 @@ clustering <- function(env_variables, clustering_settings) {
                                             cluster_column = c, 
                                             reduction = r,
                                             save = FALSE, 
-                                            run_UMAP = FALSE, 
+                                            run_umap = FALSE, 
                                             name = paste0(parameters$name, "_before_clustering"),
                                             extension_plot = extension_plot)
     }
@@ -183,7 +194,7 @@ clustering <- function(env_variables, clustering_settings) {
                                             reduction = r,
                                             dimension = pc_number,
                                             save = FALSE, 
-                                            run_UMAP = TRUE, 
+                                            run_umap = TRUE, 
                                             name = parameters$name,
                                             extension_plot = extension_plot)
 
@@ -203,18 +214,136 @@ clustering <- function(env_variables, clustering_settings) {
                                         cluster_column = corrected_annotation, 
                                         dimension = pc_number,
                                         save = FALSE, 
-                                        run_UMAP = FALSE, 
+                                        run_umap = FALSE, 
                                         name = paste0(parameters$name, "corrected"),
                                         extension_plot = extension_plot)
     }    
 
     if (parameters$save) {
-        saveRDS(seurat_object, file = paste0(output_folder, parameters$save_name))
-        message("object saved in: ", paste0(output_folder, parameters$save_name))
+        if (!isFALSE(parameters$save_name)) {
+            saveRDS(seurat_object, file = parameters$save_name)
+            message("object saved in: ", parameters$save_name)
+        } else {
+            warning(" main pipeline: If save is set to true and save_name to false the seurat object cannot be saved")
+        }
     }
 
     assign("seurat_object", seurat_object, envir = .GlobalEnv)
 
+}
+
+subsetting <- function(env_variables, subsetting_settings) {
+        
+    message("section: subsetting")
+    source("R/seurat_utils.r", local = TRUE)
+
+    create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
+    parameters <- .update_parameters(subsetting_settings,  load_settings(settings_path)$subsetting_settings)
+
+    if (length(parameters$subset) == 0) stop("Pipelines:  subsetting: invalid subset parameter")
+
+        assign("seurat_object", 
+            create_object_from_cluster_id(seurat_object, 
+                parameters$subset, 
+                clusters_column = ifelse(isFALSE(parameters$cluster_column), c, parameters$cluster_column)),
+            envir = .GlobalEnv)
+    
+    if (parameters$save) {
+        if (!isFALSE(parameters$save_name)) {
+            saveRDS(seurat_object, file = parameters$save_name)
+            message("object saved in: ", parameters$save_name)
+        } else {
+            warning(" main pipeline: If save is set to true and save_name to false the seurat object cannot be saved")
+        }
+    }
+}
+
+main_pipeline <- function(env_variables, main_pipeline_settings) {
+
+    message("section: main_pipeline")
+    source("R/seurat_utils.r", local = TRUE)
+
+    create_variables(.update_parameters(env_variables,  load_settings(settings_path)$global_variables))
+    default_parameters <- load_settings(settings_path)$main_pipeline
+    
+    for (name in seq_along(main_pipeline_settings)) {
+
+        parameters <-  .update_parameters(main_pipeline_settings[[name]], default_parameters)
+
+        if (parameters$method == "annotation") {
+
+            if (parameters$automatic_annotation) seurat_object <- scType_annotation(seurat_object, 
+                                                assay = a,
+                                                clusters_column = ifelse(isFALSE(parameters$cluster_column), c, parameters$cluster_column),
+                                                assignment_name = ifelse(isFALSE(parameters$annotation_column), annotation, parameters$annotation_column))
+
+
+            ## Correction of the annotation 
+            if (!isFALSE(parameters$to_correct)) 
+                seurat_object <- correct_annotation(seurat_object, parameters$to_correct, 
+                                                ifelse(isFALSE(parameters$annotation_column), annotation, parameters$annotation_column), 
+                                                new_annotation_column = ifelse(isFALSE(parameters$corrected_annotation_column), 
+                                                    ifelse(isFALSE(parameters$annotation_column), annotation, parameters$annotation_column), parameters$corrected_annotation_column), 
+                                                cluster_column = ifelse(isFALSE(parameters$cluster_column), c, parameters$cluster_column))
+
+            assign("seurat_object", seurat_object, envir = .GlobalEnv)
+
+            if (parameters$save) {
+                if (!isFALSE(parameters$save_name)) {
+                    saveRDS(seurat_object, file = parameters$save_name)
+                    message("object saved in: ", parameters$save_name)
+                } else {
+                    warning(" main pipeline: If save is set to true and save_name to false the seurat object cannot be saved")
+                }
+            }
+
+        }
+        if (parameters$method == "clustering") {
+            seurat_object <- clustering(seurat_object, 
+                                    reduction = ifelse(isFALSE(parameters$reduction), r, parameters$reduction), 
+                                    desired_resolution = d, 
+                                    dimension = pc_number,
+                                    column_name = ifelse(isFALSE(parameters$cluster_column), c, parameters$cluster_column))
+
+            assign("seurat_object", seurat_object, envir = .GlobalEnv)
+
+            if (parameters$save) {
+                if (!isFALSE(parameters$save_name)) {
+                    saveRDS(seurat_object, file = parameters$save_name)
+                    message("object saved in: ", parameters$save_name)
+                } else {
+                    warning(" main pipeline: If save is set to true and save_name to false the seurat object cannot be saved")
+                }
+            }
+        }
+        if (parameters$method == "plotting") {
+            
+            pc_number <- analyze_explained_variance(seurat_object, 
+                            ifelse(isFALSE(parameters$explained_variance), dstd, parameters$explained_variance), 
+                            reduction_to_inspect = ifelse(isFALSE(parameters$reduction), r, parameters$reduction))
+
+            if (!isFALSE(parameters$compute_umap)) message("plotting: a new umap will be computed and saved in this slot: ", ifelse(isFALSE(parameters$umap_name), umap, parameters$umap_name))
+            seurat_object <- visualization_UMAP(seurat_object, 
+                                reduction_name = ifelse(isFALSE(parameters$umap_name), umap, parameters$umap_name), 
+                                reduction = ifelse(isFALSE(parameters$reduction), r, parameters$reduction), 
+                                cluster_column = ifelse(isFALSE(parameters$cluster_column), c, parameters$cluster_column), 
+                                dimension = pc_number,
+                                save = FALSE, 
+                                run_umap = parameters$compute_umap, 
+                                name = names(main_pipeline_settings)[name],
+                                extension_plot = extension_plot)
+
+            assign("seurat_object", seurat_object, envir = .GlobalEnv)
+            if (parameters$save) {
+                if (!isFALSE(parameters$save_name)) {
+                    saveRDS(seurat_object, file = parameters$save_name)
+                    message("object saved in: ", parameters$save_name)
+                } else {
+                    warning(" main pipeline: If save is set to true and save_name to false the seurat object cannot be saved")
+                }
+            }
+        }
+    }
 }
 
 deg <- function(env_variables, deg_settings) {
@@ -284,7 +413,7 @@ deg <- function(env_variables, deg_settings) {
                 genes_to_plot = parameters$markers,
                 assay = a,               
                 cluster_column = parameters$cluster_column,
-                reduction_name = umap,
+                reduction_name = ifelse(isFALSE(parameters$umap_name), umap, parameters$umap_name),
                 subplot_n = parameters$subplot_n))
             
         } else if (parameters$method == "other_plots_from_df") {
@@ -330,8 +459,8 @@ wgcna <- function(env_variables, wgcna_settings) {
                                                                     parameters$cluster,
                                                                     assay = a,
                                                                     clusters_column = ifelse(isFALSE(parameters$cluster_column),
-                                                                        c,
-                                                                        parameters$cluster_column)))
+                                                                    c,
+                                                                    parameters$cluster_column)))
 
             message("Seurat object subsetted according to required clusters")
         } else seurat_object_subset <- seurat_object
@@ -342,9 +471,20 @@ wgcna <- function(env_variables, wgcna_settings) {
                                                                     assay = a,
                                                                     clusters_column = parameters$subject_column)
                 message("Seurat object subsetted according to required subjects")
+            # {
+            # "PD_001": "02_082",
+            # "PD_002": "02_084",
+            # "PD_005": "02_074",
+            # "PD_007": "02_096",
+            # "PD_008": "02_097",
+            # "PD_009": "02_105",
+            # "PD_016": "02_108",
+            # "PD_017": "02_115"
+            # }
             }, 
             error = function(e) {
-                warning(" Could not subset seurat object according to subjects given, error: ", e)
+                warning("Could not subset seurat object according to subjects given, cotinuing with complete object, error: ", e)
+                seurat_object_subset <- seurat_object
             })
         }   
         if (parameters$method == "WGCNA") {

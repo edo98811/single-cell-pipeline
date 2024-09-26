@@ -20,10 +20,17 @@ main("wgcna_template.json")
 main("explorative_plots.json")
 main("cellchat_template.json")
 main("C:/Users/Edoardo/Desktop/Seurat/Organized data/pipeline/pipeline.json")
-main("C:/Users/Edoardo/Desktop/Seurat/Organized data/cellchat/pipeline.json")
+main("C:/Users/Edoardo/Desktop/Seurat/Organized data/cellchat/pipeline_all.json")
 main("C:/Users/Edoardo/Desktop/Seurat/Organized data/WGCNA/pipeline.json")
 main("C:/Users/Edoardo/Desktop/Seurat/Organized data/microglia annotation/pipeline.json")
 main("C:/Users/Edoardo/Desktop/Seurat/Organized data/WGCNA/pipeline_all.json")
+main("C:/Users/Edoardo/Desktop/Seurat/Organized data/pipeline/pipeline.json")
+main("C:/Users/Edoardo/Desktop/Seurat/Organized data/microglia annotation/pipeline.json")
+main("C:/Users/Edoardo/Desktop/Seurat/Organized data/microglia annotation/all_with_microglia_annotaiton.json")
+main("C:/Users/Edoardo/Desktop/Seurat/Organized data/pipeline/pipeline.json")
+main("C:/Users/Edoardo/Desktop/Seurat/Organized data/microglia annotation/pipeline_withbordermacrophages.json")
+# "significance_membership_scatter"
+# "significance_membership_scatter"
 # "significance_membership_scatter"
 # "significance_membership_model"
 # "heatmap_pathology", 

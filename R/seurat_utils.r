@@ -79,7 +79,7 @@ plot_heatmap <- function(seurat_object, which = c("dotplot", "heatmap"), cluster
   
   # Arguments check
   if (!isFALSE(clusters) && is.vector(clusters)) {
-    message("clusters provided")
+    message("Heatmap: clusters provided")
     clusters <- as.character(clusters)
   } # Nota -> Na is considered vector of length 1
   else clusters <-  as.character(unique(seurat_object@meta.data[[cluster_column]]))
@@ -102,8 +102,8 @@ plot_heatmap <- function(seurat_object, which = c("dotplot", "heatmap"), cluster
     
     # create a dataframe that contains the n_genes top markers per cluster, oly keeping the ones present in variable features
     markers_df <- as.data.frame(lapply(cluster_markers, function(markers_df_for_cluster) {
-      markers_df_for_cluster <- markers_df_for_cluster[order(markers_df_for_cluster$avg_log2FC), ]
-      
+      markers_df_for_cluster <- markers_df_for_cluster[order(abs(markers_df_for_cluster$avg_log2FC), decreasing = TRUE), ]
+
       # Select the top 25 markers, after having checked that they are present in the variable features
       top_markers <- row.names(markers_df_for_cluster) %>%
         .[. %in% rownames(seurat_object@assays[[assay]]$scale.data)] %>%
@@ -137,7 +137,7 @@ plot_heatmap <- function(seurat_object, which = c("dotplot", "heatmap"), cluster
       }
       
       # Compute the markers to plot if needed
-      if (compute_markers) markers <- find_markers_local(n_genes)
+      if (compute_markers) markers <- find_markers_local()
       
       # Create a DotPlot
       save_plot(DotPlot(
@@ -153,7 +153,7 @@ plot_heatmap <- function(seurat_object, which = c("dotplot", "heatmap"), cluster
       
       # Create new seurat object
       new_seurat_object <- create_object_from_cluster_id(seurat_object, clusters, assay = assay,
-                                                         clusters_column = cluster_column, save = FALSE, new_idents = cluster_column)
+                                                         clusters_column = cluster_column, save = FALSE)
       
       # Compute the markers to plot if needed, otherwise filter to keep the ones that are in the variable features
       if (compute_markers) markers_filtered <- find_markers_local()
@@ -233,6 +233,7 @@ find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_n
   
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "markers_", name, "/"))
+  message("Running differentially expressed markers analysis")
 
   # Setting parameters
   if (cluster_column != "" && cluster_column %in% names(seurat_object@meta.data)) Idents(seurat_object) <- cluster_column
@@ -603,7 +604,7 @@ clustering <- function(seurat_object, reduction = "pca",
 #'        If \code{NA}, default names will be generated based on the \code{name} and \code{extension_plot} parameters.
 #' @param save A logical value indicating whether to save the Seurat object after generating the plots. 
 #'        Default is \code{FALSE}.
-#' @param run_UMAP A logical value indicating whether to run UMAP before generating the plots. 
+#' @param run_umap A logical value indicating whether to run UMAP before generating the plots. 
 #'        Default is \code{TRUE}.
 #' @param name A character string specifying the prefix for the plot names. 
 #'        Default is \code{""}.
@@ -612,12 +613,12 @@ clustering <- function(seurat_object, reduction = "pca",
 #' @param extension_plot A character string specifying the file extension for the saved plots. 
 #'        Default is \code{".png"}.
 #'
-#' @return The Seurat object with the UMAP reduction added to it (if \code{run_UMAP} is \code{TRUE}).
+#' @return The Seurat object with the UMAP reduction added to it (if \code{run_umap} is \code{TRUE}).
 #'
 #' @details This function handles UMAP dimensionality reduction and generates several plots based on the specified 
 #' reduction. The plots can be customized and saved with different naming conventions. The \code{daniela} parameter 
 #' controls a specific set of plots, while the default generates a different set. If the UMAP has already been run, 
-#' \code{run_UMAP} can be set to \code{FALSE} to skip rerunning it.
+#' \code{run_umap} can be set to \code{FALSE} to skip rerunning it.
 #'
 #' @examples
 #' # Generate UMAP plots and save them to files
@@ -629,10 +630,13 @@ visualization_UMAP <- function(seurat_object, reduction_name = "umap_",
                                           reduction = "pca", dimensions = 16, 
                                           cluster_column = "seurat_clusters",
                                           plots = FALSE, save = FALSE, 
-                                          run_UMAP = TRUE, name = "", extension_plot = ".png",
+                                          run_umap = TRUE, name = "", extension_plot = ".png",
                                           daniela = FALSE) {
-  
-    # Setting plot names
+
+  # Check that cluster column is actually in the metadada
+  if (!(cluster_column %in% colnames(seurat_object@meta.data))) stop(paste("Error: cluster_column", cluster_column, "does not exist in the Seurat object's metadata."))
+  if (isFALSE(run_umap) && !reduction_name %in% names(seurat_object@reductions)) stop("compute_umap (or run_umap) is set to false and the selected reduction does not exist")
+  # Setting plot names
   if (nchar(name) == 0) name <- reduction_name
   if (isFALSE(plots)) {
     plots <- c(
@@ -657,12 +661,12 @@ visualization_UMAP <- function(seurat_object, reduction_name = "umap_",
                  " - cluster_column: ", cluster_column,
                  # " - plots: ", plots,
                  " - save: ", save,
-                 " - run_UMAP: ", run_UMAP,
+                 " - run_umap: ", run_umap,
                  " - name: ", name,
                  " - extension_plot: ", extension_plot))
   
   # UMAP
-  if (run_UMAP) seurat_object <- RunUMAP(seurat_object, dims = 1:dimensions, reduction = reduction, 
+  if (run_umap) seurat_object <- RunUMAP(seurat_object, dims = 1:dimensions, reduction = reduction, 
                                          reduction.name = reduction_name, verbose = FALSE)
   
   # Visualisation
@@ -1106,12 +1110,12 @@ create_metadata <- function(seurat_object, option = 1, save = TRUE) {
 #'
 #' @export
 create_object_from_cluster_id <- function(seurat_object, clusters, assay = "RNA", clusters_column = "seurat_clusters", 
-                                          save = FALSE, filename = "subset_of_object.rds", new_idents = NA, 
+                                          save = FALSE, filename = "subset_of_object.rds", new_idents = FALSE, 
                                           variable_features = FALSE) {
   
   # Check arguments
   if (!is.vector(clusters)) stop("clusters must be a vector")
-  if (is.na(new_idents)) new_idents <- "seurat_clusters"
+  if (isFALSE(new_idents)) new_idents <- clusters_column
 
   # Set corrrect identity column
   Idents(seurat_object) <- clusters_column
@@ -1442,7 +1446,9 @@ plots_for_paper <- function(seurat_object,
       "numberofcell_barplot_subject", 
       "numberofcell_pie_chart_subject",
       "numberofcell_pie_chart_cluster_subject", 
-      "numberofcell_pie_chart_cluster_pathology"), 
+      "numberofcell_pie_chart_cluster_pathology", 
+      "feature_plots",
+      "ridge_plots"), 
     genes_to_plot = c(""), 
     cluster_column = "microglia_clusters", 
     extension_plot = ".png", 
@@ -1534,7 +1540,8 @@ plots_for_paper <- function(seurat_object,
   # Feature plots 
   if ("feature_plots" %in% which) {
     message("feature_plots")
-    
+    if (!reduction_name %in% names(seurat_object@reductions)) stop("plots: the selected umap reduction does not exist")
+  
     genes <- genes_to_plot[genes_to_plot %in% Features(seurat_object[["RNA"]])]
 
     purrr::walk(seq(1, length(genes_to_plot), by = subplot_n), function(gene) {
@@ -2244,16 +2251,7 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
   ## Main ----
   main <- function() {
     
-    prepare_data()
 
-    if (load_object) {
-      cellchat <- readRDS(file.path(output_dir, obj_name))
-      assign("cellchat", cellchat, envir = parent.frame())
-      }
-    else compute_cellchat()
-    
-    plot_results()
-    openxlsx::write.xlsx(subsetCommunication(cellchat), file.path(output_dir, "interactions_dataframe.xlsx"))
   }
   
   ## Functions ----
@@ -2505,7 +2503,25 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
   }
 
   ## Script ----
-  main()
+  prepare_data()
+
+  if (load_object) {
+    tryCatch({
+      cellchat <- readRDS(file.path(output_dir, obj_name))
+      assign("cellchat", cellchat, envir = parent.frame())
+      message(file.path(output_dir, obj_name))
+    }, error = function(e) {
+      if (grepl("gzfile", e$message)) {
+        message("Error in opening gzfile: ", e$message, " Did you try to load a cellchat object that has not been yet created?")
+        # Handle the error (e.g., skip, try another file, or terminate)
+      } else {
+        stop(e)  # Re-throw the error if it's not the expected one
+      }
+    })
+  } else compute_cellchat()
+  
+  plot_results()
+  openxlsx::write.xlsx(subsetCommunication(cellchat), file.path(output_dir, "interactions_dataframe.xlsx"))
   # prepare_data()
   
   # if (load_object) cellchat <- readRDS(paste0(output_dir, obj_name))

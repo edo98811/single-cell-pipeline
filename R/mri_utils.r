@@ -73,8 +73,8 @@ filter_data <- function(data_all, columns) {
 
     if (all(c("superiorfrontal_volume", "caudalmiddlefrontal_volume", "rostralmiddlefrontal_volume") %in% names(data))) {
         data[["frontal_cortex_volume"]] <- data[["superiorfrontal_volume"]] + data[["caudalmiddlefrontal_volume"]] + data[["rostralmiddlefrontal_volume"]]
-        data[["frontal_cortex_thickness"]] <- rowMeans(data.frame(data[c("superiorfrontal_thickness","caudalmiddlefrontal_thickness","caudalmiddlefrontal_thickness")]))
-        data[["frontal_cortex_area"]] <- rowMeans(data.frame(data[c("superiorfrontal_area","caudalmiddlefrontal_area","caudalmiddlefrontal_area")]))
+        data[["frontal_cortex_thickness"]] <- rowMeans(data.frame(data[c("superiorfrontal_thickness", "caudalmiddlefrontal_thickness", "caudalmiddlefrontal_thickness")]))
+        data[["frontal_cortex_area"]] <- rowMeans(data.frame(data[c("superiorfrontal_area", "caudalmiddlefrontal_area", "caudalmiddlefrontal_area")]))
     }
 
     return(data.frame(data))

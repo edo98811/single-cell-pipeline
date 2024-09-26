@@ -33,7 +33,6 @@ hub_genes_threshold = c(0.3, 1), which = c(""), cluster = FALSE, ...) {
 # Define function for heatmap
 heatmap_group <- function(bwnet, norm_counts, column_data) {
     message("heatmap")
-    browser()
     traits_binary <- data.frame(lapply(unique(column_data$pathology), function(x) {
         as.numeric(column_data$pathology == x)
     }))
@@ -48,7 +47,6 @@ heatmap_group <- function(bwnet, norm_counts, column_data) {
 # Define function for heatmapMRI
 heatmap_mri <- function(bwnet, norm_counts, column_data) {
     message("heatmap mri")
-    browser()
     traits <- load_mri_traits(type = "mri", ...)
     make_heatmap(bwnet, paste0(output_dir, "trait_correlation_heatmap_mri.xlsx"), traits)
 }
@@ -56,7 +54,6 @@ heatmap_mri <- function(bwnet, norm_counts, column_data) {
 # Define function for heatmapMRI zscore
 heatmap_zscore <- function(bwnet, norm_counts, column_data) {
     message("heatmap zscore")
-    browser()
     traits <- load_mri_traits(type = "zscore", ...)
     make_heatmap(bwnet, paste0(output_dir, "trait_correlation_heatmap_zscore.xlsx"), traits)
 

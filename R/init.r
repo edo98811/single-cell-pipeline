@@ -5,7 +5,7 @@
 # https://stackoverflow.com/questions/44608323/crash-of-debugging-browser-in-r-rstudio-when-called-from-inside-do-call
 options(deparse.max.lines = 10)
 # install.packages("devtools")
-devtools::install_github("immunogenomics/presto")
+if (!"presto" %in% rownames(installed.packages())) {devtools::install_github("immunogenomics/presto")}
 source("R/helper_functions.r")
 library("dplyr")
 #' Main Function to run the Pipeline
@@ -38,7 +38,7 @@ library("dplyr")
 #' @export
 main <- function(pipeline_file) {
     source("R/pipelines.r", local = TRUE)
-
+    # nota: null means required
 
     # Load settings
     pipeline <- load_settings(pipeline_file)
@@ -55,21 +55,23 @@ main <- function(pipeline_file) {
     }
    
     purrr::walk(c(
+            "own_script",
             "preprocessing", 
             "integration", 
-            "clustering", 
-            "annotation", 
+#            "clustering", 
+#            "annotation",
+            "subsetting",
+            "main_pipeline",
             "deg", 
             "wgcna", 
             "enrichment", 
-            "own_script",
             "cellchat_analysis"
         ), 
         function(name) {
 
             # If the name of the function is defined in the pipeline parts and it is set to true this function is ran
             if (name %in% names(pipeline$pipeline))
-                if (pipeline$pipeline[[name]] && !is.null(pipeline[[name]])) get(name)(global_variables, pipeline[[name]])
+                if (pipeline$pipeline[[name]] && !is.null(pipeline[[name]])) get(name)(global_variables, pipeline[[name]]) 
                 else if (is.null(pipeline[[name]])) stop("If you want to run a section you have to define it in the pipeline file")
 
     })
