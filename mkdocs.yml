@@ -1,7 +1,8 @@
-site_name: single-cell-tool
+site_name: Single Cell Tool Documentations
 nav:
   - Main: index.md
   - about.md
 theme:
   name: readthedocs
   highlightjs: true
+repo_url: https://github.com/edo98811/single-cell-pipeline

@@ -23,87 +23,149 @@ It specifies the parameters that are used in the pipeline, the settable paramete
 ## General information 
 The pipeline sections are executed in the order in which they are described below. a "pipeline" section is necessary with at least one element set to true. The general settings section is also required, with at least the destination folder and the path to the settings file defined. The settings file contains all the default settings for the pipelines, if they are not overridden in the pipeline file, these are the settings that are used. The settings file needs to be created for each project, the pipeline files for each analysis that needs to be performed.
 
-## Pipeline definition
-The structure is provided in the examples. at the beginning the single sections that will be run need to be selected. by specifying it like this in a `pipeline` section:
 
-- `preprocessing`: [true | false]
-Preprocessing step loads the data from a given folder, then it performs the preprocessing sstep with doubletfiner, the seurat objects are then optionally saved with the save parameter.
-- `integration`: [true | false]
-The step after preprocessing, here the list of seurat objects created in the previous step can be merged and integrated using harmony. The seurat object can be saved at the end of this step with the save parameter.
-- `clustering`: [true | false]
-What the clustering section does is create a subset if the parameter is requested, and then work with this subset. Cluster the seurat iobject with the given parameters, the results are plotted. If rename_clusters is set to true and the to_correct parameter is given, then the annotation can also be corrected. The seurat object can be saved at the end of this step with the save parameter.
-Te steps that can be performed by this function are: (by setting the correct marker to true or false in the settings section)
-  - create subset: create a subset of the seurat object to be used for the whole pipeline, the subset parameter is mandatory
-  - plot_before_clustering: wether to plot or not (after subsetting in this case) without computing umap
-  - clustering: perform a new clustering 
-  - clustering_plot: plot, performing a new clustering 
-  - rename_clusters: the clusters are renamed 
-All of these or only one of these can be ran. The order in which they are ran is the one defined above
-- `annotation`: [true | false]
-The annotation will be done with sctype, the parameters for the annotation are fixed on brain datasets but will be changed in the future. After annotation if correct is set to true and the to_correct parameter is given a manual correction can be performed. The annotation can also be competely manual if the parameter annoatate is set to false.  The seurat object can be saved at the end of this step with the save parameter.
-- `deg`: [true | false]
-The differentially expressed genes are found and the results saved, different commadns can be used, multiple analysis can be ran at the same time creating more than one field in the setting file
-deg methods
-    - `condition_and_clusters`: compute the markers betweeen the clusters
-    - `condition_and_clusters_vf`: only considering variable features
-    - `default`: compute the markers between the clusters 
-    - `default_vf`: only considering variable features
-    - `condition`: compute the markers beween the groups
-    - `condition_vf`: only considering variable features
-    other
-    - `heatmap`: this creates an heatmap, either from a list of markers or from the differentially expressed markers (if the markers parameters is not defined) The needed parameters for this are: cluster_column, markers
-    - `volcano`: this method is used to create a volcano plot in the folder of the deg analysis that is set as "folder" parameter, folder parameter is only used for this method
-    - `paper`: plot different aspects of the seurat object
-      parameters:  
-        - `markers`: a list of markers
-        - `cluster_column`: the column of metadata that is used for Idents
-        - `subplot_n`: number of subplot per featurep plot
-        - `which_other`: which plot to create, options
-          - `numberofcell_barplot`:  
-          - `numberofcell_pie_chart`: 
-          - `numberofcell_barplot_subject`: 
-          - `numberofcell_pie_chart_subject`: 
-          - `numberofcell_pie_chart_cluster_subject`:
-          - `numberofcell_pie_chart_cluster_pathology`: 
-    - `plot_markers_from_df`: different plots from lists of markers that are in an excel file, possibilities:
-      - feature plot (default)
-      - heatmap, setting the plot_heatmap variable to true, this can be done with one heatmapp for each table column or for all in one heatmap
+
+## Pipeline Definition
+
+This document outlines the structure and functionality of a pipeline for data preprocessing, integration, and analysis. The pipeline consists of multiple steps, each of which can be executed independently by setting corresponding parameters in the configuration file.
+
+---
+
+### 1. Preprocessing
+- **Enabled**: `[true | false]`
+
+The preprocessing step loads data from a specified folder, processes it with DoubletFinder, and creates Seurat objects. If the `save` parameter is enabled, these objects can be saved in the `save_name`location.
+
+### 2. Integration
+- **Enabled**: `[true | false]`
+
+Following preprocessing, Seurat objects can be merged and integrated using Harmony. As with preprocessing, the final Seurat object can be saved in the `save_name`location if the `save` parameter is set.
+
+---
+
+## Main Pipeline
+
+This section covers basic operations such as clustering, dimensionality reduction plotting, and cluster annotation. Each operation is controlled by specific parameters and can be run multiple times.
+
+### 1. Plotting: 
+Visualize the results of clustering or annotation using UMAP dimensionality reduction.
+- **umap**: Specifies the name of the reduction slot for UMAP. Defaults to `umap` if not provided.
+- **compute_UMAP**: `[true | false]` — Whether to compute a new UMAP. If `false`, a pre-existing UMAP is required.
+- **reduction**: Specifies the reduction method for UMAP. Defaults to the global `r` parameter.
+- **cluster_column**: Specifies the column to use for cluster names. Defaults to the global `c` parameter.
+- **save**: Whether to save the resulting object.
+- **save_name**: The name under which the object will be saved.
+
+### 2. Annotation
+Clusters can be annotated either automatically using `scType` or manually using a defined mapping.
+- **auto**: `[true | false]` — When `true`, clusters are automatically annotated with `scType`. If no manual annotation is provided via the `to_annotate` parameter, this must be set to `true`.
+- **to_annotate**: Mapping of existing cluster names to new names, saved in the `annotation_column`.  Defined as r list, (like python dictionary), in JSON as a standard object.
+- **annotation_column**: The column where annotations are saved (applies to both automatic and manual annotations).
+- **cluster_column**: The source column for clustering results, used in both automatic and manual annotation. Defaults to the global `c` parameter.
+- **save**: Whether to save the resulting object.
+- **save_name**: The name under which the object will be saved.
+
+### 3. Clustering
+ Executes Louvain clustering with Seurat’s algorithm, storing results in the metadata in the given column
+- **desired_resolution**: The resolution for Louvain clustering. Defaults to the global `dsrd` parameter.
+- **reduction**: The reduction method used for clustering. Defaults to the global `r` parameter.
+- **cluster_column**: Column where clustering results will be stored. Defaults to the global `c` parameter.
+- **save**: Whether to save the resulting object.
+- **save_name**: The name under which the object will be saved.
+---
+
+## Subsetting
+
+The Seurat object can be subset based on specific clusters, with the option for manual correction. The parameters for this step are:
+
+- **save**: Whether to save the resulting object.
+- **save_name**: The name under which the object will be saved.
+- **cluster_column**: The cluster column used for subsetting.
+- **subset**: Specifies which clusters to keep in the subset, defined as array.
+
+---
+
+## Differential Expression (DEG)
+
+Different methods are available for identifying differentially expressed genes (DEGs). Each method can be run multiple times with different settings.
+
+### DEG Methods:
+- **condition_and_clusters**: Compares markers between clusters.
+- **condition_and_clusters_vf**: Similar, but only considers variable features.
+- **default**: Finds markers between clusters.
+- **default_vf**: Finds markers between clusters but only for variable features.
+- **condition**: Compares markers between different groups.
+- **condition_vf**: Compares markers between groups but only for variable features.
+
+## Other possibilities (visualisation)
+- **heatmap**: Generates a heatmap from a list of markers or from DEGs if no markers are provided.
+  - **cluster_column**: The column containing the annotation for the plot.
+  - **markers**: A list of markers for the heatmap.
+  - **clusters**: Specifies clusters to visualize.
+  - **maxn_genes**: Maximum number of genes to plot (default 100).
+  - **n_genes**: Number of genes per cluster (default 25).
+  - **maxn_genes_per_plot**: Maximum genes per plot (default 100).
+
+- **volcano**: Creates a volcano plot from the table in the `folder` specified for DEG analysis.
+- **paper**: Generates plots for various Seurat object properties.
+  - **markers**: A list of markers for feature and ridge plots.
+  - **cluster_column**: Metadata column for the plot.
+  - **subplot_n**: Number of subplots for the feature plot.
+  - **which_other**: Specifies additional plots such as bar or pie charts. (names to be given in an r array)
+    - `numberofcell_barplot`:  
+    - `numberofcell_pie_chart`: 
+    - `numberofcell_barplot_subject`: 
+    - `numberofcell_pie_chart_subject`: 
+    - `numberofcell_pie_chart_cluster_subject`:
+    - `numberofcell_pie_chart_cluster_pathology`: 
+    - `feature_plot`: plots the feature plots with the given markers
+  - **umap_name**: umap reduction to use for visualisation, if not given uses default in global parameters
+- **plot_markers_from_df**: Plots markers from a dataframe. Possibilities are:
+      - `feature plot` plot (default)
+      - `heatmap`, setting the **plot_heatmap** variable to true, this can be done with one heatmapp for each table column or for all in one heatmap
       parameters needed 
-      - `markers`: in this case it must be an excel file
-      - `cluster_column`: the column of metadata that is used for Idents
-      - `subplot_n`: number of subplot per featurep plot
-      - `heatmap`: wether to plot the heatmap
-      - `feature_plot`: weather to plot the feature plot
-      - `heatmap_by_column`: true if you want to create a different heatmap for each column of the dataframe. if false it printsall the genes in the excel file in the same heatmap
-      - `subplot_n`: maximum number of subplots per feature plot (sugested 9 or 4)
-      - `max_feature_plots`: maximum number of feature plots, if there are hundreds of genes in the dataframe the feature plots can be very long to generate, hence this parameter 
-      - `max_genes_heatmap`: max genes per heatmap, if there are more genes another heatmap is generated
-      - `column_list`: for which column of the dataframe are the plots created? if empty all the columns. if plotting the results of deg set this value to ["gene"]
+  - **plot_heatmap**: To be set to true or false
+  - **markers**: Excel file containing markers.
+  - **cluster_column**: Metadata column for plotting.
+  - **subplot_n**: Number of subplots for feature plots.
+  - **heatmap**: Option to plot a heatmap.
+  - **feature_plot**: Option to plot feature plots.
+  - **heatmap_by_column**: If `true`, generates one heatmap per dataframe column.
+  - **subplot_n**: maximum number of subplots per feature plot (sugested 9 or 4)
+  - **max_feature_plots**: maximum number of feature plots, if there are hundreds of genes in the dataframe the feature plots can be very long to generate, hence this parameter 
+  - **max_genes_heatmap**: max genes per heatmap, if there are more genes another heatmap is generated
+  - **column_list**: for which column of the dataframe are the plots created? if empty all the columns. if plotting the results of deg set this value to ["gene"]
+---
 
-- `wgcna`: [true | false]
-To run the wgcna analysis, the same concept as the deg applies, the analysis can be ran multiple times with multiple different settings. Paraeters are described in the following section, 
-possible plots or analysis are: 
-  - `heatmap_pathology`: correlation heatmap for 
-  - `TOM`: to develop
-  - `dendro`: to develop
-  - `heatmap_mri`: correlation heatmap for 
-  - `heatmap_zscore`: correlation heatmap for 
-  - `violin_plots`: violin plots for gene expression divided by condition
-  - `histogram_plot`: histogram plot of gene expression by module
-  - `histogram_plot_significance`: histogram plot of gene significance by module 
-  - `significance_membership_scatter`: scatter plot of these two
-  - `significance_log2fc_scatter`: scatter plot of these two
-  - `correlation_avglog2fc_scatter`: scatter plot of these two
-  - `corr_matrix`: to_develop
-  - `significance_membership_model`: computes a linear model for each module between these two
-if the cluster column is not defined the default (in general settings) is used 
+## WGCNA
+- **Enabled**: `[true | false]`
 
-- `enrichment`: [true | false]
-to run enrichment analysis, here too the analysis can be ran multiple times. Enrichment analysis is ran in four different methods, depending on the parameters that are set
-- on general deg results: for this te only parameter that needs to be set is the mraers path and eventually the cluster, cluster can be a single value or a list, or not set. If it is not set the enrichment is ran on all the files present in the folder given as deg results
-- excluding a wgcna module: on all the genes excluding a single module the wgcna folder must be set, in the folder the module_genes.xlsx file (automatically created after running the wgcna) must be present
-- on single wgcna modules: on a list of selected modules, the wgcna folder must be set, in the folder the module_genes.xlsx file (automatically created after running the wgcna) must be present 
-- on selected wgcna modules according to the linear model computed in wgcna, for this selection the file needs to be specified, and the wgcna_folder as well. The modules selected are the ones that have a pvlaue less than 0.5 % in the model parameter estimation 
+WGCNA analysis can be run multiple times with different settings. If the cluster column is not defined the default c (in global settings) is used. Parameters for WGCNA are:
+
+- **heatmap_pathology**: Correlation heatmap.
+- **TOM**: Topological overlap matrix (to be developed).
+- **dendro**: Dendrogram (to be developed).
+- **heatmap_mri**: MRI correlation heatmap.
+- **heatmap_zscore**: Z-score correlation heatmap.
+- **violin_plots**: Violin plots for gene expression by condition.
+- **histogram_plot**: Histogram of gene expression by module.
+- **significance_membership_scatter**: Scatter plot of significance and membership.
+- **significance_log2fc_scatter**: Scatter plot of significance and log2 fold change.
+- **significance_membership_model**: Linear model between significance and membership.
+
+---
+
+## Enrichment
+- **Enabled**: `[true | false]`
+
+Enrichment analysis can be performed using one of four methods, depending on the parameters set:
+
+1. **General DEG Results**: Enrichment based on all DEGs.
+2. **Excluding a WGCNA Module**: Runs enrichment analysis excluding a specific WGCNA module.
+3. **Single WGCNA Module**: Runs enrichment on selected WGCNA modules.
+4. **Linear Model in WGCNA**: Runs enrichment on WGCNA modules selected via a linear model.
+
+
 
 The settings
 for `preprocessing`,`integration`,`clustering`,`annotation`: need to be specified in the apposite section 
@@ -283,3 +345,13 @@ The settings file stores the default parameters for each pipeline that is run. A
 to write your own script, the own script parametr needs to be set to true, the global settings can be set and also the specific settings (but in this case there no practical difference between the two, apart from the way they need to be accessed)
 The global settings are accessed by simply writing the variable name how it is written in the pipeline file, the sepcific settings are accessed with parameters$variable_name.
 If you want the seurat object to be preloaded for you you can just set it in the gloab variables, otherwie just dont set anything or leave it to false. 
+
+
+---
+
+### Additional Features:
+- **Cluster Renaming:** If `rename_clusters` is set to `true` and the `to_correct` parameter is provided, cluster names can be corrected.
+- **Saving the Seurat Object:** The Seurat object can be saved at the end of this step with the `save` parameter.
+  
+Each of these steps can be run independently or together based on the required settings.
+
