@@ -374,11 +374,3 @@ The global settings are accessed by simply writing the variable name how it is w
 If you want the seurat object to be preloaded for you you can just set it in the gloab variables, otherwie just dont set anything or leave it to false. 
 
 
----
-
-### Additional Features:
-- **Cluster Renaming:** If `rename_clusters` is set to `true` and the `to_correct` parameter is provided, cluster names can be corrected.
-- **Saving the Seurat Object:** The Seurat object can be saved at the end of this step with the `save` parameter.
-  
-Each of these steps can be run independently or together based on the required settings.
-
