@@ -48,6 +48,7 @@ Following preprocessing, Seurat objects can be merged and integrated using Harmo
 This section covers basic operations such as clustering, dimensionality reduction plotting, and cluster annotation. Each operation is controlled by specific parameters and can be run multiple times.
 
 ### 1. Plotting: 
+method: `plotting`
 Visualize the results of clustering or annotation using UMAP dimensionality reduction.
 - **umap**: Specifies the name of the reduction slot for UMAP. Defaults to `umap` if not provided.
 - **compute_UMAP**: `[true | false]` — Whether to compute a new UMAP. If `false`, a pre-existing UMAP is required.
@@ -57,6 +58,7 @@ Visualize the results of clustering or annotation using UMAP dimensionality redu
 - **save_name**: The name under which the object will be saved.
 
 ### 2. Annotation
+method: `annotation`
 Clusters can be annotated either automatically using `scType` or manually using a defined mapping.
 - **auto**: `[true | false]` — When `true`, clusters are automatically annotated with `scType`. If no manual annotation is provided via the `to_annotate` parameter, this must be set to `true`.
 - **to_annotate**: Mapping of existing cluster names to new names, saved in the `annotation_column`.  Defined as r list, (like python dictionary), in JSON as a standard object.
@@ -66,6 +68,7 @@ Clusters can be annotated either automatically using `scType` or manually using 
 - **save_name**: The name under which the object will be saved.
 
 ### 3. Clustering
+method: `clustering`
  Executes Louvain clustering with Seurat’s algorithm, storing results in the metadata in the given column
 - **desired_resolution**: The resolution for Louvain clustering. Defaults to the global `dsrd` parameter.
 - **reduction**: The reduction method used for clustering. Defaults to the global `r` parameter.
@@ -89,13 +92,9 @@ The Seurat object can be subset based on specific clusters, with the option for 
 
 Different methods are available for identifying differentially expressed genes (DEGs). Each method can be run multiple times with different settings.
 
-### DEG Methods:
-- **condition_and_clusters**: Compares markers between clusters.
-- **condition_and_clusters_vf**: Similar, but only considers variable features.
-- **default**: Finds markers between clusters.
-- **default_vf**: Finds markers between clusters but only for variable features.
-- **condition**: Compares markers between different groups.
-- **condition_vf**: Compares markers between groups but only for variable features.
+### DEG Parameters:
+- **feature_plots_top9_deg**: make a plot of the top 9 genes according to adjusted pvalue, the umap used is the one defined in the global variables
+- **method**: the method to use, an option for a normal markers analysis can be selected or one of the additional methods (volcano, paper, other_plots_from_df, heatmap)
 
 ## Other possibilities (visualisation)
 - **heatmap**: Generates a heatmap from a list of markers or from DEGs if no markers are provided.
@@ -105,23 +104,17 @@ Different methods are available for identifying differentially expressed genes (
   - **maxn_genes**: Maximum number of genes to plot (default 100).
   - **n_genes**: Number of genes per cluster (default 25).
   - **maxn_genes_per_plot**: Maximum genes per plot (default 100).
+  - **sorting_method**: method to sort the found markers for filtering, only the top n are plotted according to this metric.
 
 - **volcano**: Creates a volcano plot from the table in the `folder` specified for DEG analysis.
-- **paper**: Generates plots for various Seurat object properties.
+- **plots_misc**: Generates plots for various Seurat object properties.
   - **markers**: A list of markers for feature and ridge plots.
   - **cluster_column**: Metadata column for the plot.
   - **subplot_n**: Number of subplots for the feature plot.
   - **which_other**: Specifies additional plots such as bar or pie charts. (names to be given in an r array)
-    - `numberofcell_barplot`:  
-    - `numberofcell_pie_chart`: 
-    - `numberofcell_barplot_subject`: 
-    - `numberofcell_pie_chart_subject`: 
-    - `numberofcell_pie_chart_cluster_subject`:
-    - `numberofcell_pie_chart_cluster_pathology`: 
-    - `feature_plot`: plots the feature plots with the given markers
   - **umap_name**: umap reduction to use for visualisation, if not given uses default in global parameters
-- **plot_markers_from_df**: Plots markers from a dataframe. Possibilities are:
-      - `feature plot` plot (default)
+- **other_plots_from_df**: Plots markers from a dataframe. Possibilities are:
+      - `feature plot` plot, setting the **feature_plot** variable to true, also the number of genes per feature plots can be selected
       - `heatmap`, setting the **plot_heatmap** variable to true, this can be done with one heatmapp for each table column or for all in one heatmap
       parameters needed 
   - **plot_heatmap**: To be set to true or false
@@ -131,7 +124,7 @@ Different methods are available for identifying differentially expressed genes (
   - **heatmap**: Option to plot a heatmap.
   - **feature_plot**: Option to plot feature plots.
   - **heatmap_by_column**: If `true`, generates one heatmap per dataframe column.
-  - **subplot_n**: maximum number of subplots per feature plot (sugested 9 or 4)
+  - **subplot_n**: maximum number of subplots per feature plot (suggested 9 or 4)
   - **max_feature_plots**: maximum number of feature plots, if there are hundreds of genes in the dataframe the feature plots can be very long to generate, hence this parameter 
   - **max_genes_heatmap**: max genes per heatmap, if there are more genes another heatmap is generated
   - **column_list**: for which column of the dataframe are the plots created? if empty all the columns. if plotting the results of deg set this value to ["gene"]
@@ -156,18 +149,26 @@ WGCNA analysis can be run multiple times with different settings. If the cluster
 ---
 
 ## Enrichment
-- **Enabled**: `[true | false]`
 
 Enrichment analysis can be performed using one of four methods, depending on the parameters set:
 
-1. **General DEG Results**: Enrichment based on all DEGs.
-2. **Excluding a WGCNA Module**: Runs enrichment analysis excluding a specific WGCNA module.
-3. **Single WGCNA Module**: Runs enrichment on selected WGCNA modules.
-4. **Linear Model in WGCNA**: Runs enrichment on WGCNA modules selected via a linear model.
+1. **General DEG Results**: Enrichment based on all DEGs. If only the folder of the DEG analysis is provided.
+2. **Excluding a WGCNA Module**: Runs enrichment analysis excluding a specific WGCNA module. It is set by proiding the parameter **wgcna_exclude**
+3. **Single WGCNA Module**: Runs enrichment on selected WGCNA modules. If the selected wgcna modules are provided it is run on those, if they are over the module threshold. If the wgcna modules are not provided  it is run only on those which respect the condition of having a sufficient number of genes in the module (the parameter `module_threshold` decides this, the default value is 500).
+4. **Linear Model in WGCNA**: Runs enrichment on WGCNA modules selected via a linear model. If a module significance table computed with the wgcna section is provided.
 
+The enrichment can also be done for a single cluster by setting the parameter **cluester** and if necessary **cluster_column**
 
+The possible methods are: 
+1. **GSEA**: using clusterProfiler
+2. **ORA**: using clusterProfiler
+3. **enrichr**: using rbioapi
+4. **panther**: using rbioapi
 
-The settings
+ClusterProfiler: https://bioconductor.org/packages/release/bioc/html/clusterProfiler.html
+rbioapi: https://cran.r-project.org/web/packages/rbioapi/vignettes/rbioapi.html
+
+## The settings
 for `preprocessing`,`integration`,`clustering`,`annotation`: need to be specified in the apposite section 
 for: `deg`,`wgcna`,`enrichment`: need to be specified in the subsection for the name of the analysis, for each pipeline can be run multiple times. The folder with the results will be called with the same name of the subsection in which the settings are in.
 
@@ -333,6 +334,32 @@ The settings file stores the default parameters for each pipeline that is run. A
 - **`condition_column`** [string] - `"subject_pathology"`
 - **`extension_plot`** [string] - `".png"`
 - **`folder`** [boolean] - `false`
+
+### Available metods for deg
+
+  - `condition_and_clusters`: Compares markers between clusters.
+  - `condition_and_clusters_vf`: Similar, but only considers variable features.
+  - `default`: Finds markers between clusters.
+  - `default_vf`: Finds markers between clusters but only for variable features.
+  - `condition`: Compares markers between different groups.
+  - `condition_vf`: Compares markers between groups but only for variable features.
+
+### Available other methods
+
+  - `paper`: 
+  - `heatmap`: 
+  - `other_plots_from_df`: 
+  - `volcano`: 
+
+### Available plotting options in paper
+
+  - `numberofcell_barplot`:  
+  - `numberofcell_pie_chart`: 
+  - `numberofcell_barplot_subject`: 
+  - `numberofcell_pie_chart_subject`: 
+  - `numberofcell_pie_chart_cluster_subject`:
+  - `numberofcell_pie_chart_cluster_pathology`: 
+  - `feature_plot`: plots the feature plots with the given markers
 
 ## Own Script
 

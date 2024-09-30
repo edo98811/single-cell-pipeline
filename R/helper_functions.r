@@ -209,40 +209,40 @@ CreateTitle <- function(string) {
   return(title_case_string)
 }
 
-# To update the log od the experiment
-update_text_file <- function(string1, string2) {
-  if (FALSE) {
-  string1 <- unlist(strsplit(string1, "/"))[length(strsplit(string1, "/")[[1]])]
+# # To update the log od the experiment
+# update_text_file <- function(string1, string2) {
+#   if (FALSE) {
+#   string1 <- unlist(strsplit(string1, "/"))[length(strsplit(string1, "/")[[1]])]
   
-  message <- paste0(string1, ' - content: ', string2)
+#   message <- paste0(string1, ' - content: ', string2)
   
-  file_path <- paste0(output_folder, "folder_content.txt")
+#   file_path <- paste0(output_folder, "folder_content.txt")
   
-  if (!file.exists(file_path)) {
-    # Create the file if it doesn't exist and write the desired line of text
-    writeLines(message, file_path)
-    writeLines("\n", file_path)
-    return(invisible())
-  }
-  # Read the content of the file
-  file_content <- readLines(file_path)
+#   if (!file.exists(file_path)) {
+#     # Create the file if it doesn't exist and write the desired line of text
+#     writeLines(message, file_path)
+#     writeLines("\n", file_path)
+#     return(invisible())
+#   }
+#   # Read the content of the file
+#   file_content <- readLines(file_path)
   
-  # Check if string1 is present in the file
-  string1_index <- grep(string1, file_content)
+#   # Check if string1 is present in the file
+#   string1_index <- grep(string1, file_content)
   
-  if (length(string1_index) > 0) {
-    # Replace the line containing string1 with the updated content
-    file_content[string1_index] <- message
-  } else {
-    # Append a new line with the updated content
-    file_content <- c(file_content, message, "\n")
-  }
+#   if (length(string1_index) > 0) {
+#     # Replace the line containing string1 with the updated content
+#     file_content[string1_index] <- message
+#   } else {
+#     # Append a new line with the updated content
+#     file_content <- c(file_content, message, "\n")
+#   }
   
-  # Write the updated content back to the file
-  writeLines(file_content, file_path)
-  return(invisible())
-  }
-}
+#   # Write the updated content back to the file
+#   writeLines(file_content, file_path)
+#   return(invisible())
+#   }
+# }
 
 # To set up the output folder
 set_up_output <- function(output_dir, message = "") {
@@ -280,7 +280,7 @@ load_mri_data <- function() {
                                var ="Row.names")
     
     # Find the real name of the subjects (for each file, even though the should be the same)
-    for (i in 1:nrow(data)) {
+    for (i in seq_len(nrow(data))) {
       for (subject in names(subjects)) {
         if(grepl(subjects[[subject]], data[i,"Row.names"])) 
           subjects[[subject]] <- data[i,"Row.names"]

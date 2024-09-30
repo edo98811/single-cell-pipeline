@@ -8,6 +8,9 @@ options(deparse.max.lines = 10)
 if (!"presto" %in% rownames(installed.packages())) {devtools::install_github("immunogenomics/presto")}
 source("R/helper_functions.r")
 library("dplyr")
+
+
+DEFAULT_SETTINGS <- "C:/Users/Edoardo/Desktop/single-cell-pipeline/settings/settings.json"
 #' Main Function to run the Pipeline
 #'
 #' It reads a configuration file in JSON format and runs the specified steps, including preprocessing, 
@@ -31,7 +34,7 @@ library("dplyr")
 #' @return None. This function is used for its side effects, which include generating plots, saving Seurat objects, and writing output files.
 #'
 #' @examples
-#' \dontrun{
+#' /dontrun{
 #' main("pipeline_1.json")
 #' }
 #'
@@ -42,7 +45,14 @@ main <- function(pipeline_file) {
 
     # Load settings
     pipeline <- load_settings(pipeline_file)
+
+    if (is.null(pipeline$general$settings_path)) {
+        message(" loading default settings in location:", DEFAULT_SETTINGS)
+        pipeline$general$settings_path <- DEFAULT_SETTINGS
+    }
+    if (isFALSE(pipeline$general$data_folder)) warning("data_folder not given, limited functionality")
     general_settings <- .update_parameters(pipeline$general,  load_settings(pipeline$general$settings_path)$general)
+    
     global_variables <- .update_parameters(pipeline$global_variables,  load_settings(pipeline$general$settings_path)$global_variables)
     
 
@@ -105,7 +115,6 @@ check_packages <- function(list_of_packages) {
 
 load_settings <- function(file_path) {
 
-    check_packages(c("jsonlite"))
     message("loading config file: ", file_path)
     # Check if the file exists
     if (!file.exists(file_path)) {
@@ -113,7 +122,7 @@ load_settings <- function(file_path) {
     }
 
     # Read the JSON file and convert it to a list
-    json_data <- suppressWarnings(fromJSON(readLines(file_path)))
+    json_data <- suppressWarnings(jsonlite::fromJSON(readLines(file_path)))
     
     return(json_data)
 }

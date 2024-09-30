@@ -37,7 +37,6 @@ wgcna_main <- function(seurat_object, name = "test", wgcna_file = "bwnet.rds", s
     message(paste0("Parameters: name: ", name, " - wgcna_file: ", wgcna_file, " - save_net: ",
         save_net, " - load_net: ", load_net, " - soft_power: ", soft_power))
 
-
     # Set folders
     output_dir <- set_up_output(paste0(output_folder, "wgcna_", name, "/"), message)
 
@@ -83,11 +82,12 @@ prepare_data <- function(seurat_object, column_data, subject_column = "subject",
 
     if (!is.character(subject_column)) stop("wgcna prepare data: subject_column argument must be a character type")
 
-    library(DESeq2)
+    # library(DESeq2)
 
     # Get data from seurat object (transpose to have genes on columns and cells on rows)
-    counts_data <- t(GetAssayData(object = seurat_object, assay = "RNA", layer = "counts"))
+    counts_data <- t(Seurat::GetAssayData(object = seurat_object, assay = "RNA", layer = "counts"))
     meta_data <- seurat_object@meta.data
+    message("subjects in object: ", paste(unique(meta_data[[subject_column]]), collapse = ", "))
 
     # Group counts by subject
     subject_data <- data.frame(matrix(ncol = 0, nrow = length(colnames(counts_data))),
@@ -102,14 +102,14 @@ prepare_data <- function(seurat_object, column_data, subject_column = "subject",
     dds <- DESeq2::DESeqDataSetFromMatrix(countData = subject_data, colData = column_data,
         design = ~1)  # not spcifying model 
 
-    dds75 <- dds[rowSums(counts(dds) >= 15) >= nrow(column_data) * 0.75, ]
+    dds75 <- dds[rowSums(BiocGenerics::counts(dds) >= 15) >= nrow(column_data) * 0.75, ]
     message("number of genes: ", nrow(dds75)) 
 
     # Perform variance stabilization
     dds_norm <- DESeq2::vst(dds75, fitType = "local")
 
     # Get normalized counts
-    norm_counts <- assay(dds_norm) %>%
+    norm_counts <- SummarizedExperiment::assay(dds_norm) %>%
         t()
 
     return(norm_counts)

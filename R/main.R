@@ -4,6 +4,14 @@
 
 source("R/init.r")
 
+main("C:/Users/Edoardo/Desktop/Seurat/Organized_data/_pipeline_files/microglia.json")
+main("C:/Users/Edoardo/Desktop/Seurat/Organized_data/_pipeline_files/microglia_bordermacrophages.json")
+
+main("C:/Users/Edoardo/Desktop/Seurat/Organized_data/_pipeline_files/wgcna_microglia_all.json")
+
+main("C:/Users/Edoardo/Desktop/Seurat/Organized_data/_pipeline_files/cellchat_microglia.json")
+main("C:/Users/Edoardo/Desktop/Seurat/Organized_data/_pipeline_files/cellchat_microglia_astrocytes.json")
+main("C:/Users/Edoardo/Desktop/Seurat/Organized_data/_pipeline_files/cellchat_all.json")
 # main("from_beginning.json")
 
 # main("from_beginning_s.json")
@@ -14,21 +22,7 @@ source("R/init.r")
 
 # main("pipeline_complete_microglia_selection.json")
 
-# main("pipeline_hdwgcna_subset_run.json")
-main("deg_template.json")
-main("wgcna_template.json")
-main("explorative_plots.json")
-main("cellchat_template.json")
-main("C:/Users/Edoardo/Desktop/Seurat/Organized data/pipeline/pipeline.json")
-main("C:/Users/Edoardo/Desktop/Seurat/Organized data/cellchat/pipeline_all.json")
-main("C:/Users/Edoardo/Desktop/Seurat/Organized data/WGCNA/pipeline.json")
-main("C:/Users/Edoardo/Desktop/Seurat/Organized data/microglia annotation/pipeline.json")
-main("C:/Users/Edoardo/Desktop/Seurat/Organized data/WGCNA/pipeline_all.json")
-main("C:/Users/Edoardo/Desktop/Seurat/Organized data/pipeline/pipeline.json")
-main("C:/Users/Edoardo/Desktop/Seurat/Organized data/microglia annotation/pipeline.json")
-main("C:/Users/Edoardo/Desktop/Seurat/Organized data/microglia annotation/all_with_microglia_annotaiton.json")
-main("C:/Users/Edoardo/Desktop/Seurat/Organized data/pipeline/pipeline.json")
-main("C:/Users/Edoardo/Desktop/Seurat/Organized data/microglia annotation/pipeline_withbordermacrophages.json")
+
 # "significance_membership_scatter"
 # "significance_membership_scatter"
 # "significance_membership_scatter"
@@ -53,3 +47,7 @@ main("C:/Users/Edoardo/Desktop/Seurat/Organized data/microglia annotation/pipeli
 # "heatmap_pathology", 
 # "heatmap_mri",
 # "heatmap_zscore" ],  
+
+# "violin_plots",  
+# "histogram_plot",
+# "heatmap_pathology"]

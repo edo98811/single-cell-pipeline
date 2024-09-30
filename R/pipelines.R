@@ -395,7 +395,8 @@ deg <- function(env_variables, deg_settings) {
                 cluster_column = parameters$cluster_column, 
                 name = names(deg_settings)[deg],
                 extension_plot = extension_plot,
-                markers = parameters$markers))
+                markers = parameters$markers,
+                sorting_method = parameters$sorting_method))
  
         } else if (parameters$method == "volcano") {
             if (isFALSE(parameters$folder)) stop("Pipelines: folder is a required_parameter for volcano")
@@ -403,7 +404,7 @@ deg <- function(env_variables, deg_settings) {
             try(volcano_plot(parameters$folder,
                 extension_plot = extension_plot))
             
-        } else if (parameters$method == "paper") {
+        } else if (parameters$method == "plots_misc") {
             if (isFALSE(parameters$markers)) stop("Pipelines: markers is a required_parameter for plots_for_paper")
 
             try(plots_for_paper(seurat_object,

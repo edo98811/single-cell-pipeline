@@ -38,7 +38,7 @@
 #' @export
 plot_heatmap <- function(seurat_object, which = c("dotplot", "heatmap"), clusters = FALSE, assay = "RNA",
                    cluster_column = "harmony_clusters", name = "", markers = FALSE,
-                   extension_plot = ".png", maxn_genes = 100, n_genes = 25, maxn_genes_per_plot = 100) {
+                   extension_plot = ".png", maxn_genes = 100, n_genes = 25, maxn_genes_per_plot = 100, sorting_method = "abs") {
   
   # Check arguments
   if (!inherits(seurat_object, "Seurat")) stop("seurat_object must be a Seurat object")
@@ -102,9 +102,13 @@ plot_heatmap <- function(seurat_object, which = c("dotplot", "heatmap"), cluster
     
     # create a dataframe that contains the n_genes top markers per cluster, oly keeping the ones present in variable features
     markers_df <- as.data.frame(lapply(cluster_markers, function(markers_df_for_cluster) {
-      markers_df_for_cluster <- markers_df_for_cluster[order(abs(markers_df_for_cluster$avg_log2FC), decreasing = TRUE), ]
+      if (sorting_method == "abs") markers_df_for_cluster <- markers_df_for_cluster[order(abs(markers_df_for_cluster$avg_log2FC), decreasing = TRUE), ]
+      else  if (sorting_method == "min") markers_df_for_cluster <- markers_df_for_cluster[order(markers_df_for_cluster$avg_log2FC), ]
+      else  if (sorting_method == "max") markers_df_for_cluster <- markers_df_for_cluster[order(abs(markers_df_for_cluster$avg_log2FC), decreasing = TRUE), ]
+      else  if (sorting_method == "pvalue") markers_df_for_cluster <- markers_df_for_cluster[order(abs(markers_df_for_cluster$p_val_adj)), ]
+      else  stop("Heatmap plot, deg: invalid parameter: sorting_method")
 
-      # Select the top 25 markers, after having checked that they are present in the variable features
+      # Select the top n_genes markers, after having checked that they are present in the variable features
       top_markers <- row.names(markers_df_for_cluster) %>%
         .[. %in% rownames(seurat_object@assays[[assay]]$scale.data)] %>%
         .[1:n_genes]
@@ -155,12 +159,17 @@ plot_heatmap <- function(seurat_object, which = c("dotplot", "heatmap"), cluster
       new_seurat_object <- create_object_from_cluster_id(seurat_object, clusters, assay = assay,
                                                          clusters_column = cluster_column, save = FALSE)
       
-      # Compute the markers to plot if needed, otherwise filter to keep the ones that are in the variable features
+      # Compute the markers to plot if needed, otherwise filter to keep the ones that are given (take the top n)
       if (compute_markers) markers_filtered <- find_markers_local()
-      else       
+      else { 
+        if (!any(unique(markers) %in% rownames(seurat_object@assays[[assay]]$scale.data))) {
+          warning("non of the genes:", paste(markers, collapse = ", "), "is present in the seurat object given")
+          return()
+        }
         markers_filtered <- unique(markers) %>%
         .[. %in% rownames(seurat_object@assays[[assay]]$scale.data)]  %>%
         .[1:maxn_genes]
+      }
 
       # To avoid that te maxgenes per plot parameter is smaller than th number of genes (throws an error)
       if (maxn_genes_per_plot > length(markers_filtered)) 
@@ -229,7 +238,7 @@ find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_n
                                   subset_id = "control", o2 = NA, condition = "PD",
                                   nothreshold = FALSE,
                                   control = "non_PD", condition_column = "subject_pathology",
-                                  extension_plot = ".png", ...) {
+                                  extension_plot = ".png", feature_plots_top9_deg = FALSE, ...) {
   
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "markers_", name, "/"))
@@ -300,11 +309,7 @@ find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_n
     stop("no condition met")
   }
   
-  # Select the top 9 markers
-  top_markers <- markers[1:9, ]
-  
-  # Extract marker gene names
-  marker_genes <- rownames(top_markers)
+
   
   if (save_data) {
     if (!dir.exists(output_dir)) dir.create(output_dir)
@@ -329,15 +334,14 @@ find_and_plot_markers <- function(seurat_object, cluster_id = "all", reduction_n
     openxlsx::write.xlsx(markers_excel, file = paste0(output_dir, "expressed_markers_", cluster_id, "_", name, ".xlsx"), sheetName = "marker_genes", append = TRUE)
     message(paste0("results saved in: ", output_dir, "expressed_markers_", cluster_id, ".xlsx"))
   }
-
+  if (feature_plots_top9_deg) save_plot(FeaturePlot(seurat_object, features = rownames(markers[1:9, ]), cols = c("lightgrey", "blue"),
+                             reduction = reduction_name), #  min.cutoff="q15"),
+                 paste0(output_dir, "feature_plot_", cluster_id, extension_plot), x = 10, y = 10)
   return()
   # Create a feature plot for the top markers
   if (!is.na(o2)) save_plot(FeaturePlot(o2, features = marker_genes, cols = c("lightgrey", "blue"),
                                         reduction = reduction_name), #  min.cutoff="q15"),
                             paste0(output_dir, "feature_plot", cluster_id, extension_plot), x = 10, y = 10)#
-  else save_plot(FeaturePlot(seurat_object, features = marker_genes, cols = c("lightgrey", "blue"),
-                             reduction = reduction_name), #  min.cutoff="q15"),
-                 paste0(output_dir, "feature_plot_", cluster_id, extension_plot), x = 10, y = 10)
   
 }
 
@@ -418,23 +422,25 @@ gene_table <- function(seurat_object, gene_list, message = "resutls of gene anal
 }
 
 violin_plot <- function(seurat_object, gene_list, name = "", n_min = 3,
-                        markers_analysis = "", message = "results", extension_plot = ".png") {
+                        markers_analysis = "", extension_plot = ".png") {
   # Here markers are only used to load info on the expression data 
   # Set up output dir
-  output_dir <- set_up_output(paste0(output_folder, "violin_plots_", name, "/"), message)
-  
+  if (grepl("^[A-Za-z]:/", name))
+    output_dir <- set_up_output(paste0(name, "violin_plots/")) 
+  else   
+    output_dir <- set_up_output(paste0(output_folder, "violin_plots_", name, "/"))
   # Subset count matrix to include only needed genes
-  count_matrix <- Matrix(GetAssay(seurat_object, assay = "RNA")$data, sparse = TRUE)
+  count_matrix <- Matrix::Matrix(GetAssay(seurat_object, assay = "RNA")$data, sparse = TRUE)
   count_matrix <- t(count_matrix[row.names(count_matrix) %in% gene_list, ])
   # TODO: convert in sparse matrix?
   sorting_dataframe <- seurat_object@meta.data$subject_pathology
 
   # Load DEGs table
   if (!markers_analysis == "") {
-    message(paste0("loading... ", output_folder, "markers_", markers_analysis_pd, 
-                   "/expressed_markers_all_", markers_analysis_pd, ".xlxs"))
-    markers_table_pd <- openxlsx::read_excel(paste0(output_folder, "markers_", markers_analysis_pd, 
-                                    "/expressed_markers_all_", markers_analysis_pd, ".xlsx"))
+    message(paste0("loading... ", output_folder, "markers_", markers_analysis, 
+                   "/expressed_markers_all_", markers_analysis, ".xlxs"))
+    markers_table_pd <- openxlsx::read_excel(paste0(output_folder, "markers_", markers_analysis, 
+                                    "/expressed_markers_all_", markers_analysis, ".xlsx"))
 
     # message(paste0("loading... ", output_folder, "markers_", markers_analysis_gpd, 
     #                        "/expressed_markers_all_", markers_analysis_gpd, ".xlxs"))
@@ -455,18 +461,18 @@ violin_plot <- function(seurat_object, gene_list, name = "", n_min = 3,
     expr_df$sorting_dataframe <- factor(expr_df$sorting_dataframe, levels = c("PD", "genetic_PD", "non_PD"))
     
     # Prepare text
-    if (!markers_analysis_pd == "") {
+    if (!markers_analysis == "") {
       
       # Read values
-      qvalue_pd <- format(as.numeric(markers_table_pd[markers_table_pd$gene == gene, "p_val_adj"], scientific = TRUE, digits = 4))
+      qvalue <- format(as.numeric(markers_table_pd[markers_table_pd$gene == gene, "p_val_adj"], scientific = TRUE, digits = 4))
       # qvalue_gpd <- format(as.numeric(markers_table_gpd[markers_table_gpd$gene == gene, "p_val_adj"], scientific = TRUE, digits = 4))
-      log2fc_pd <- format(as.numeric(markers_table_pd[markers_table_pd$gene == gene, "avg_log2FC"], scientific = TRUE, digits = 4))
+      log2fc <- format(as.numeric(markers_table_pd[markers_table_pd$gene == gene, "avg_log2FC"], scientific = TRUE, digits = 4))
       # log2fc_gpd <- format(as.numeric(markers_table_gpd[markers_table_gpd$gene == gene, "avg_log2FC"], scientific = TRUE, digits = 4))
       
       # Prepare text
       text <- paste0("cells which show expression: ", c2, "/", c1, "\n",
                      # "genetic PD adj_pvalue: ", qvalue_gpd, " - log2FC: ", log2fc_gpd, "\n",
-                     "adj_pvalue: ", qvalue_pd, " - log2FC: ", log2fc_pd)
+                     "adj_pvalue: ", qvalue, " - log2FC: ", log2fc)
       # message(text)
     }
     else 
@@ -649,7 +655,7 @@ visualization_UMAP <- function(seurat_object, reduction_name = "umap_",
   
   # Setting up output directory + info
   output_dir <- paste0(output_folder, "plots_dim_red_", name, "/")
-  # update_text_file(output_dir, message)
+
   if (!dir.exists(output_dir)) dir.create(output_dir)
   
   # Function info
@@ -1460,7 +1466,6 @@ plots_for_paper <- function(seurat_object,
   # Set up output dir
   output_dir <- set_up_output(paste0(output_folder, "plots_misc_", name, "/"), message)
 
-  # update_text_file(output_dir, message)
   if (!dir.exists(output_dir)) dir.create(output_dir)
   
   # Function definition to plot the pie plots
@@ -2213,6 +2218,7 @@ trajectory_analysis <- function(seurat_object, extension_plot = ".png", name = "
 #' 
 #' @details 
 #' This function performs a CellChat analysis to study cell-cell communication within specific clusters in a Seurat object. It allows customization of which clusters and subjects to analyze, whether to save or load a precomputed object, and the format of the output plots.
+#' Documentation following: https://htmlpreview.github.io/?https://github.com/jinworks/CellChat/blob/master/tutorial/CellChat-vignette.html
 #'
 #' @examples
 #' \dontrun{
@@ -2448,8 +2454,16 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
                     paste0("circle_plots/pathway_", pathways_show))
 
       # 
-      # plot_function(netAnalysis_signalingRole_network(cellchat, signaling = pathways_show, width = 8, height = 2.5, font.size = 10),
-      #             paste0("heatmap_plot_", pathways_show))
+
+      name <- paste0("heatmap_plot_", pathways_show)
+      if (extension_plot == ".png") png(file = file.path(output_dir, paste0(name, ".png")))
+      else if (extension_plot == ".svg") svg(file = file.path(output_dir, paste0(name, ".svg")))
+      
+      # Plot
+      netAnalysis_signalingRole_network(cellchat, signaling = pathways_show, width = 8, height = 2.5, font.size = 10)
+      dev.off()
+      message("plot saved in:", file.path(output_dir,  paste0(name, extension_plot)))
+      # browser()
     }
 
     save_plot(netVisual_bubble(cellchat, sources.use = seq(levels(cellchat@idents)), targets.use = seq(levels(cellchat@idents)), remove.isolate = FALSE),
@@ -2464,12 +2478,19 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
     }
 
 
-    
+
     ht1 <- netAnalysis_signalingRole_heatmap(cellchat, pattern = "outgoing")
     ht2 <- netAnalysis_signalingRole_heatmap(cellchat, pattern = "incoming")
-    plot_function(ht1 + ht2,
-                  "heatmap_signaling_role")
 
+    name <- "heatmap_signaling_role"
+    if (extension_plot == ".png") png(file = file.path(output_dir, paste0(name, ".png")))
+    else if (extension_plot == ".svg") svg(file = file.path(output_dir, paste0(name, ".svg")))
+    
+    # Plot
+    ht1 + ht2
+    dev.off()
+    message("plot saved in:", file.path(output_dir,  paste0(name, extension_plot)))
+    browser()
     # svg(file = file.path(output_dir, paste0("heatmap_signaling_role", ".svg")))
       
     # # Plot
@@ -2480,12 +2501,12 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
     # target use -> microglia
     # sources use -> astrocytes  
     
-    for (use in c(1, 2, 3, 4, 5)) {
+    for (use in seq(levels(cellchat@idents))) {
 
-      plot_function(netVisual_chord_gene(cellchat, sources.use = use, targets.use = c(1:5),  small.gap = 1,
+      plot_function(netVisual_chord_gene(cellchat, sources.use = use, targets.use = seq(levels(cellchat@idents)),  small.gap = 1,
                                          big.gap = 10),
                     paste0("chord_gene_cluster_sources_", use, "_target_all"))
-      plot_function(netVisual_chord_gene(cellchat, sources.use = c(1:5), targets.use = use,  small.gap = 1,
+      plot_function(netVisual_chord_gene(cellchat, sources.use = seq(levels(cellchat@idents)), targets.use = use,  small.gap = 1,
                                          big.gap = 10),
                     paste0("chord_gene_cluster_sources_all_target_", use))
     }

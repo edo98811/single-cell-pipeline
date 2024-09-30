@@ -18,7 +18,7 @@ hub_genes_threshold = c(0.3, 1), which = c(""), cluster = FALSE, ...) {
             "dendro" = try(dendro(bwnet, norm_counts, column_data, extension_plot)),
             "heatmap_mri" = try(heatmap_mri(bwnet, norm_counts, column_data)),
             "heatmap_zscore" = try(heatmap_zscore(bwnet, norm_counts, column_data)),
-            "violin_plots" = try(violin_plots(bwnet, norm_counts, column_data)),
+            "violin_plots" = try(violin_plots(bwnet, norm_counts, column_data, extension_plot)),
             "histogram_plot" = try(histogram_plot(bwnet, norm_counts, column_data, cluster, extension_plot, ...)),
             "histogram_plot_significance" = try(histogram_plot_significance(bwnet, norm_counts, column_data, extension_plot, ...)),
             "significance_membership_scatter" = try(significance_membership_scatter(bwnet, norm_counts, column_data, hub_genes_threshold, cluster, extension_plot, ...)),
@@ -131,9 +131,8 @@ violin_plots <- function(bwnet, norm_counts, column_data, extension_plot) {
                 row.names()
             
             # Calls the violin plot function from seurat_utiles
-            violin_plot(seurat_object, genes, name = paste0("WGCNA/test_2", color,
-                column), markers_analysis_pd = "microglia_control_vs_pd_nogenetic_all",
-                markers_analysis_gpd = "microglia_control_vs_geneticpd_all", extension_plot = extension_plot)
+            violin_plot(seurat_object, genes, name = paste0(output_dir, "violin_plots/", color,
+                column, "/"), extension_plot = extension_plot)
 
         }
 

@@ -80,11 +80,11 @@ load_mri_traits <- function(wgcna_subjects = list(), regions = c(), type = "zsco
 
     # Check if either of the variables is empty and raise a warning if true
     if (length(wgcna_subjects) == 0) {
-    warning("The wgcna_subjects list is empty.")
+        stop("The wgcna_subjects list is empty, cannot load mri traits without a mapping to sigle cels subjects.")
     }
 
     if (length(regions) == 0) {
-    warning("The regions vector is empty.")
+        stop("The regions vector is empty, need to be defined to load mri data.")
     }
     
     # Compute membershio measure
