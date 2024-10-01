@@ -23,21 +23,17 @@ It specifies the parameters that are used in the pipeline, the settable paramete
 ## General information 
 The pipeline sections are executed in the order in which they are described below. a "pipeline" section is necessary with at least one element set to true. The general settings section is also required, with at least the destination folder and the path to the settings file defined. The settings file contains all the default settings for the pipelines, if they are not overridden in the pipeline file, these are the settings that are used. The settings file needs to be created for each project, the pipeline files for each analysis that needs to be performed.
 
-
-
-## Pipeline Definition
-
 This document outlines the structure and functionality of a pipeline for data preprocessing, integration, and analysis. The pipeline consists of multiple steps, each of which can be executed independently by setting corresponding parameters in the configuration file.
 
 ---
 
-### 1. Preprocessing
-- **Enabled**: `[true | false]`
+## Preprocessing
 
 The preprocessing step loads data from a specified folder, processes it with DoubletFinder, and creates Seurat objects. If the `save` parameter is enabled, these objects can be saved in the `save_name`location.
 
-### 2. Integration
-- **Enabled**: `[true | false]`
+---
+
+## Integration
 
 Following preprocessing, Seurat objects can be merged and integrated using Harmony. As with preprocessing, the final Seurat object can be saved in the `save_name`location if the `save` parameter is set.
 
