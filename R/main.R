@@ -54,3 +54,9 @@ main("C:/Users/Edoardo/Desktop/Seurat/Organized_data/_pipeline_files/all_main.js
 # "violin_plots",  
 # "histogram_plot",
 # "heatmap_pathology"]
+
+# "violin_plots", 
+# "histogram_plot", 
+# "histogram_plot_significance",  
+# "heatmap_pathology", 
+# "corr_matrix" ],     

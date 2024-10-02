@@ -180,7 +180,7 @@ correlation_heatmaps <- function() {
     mt_cor <- GetModuleTraitCorrelation(seurat_obj)
     excel_filename <- paste0(output_dir, "test.xlsx")
 
-    wb <- write_on_excel("correlation", as.data.frame(mt_cor$cor$all_cells), mode = "colorscale")
+    wb <- write_on_excel("correlation", as.data.frame(mt_cor$cor$all_cells), mode = "colorscale", small_cells = TRUE)
     wb <- write_on_excel("p.value", as.data.frame(mt_cor$p$all_cells), wb = wb, mode = "pvalue")
     wb <- write_on_excel("t.statistic", as.data.frame(mt_cor$t$all_cells), wb = wb)
     openxlsx::saveWorkbook(wb, excel_filename, overwrite = TRUE)

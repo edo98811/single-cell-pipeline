@@ -440,7 +440,7 @@ violin_plot <- function(seurat_object,
 
 
   # Load DEGs table
-  if (isFALSE(marker_analysis)) {
+  if (isFALSE(markers_analysis)) {
     if(!isFALSE(gene_list)) message("gene_list AND marker source given, gene_list overridden by source")
     tryCatch({
         if (isFALSE(cluster)) {
