@@ -122,8 +122,14 @@ Different methods are available for identifying differentially expressed genes (
   - **heatmap_by_column**: If `true`, generates one heatmap per dataframe column.
   - **subplot_n**: maximum number of subplots per feature plot (suggested 9 or 4)
   - **max_feature_plots**: maximum number of feature plots, if there are hundreds of genes in the dataframe the feature plots can be very long to generate, hence this parameter 
-  - **max_genes_heatmap**: max genes per heatmap, if there are more genes another heatmap is generated
+  - **max_genes**: max genes per heatmap, if there are more genes another heatmap is generated
   - **column_list**: for which column of the dataframe are the plots created? if empty all the columns. if plotting the results of deg set this value to ["gene"]
+- **violin_plots**: makes the violin plot, either from a list of markers given or from an excel file specified by marker analysis(folder) and cluster (file), in this case only the n max_genes ordered by absolute avg log2fc is plotted
+  - **markers**
+  - **cluster**
+  - **markers_analysis**
+  - **max_genes**
+                
 ---
 
 ## WGCNA

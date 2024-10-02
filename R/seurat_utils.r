@@ -421,34 +421,53 @@ gene_table <- function(seurat_object, gene_list, message = "resutls of gene anal
   openxlsx::write.xlsx(df, file = paste0(output_dir, method, name, "_analysis.xlsx"))
 }
 
-violin_plot <- function(seurat_object, gene_list, name = "", n_min = 3,
-                        markers_analysis = "", extension_plot = ".png") {
+violin_plot <- function(seurat_object, 
+                        gene_list = FALSE, 
+                        name = "", 
+                        n_min = 3,
+                        markers_analysis = FALSE, 
+                        extension_plot = ".png", 
+                        cluster = FALSE, 
+                        ngenes_to_plot = 10) {
+
+  if (isFALSE(markers_analysis) && isFALSE(gene_list)) stop("you must provide either a list of genes or a marker analysis as source")
   # Here markers are only used to load info on the expression data 
   # Set up output dir
   if (grepl("^[A-Za-z]:/", name))
     output_dir <- set_up_output(paste0(name, "violin_plots/")) 
   else   
     output_dir <- set_up_output(paste0(output_folder, "violin_plots_", name, "/"))
+
+
+  # Load DEGs table
+  if (isFALSE(marker_analysis)) {
+    if(!isFALSE(gene_list)) message("gene_list AND marker source given, gene_list overridden by source")
+    tryCatch({
+        if (isFALSE(cluster)) {
+            message(paste0("loading... ", output_folder, "markers_", markers_analysis,
+                "/expressed_markers_all_", markers_analysis, ".xlxs"))
+            markers_table <- openxlsx::read.xlsx(paste0(output_folder, "markers_", markers_analysis,
+                "/expressed_markers_all_", markers_analysis, ".xlsx"))
+        } else {
+            message(paste0("loading... ", output_folder, "markers_", markers_analysis,
+                "/expressed_markers_", cluster, "_", markers_analysis, ".xlxs"))
+            markers_table <- openxlsx::read.xlsx(paste0(output_folder, "markers_", markers_analysis,
+                "/expressed_markers_", cluster, "_", markers_analysis, ".xlsx"))
+        }
+    }, error = function(e) {
+      stop("Could not load the deg results to compute histogram in wgcna, probably the table does not exist?: \n", e)
+    })
+    # sort the top n genes by absolute log2fc
+    gene_df <- tibble::column_to_rownames(as.data.frame(markers_table), var = "gene")
+    gene_list <- rownames(gene_df[order(abs(gene_df$avg_log2FC), decreasing = TRUE), ])[1:ngenes_to_plot]
+  }
+  else message("no DEGs table given")
+
   # Subset count matrix to include only needed genes
   count_matrix <- Matrix::Matrix(GetAssay(seurat_object, assay = "RNA")$data, sparse = TRUE)
   count_matrix <- t(count_matrix[row.names(count_matrix) %in% gene_list, ])
   # TODO: convert in sparse matrix?
   sorting_dataframe <- seurat_object@meta.data$subject_pathology
-
-  # Load DEGs table
-  if (!markers_analysis == "") {
-    message(paste0("loading... ", output_folder, "markers_", markers_analysis, 
-                   "/expressed_markers_all_", markers_analysis, ".xlxs"))
-    markers_table_pd <- openxlsx::read_excel(paste0(output_folder, "markers_", markers_analysis, 
-                                    "/expressed_markers_all_", markers_analysis, ".xlsx"))
-
-    # message(paste0("loading... ", output_folder, "markers_", markers_analysis_gpd, 
-    #                        "/expressed_markers_all_", markers_analysis_gpd, ".xlxs"))
-    # markers_table_gpd <- read_excel(paste0(output_folder, "markers_", markers_analysis_gpd, 
-    #                                 "/expressed_markers_all_", markers_analysis_gpd, ".xlsx"))
-  }
-  else message("no DEGs table given")
-
   # Iterate through the genes and create violin-plot
   purrr::walk2(data.frame(count_matrix), colnames(count_matrix), function(expr_list, gene) {
 
@@ -458,7 +477,7 @@ violin_plot <- function(seurat_object, gene_list, name = "", n_min = 3,
     expr_df <- expr_df[expr_df$expr_list > 0, ]
     c2 <- nrow(expr_df)
     expr_df$expr_list <- as.numeric(expr_df$expr_list)
-    expr_df$sorting_dataframe <- factor(expr_df$sorting_dataframe, levels = c("PD", "genetic_PD", "non_PD"))
+    expr_df$sorting_dataframe <- factor(expr_df$sorting_dataframe) #, levels = c("PD", "genetic_PD", "non_PD"))
     
     # Prepare text
     if (!markers_analysis == "") {

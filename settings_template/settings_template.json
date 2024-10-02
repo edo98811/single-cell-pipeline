@@ -144,9 +144,11 @@
         "heatmap_by_column": false,
         "subplot_n": 9,
         "max_feature_plots": 11,
-        "max_genes_heatmap": 100,
+        "max_genes": 100,
         "column_list": [],
         "sorting_method": "abs",
-        "feature_plots_top9_deg": false
+        "feature_plots_top9_deg": false,
+        "cluster": false,
+        "markers_analysis": ""
     }
 }

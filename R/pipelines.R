@@ -415,6 +415,17 @@ deg <- function(env_variables, deg_settings) {
                 cluster_column = parameters$cluster_column,
                 reduction_name = ifelse(isFALSE(parameters$umap_name), umap, parameters$umap_name),
                 subplot_n = parameters$subplot_n))
+
+        } else if (parameters$method == "violin") {
+
+            try(violin_plot(seurat_object,
+                name = names(deg_settings)[deg],
+                extension_plot = extension_plot,
+                gene_list = parameters$markers,         
+                cluster = parameters$cluster,
+                markers_analysis = parameters$markers_analysis,
+                reduction_name = ifelse(isFALSE(parameters$umap_name), umap, parameters$umap_name),
+                ngenes_to_plot = parameters$max_genes))
             
         } else if (parameters$method == "other_plots_from_df") {
             if (isFALSE(parameters$markers)) stop("Pipelines: markers is a required_parameter for plot_markers_from_df")
@@ -432,7 +443,7 @@ deg <- function(env_variables, deg_settings) {
                 feature_plot = parameters$feature_plot,
                 heatmap_by_column = parameters$heatmap_by_column, 
                 max_feature_plots = parameters$max_feature_plots, 
-                max_genes_plot_heatmap = parameters$max_genes_heatmap,
+                max_genes_plot_heatmap = parameters$max_genes,
                 column_list = parameters$column_list))
                 
         } else stop("Pipelines: deg analysis: not valid method")
