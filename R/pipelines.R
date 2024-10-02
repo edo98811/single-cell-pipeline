@@ -405,7 +405,6 @@ deg <- function(env_variables, deg_settings) {
                 extension_plot = extension_plot))
             
         } else if (parameters$method == "plots_misc") {
-            if (isFALSE(parameters$markers)) stop("Pipelines: markers is a required_parameter for plots_for_paper")
 
             try(plots_for_paper(seurat_object,
                 which = parameters$which_other, 

@@ -1455,7 +1455,7 @@ plots_for_paper <- function(seurat_object,
       "numberofcell_pie_chart_cluster_pathology", 
       "feature_plots",
       "ridge_plots"), 
-    genes_to_plot = c(""), 
+    genes_to_plot = FALSE, 
     cluster_column = "microglia_clusters", 
     extension_plot = ".png", 
     name = "", 
@@ -1545,8 +1545,8 @@ plots_for_paper <- function(seurat_object,
   # Feature plots 
   if ("feature_plots" %in% which) {
     message("feature_plots")
-    if (!reduction_name %in% names(seurat_object@reductions)) stop("plots: the selected umap reduction does not exist")
-  
+    if (!reduction_name %in% names(seurat_object@reductions)) stop("plot_misc: the selected umap reduction does not exist")
+    if (isFALSE(genes_to_plot)) stop("plot_misc: markers is a required_parameter for feature plots")
     genes <- genes_to_plot[genes_to_plot %in% Features(seurat_object[["RNA"]])]
 
     purrr::walk(seq(1, length(genes_to_plot), by = subplot_n), function(gene) {
@@ -1567,6 +1567,8 @@ plots_for_paper <- function(seurat_object,
   # Feature plots 
   if ("ridge_plots" %in% which) {
     message("ridge plots")
+    if (isFALSE(genes_to_plot)) stop("plot_misc: markers is a required_parameter for ridge plots")
+
     genes <- genes_to_plot[genes_to_plot %in% Features(seurat_object[["RNA"]])]
 
     purrr::walk(seq(1, length(genes_to_plot), by = subplot_n), function(gene) {
