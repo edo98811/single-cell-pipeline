@@ -2,7 +2,7 @@
 # mail: efilippi@uni-mainz.de
 
 
-write_on_excel <- function(sheet_name, data, wb = NULL, mode = "") {
+write_on_excel <- function(sheet_name, data, wb = NULL, mode = "", small_cells = FALSE) {
 
     library(openxlsx)
     
@@ -38,7 +38,35 @@ write_on_excel <- function(sheet_name, data, wb = NULL, mode = "") {
             style = createStyle(bgFill = "yellow"),
             gradient = TRUE
         )
-        
+    if (small_cells) {
+        openxlsx::setColWidths(
+            wb,
+            sheet = sheet_name,
+            cols = seq(2, ncol(data) + 1),
+            widths = 4.78,
+            ignoreMergedCells = FALSE
+        )
+        setRowHeights(
+            wb,
+            sheet = sheet_name,
+            rows = seq(2, nrow(data) + 1), 
+            heights = 30,
+            fontsize = NULL,
+            factor = 1,
+            base_height = 15,
+            extra_height = 12,
+            wrap = TRUE
+        )
+        grid <- expand.grid(rows = seq(2, nrow(data) + 1), cols = seq(2, ncol(data) + 1))
+        center_style <- createStyle(halign = "center", valign = "center", numFmt = "NUMBER")
+        addStyle(
+            wb, 
+            sheet = sheet_name, 
+            style = center_style,             
+            cols = grid$cols, 
+            rows = grid$rows
+        )
+    }
     return(wb)
 }
 
@@ -62,7 +90,7 @@ load_log2fc <- function(
                 "/expressed_markers_", cluster, "_", markers_analysis, ".xlsx"))
         }
     }, error = function(e) {
-      warning("Could not load th deg results to compute histogram in wgcna, probably the table does not exist?: \n", e)
+      stop("Could not load the deg results to compute histogram in wgcna, probably the table does not exist?: \n", e)
     })
     return(tibble::column_to_rownames(as.data.frame(markers_table), var = "gene"))
 }

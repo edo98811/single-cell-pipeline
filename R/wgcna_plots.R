@@ -313,7 +313,7 @@ significance_log2fc_scatter <- function(bwnet, norm_counts, column_data, cluster
                 after_stat(rr.label), sep = "~~~~")), parse = TRUE, size = 5, color = "black",
                 label.x = "right", label.y = "top") + theme_grey() + theme(legend.position = "none") 
                 + labs(caption = paste("number of genes in module:", nrow(submod))), paste0(output_dir,
-                deg_to_use, "significance_log2fc_scatter_all/", region_significance_column, "_", module, "_scatter_plot", extension_plot))
+                "significance_log2fc_scatter_all/", region_significance_column, "_", module, "_scatter_plot", extension_plot))
             
             # scatter plot of all the genes
             save_plot(ggplot(submod, aes(x = .data[[region_significance_column_abs]],
@@ -323,7 +323,7 @@ significance_log2fc_scatter <- function(bwnet, norm_counts, column_data, cluster
                 after_stat(rr.label), sep = "~~~~")), parse = TRUE, size = 5, color = "black",
                 label.x = "right", label.y = "top") + theme_grey() 
                 + labs(caption = paste("number of genes in module:", nrow(submod))), paste0(output_dir,
-                deg_to_use, "significance_log2fc_scatter_all_abs/", region_significance_column, "_", module, "_scatter_plot", extension_plot))
+                "significance_log2fc_scatter_all_abs/", region_significance_column, "_", module, "_scatter_plot", extension_plot))
 
         }
     }
@@ -414,7 +414,7 @@ correlation_avglog2fc_scatter  <- function(bwnet, norm_counts, column_data, clus
     heatmap_data <- bwnet$MEs %>%
         merge(traits, by = "row.names") %>%
         tibble::column_to_rownames(var = "Row.names")
-
+    browser()
     correlation <- WGCNA::corAndPvalue(
         y = heatmap_data[, (length(heatmap_data) - ncol(traits) + 1):length(heatmap_data)],
         x = heatmap_data[, 1:(length(heatmap_data) - ncol(traits))])$cor
@@ -461,7 +461,7 @@ message("corr_matrix")
     cor_matrix <- cor(bwnet$MEs)
 
 
-    wb <- write_on_excel("correlation", as.data.frame(cor_matrix), mode = "colorscale")
+    wb <- write_on_excel("correlation", as.data.frame(cor_matrix), mode = "colorscale", small_cells = TRUE)
     openxlsx::saveWorkbook(wb, paste0(output_dir, "module_correlation.xlsx"), overwrite = TRUE)
 
     # # Define color palette
