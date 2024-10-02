@@ -58,7 +58,13 @@ enrichment_analysis <- function(name, markers_path,
                  " - wgcna_modules: ", paste(wgcna_module, collapse = ", "),
                  " - cluster: ", paste(cluster, collapse = ", ")))
   
- 
+   # structure:
+   # check if tehre is a module signiicance table given 
+   # load all the excel files 
+   # iterate though them 
+   # if a cluster is given check the excel file that we want to obtain 
+   # run one of the three options
+
   if (!isFALSE(modules_significance_table) && !isFALSE(wgcna_folder)) wgcna_module <- .select_mdoules_to_enrich(filename = file.path(output_folder, wgcna_folder, modules_significance_table))
   
   # List excel files
@@ -67,22 +73,21 @@ enrichment_analysis <- function(name, markers_path,
   
   # Loop through each Excel file, define needed objects
   for (file in excel_files) {
-    
     # Run only for desired file
-    if (is.numeric(cluster)) {
-      if (!grepl(paste0("expressed_markers_", cluster), file)) {
+    if (!isFALSE(cluster)) {
+      if (!grepl(cluster, file, fixed = TRUE)) {
         message("Skipping file: ", file)
         next
       }
-      else message("Running for cluster ", cluster)
-    }
+      else message("Running only for cluster: ", cluster)
+    } else message("Running for all clusters: ", file)
     
     # Preparing data
     message("Loading gene data...")
     gene_rankings <- prepare_genes(file, count_threshold, ...)
     
     # Enrichment by wgcna module (enter in it if wgcna exclude is empty, if it is not default to it)
-    if (is.character(wgcna_folder) && nchar(wgcna_folder) > 1 && !is.character(wgcna_exclude))  {
+    if (!isFALSE(wgcna_folder) && nchar(wgcna_folder) > 1 && isFALSE(wgcna_exclude))  {
       
       # Messages
       message("Running enrichment by wgcna module")
@@ -92,7 +97,7 @@ enrichment_analysis <- function(name, markers_path,
       sheet_names <- readxl::excel_sheets(paste0(output_folder, wgcna_folder, "/module_genes.xlsx"))
       
       # If only a subset was given
-      if (length(wgcna_module) > 0) sheet_names <- sheet_names[sheet_names %in% wgcna_module]
+      if (!isFALSE(wgcna_module)) sheet_names <- sheet_names[sheet_names %in% wgcna_module]
       
       # Iterate though modules
       for (sheet_name in sheet_names) {
@@ -134,7 +139,7 @@ enrichment_analysis <- function(name, markers_path,
     } 
     
     # Enrichment excluding wgcna module
-    else if (is.character(wgcna_folder) && nchar(wgcna_folder) > 1 && is.character(wgcna_exclude))  {
+    else if (!isFALSE(wgcna_folder) && nchar(wgcna_folder) > 1 && !isFALSE(wgcna_exclude))  {
       
       # Message
       message("Running enrichment excluding wgcna modules: ", unlist(wgcna_exclude))
@@ -450,8 +455,8 @@ enrichment_save_results <- function(output_dir, type, analysis_name, result, raw
   # Save data
   message("saving results:")
   if (raw) saveRDS(result, file = paste0(output_subdir, "raw_", rlang::hash(filename), ".rds"))
-  if (type == "panther") openxlsx::write.xlsx(result$result, file = paste0(output_subdir, "results", rlang::hash(filename), ".xlsx"))
-  else  openxlsx::write.xlsx(result@result, file = paste0(output_subdir, "results", rlang::hash(filename), ".xlsx"))
+  if (type == "panther") try(openxlsx::write.xlsx(result$result, file = paste0(output_subdir, "results", rlang::hash(filename), ".xlsx")))
+  else  try(openxlsx::write.xlsx(result@result, file = paste0(output_subdir, "results", rlang::hash(filename), ".xlsx")))
   # message
   message(paste0("results saved in: ", output_subdir))
   
