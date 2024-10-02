@@ -127,20 +127,8 @@ Different methods are available for identifying differentially expressed genes (
 ---
 
 ## WGCNA
-- **Enabled**: `[true | false]`
 
 WGCNA analysis can be run multiple times with different settings. If the cluster column is not defined the default c (in global settings) is used. Parameters for WGCNA are:
-
-- **heatmap_pathology**: Correlation heatmap.
-- **TOM**: Topological overlap matrix (to be developed).
-- **dendro**: Dendrogram (to be developed).
-- **heatmap_mri**: MRI correlation heatmap.
-- **heatmap_zscore**: Z-score correlation heatmap.
-- **violin_plots**: Violin plots for gene expression by condition.
-- **histogram_plot**: Histogram of gene expression by module.
-- **significance_membership_scatter**: Scatter plot of significance and membership.
-- **significance_log2fc_scatter**: Scatter plot of significance and log2 fold change.
-- **significance_membership_model**: Linear model between significance and membership.
 
 ---
 
@@ -302,19 +290,19 @@ The settings file stores the default parameters for each pipeline that is run. A
 
 ### Available WGCNA Plots
 
-- `heatmap_pathology`
-- `TOM`
-- `dendro`
-- `heatmap_mri`
-- `heatmap_zscore`
-- `violin_plots`
-- `histogram_plot`
-- `histogram_plot_significance`
-- `significance_membership_scatter`
-- `significance_log2fc_scatter`
-- `correlation_avglog2fc_scatter`
-- `corr_matrix`
-- `significance_membership_model`
+- `heatmap_pathology` Correlation heatmap.
+- `TOM` Topological overlap matrix (to be developed).
+- `dendro` Dendrogram (to be developed).
+- `heatmap_mri` MRI correlation heatmap.
+- `heatmap_zscore` Z-score correlation heatmap.
+- `violin_plots` Violin plots for gene expression by condition. for each condition the genes which show the lowest pvalue of the correlation with it (the trait)
+- `histogram_plot` Histogram of gene expression by module. (log2fc)
+- `histogram_plot_significance` Histogram plot of gene significance
+- `significance_membership_scatter` Scatter plot of significance and membership.
+- `significance_log2fc_scatter` Scatter plot of significance and log2 fold change.
+- `correlation_avglog2fc_scatter` Scatter plot of correlation to traits and log2 fold change.
+- `corr_matrix`: plot the correlation matrix between modueles
+- `significance_membership_model` Linear model between significance and membership.
 
 ## DEG (Differential Expression Gene) Analysis
 
