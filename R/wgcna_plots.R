@@ -461,11 +461,11 @@ message("corr_matrix")
     cor_matrix <- cor(bwnet$MEs)
 
 
-    wb <- write_on_excel("correlation", as.data.frame(cor_matrix))
+    wb <- write_on_excel("correlation", as.data.frame(cor_matrix), mode = "colorscale")
     openxlsx::saveWorkbook(wb, paste0(output_dir, "module_correlation.xlsx"), overwrite = TRUE)
 
-    # Define color palette
-    my_palette <- colorRampPalette(c("blue", "white", "red"))(n = 100)
+    # # Define color palette
+    # my_palette <- colorRampPalette(c("blue", "white", "red"))(n = 100)
 
     # Heatmap
     if (extension_plot == ".png") png(file = file.path(output_dir, "modules_correlation_heatmap.png"))
