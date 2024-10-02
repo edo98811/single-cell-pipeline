@@ -49,18 +49,21 @@ load_log2fc <- function(
     markers_analysis = "microglia_control_vs_pd_nogenetic",
     cluster = FALSE, ...) {
     
-    if (isFALSE(cluster)) {
-        message(paste0("loading... ", output_folder, "markers_", markers_analysis,
-            "/expressed_markers_all_", markers_analysis, ".xlxs"))
-        markers_table <- openxlsx::read.xlsx(paste0(output_folder, "markers_", markers_analysis,
-            "/expressed_markers_all_", markers_analysis, ".xlsx"))
-    } else {
-        message(paste0("loading... ", output_folder, "markers_", markers_analysis,
-            "/expressed_markers_", cluster, "_", markers_analysis, ".xlxs"))
-        markers_table <- openxlsx::read.xlsx(paste0(output_folder, "markers_", markers_analysis,
-            "/expressed_markers_", cluster, "_", markers_analysis, ".xlsx"))
-    }
-    
+    tryCatch({
+        if (isFALSE(cluster)) {
+            message(paste0("loading... ", output_folder, "markers_", markers_analysis,
+                "/expressed_markers_all_", markers_analysis, ".xlxs"))
+            markers_table <- openxlsx::read.xlsx(paste0(output_folder, "markers_", markers_analysis,
+                "/expressed_markers_all_", markers_analysis, ".xlsx"))
+        } else {
+            message(paste0("loading... ", output_folder, "markers_", markers_analysis,
+                "/expressed_markers_", cluster, "_", markers_analysis, ".xlxs"))
+            markers_table <- openxlsx::read.xlsx(paste0(output_folder, "markers_", markers_analysis,
+                "/expressed_markers_", cluster, "_", markers_analysis, ".xlsx"))
+        }
+    }, error = function(e) {
+      warning("Could not load th deg results to compute histogram in wgcna, probably the table does not exist?: \n", e)
+    })
     return(tibble::column_to_rownames(as.data.frame(markers_table), var = "gene"))
 }
 

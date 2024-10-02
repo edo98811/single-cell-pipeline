@@ -118,7 +118,7 @@ violin_plots <- function(bwnet, norm_counts, column_data, extension_plot) {
         # Calculate the gene significance and associated p-values
         # controllare qui come e stato fatto il testo eh (significance)
         gene_signf_corr <- cor(norm_counts_subset, traits_binary, use = "p")
-        gene_signf_corr_pvals <- corPvalueStudent(gene_signf_corr, n_samples)
+        gene_signf_corr_pvals <- WGCNA::corPvalueStudent(gene_signf_corr, n_samples)
 
         # For each module creates te violin plots for the 10 genes with the highest correlation to the traits?
         # TODO: check + source
@@ -468,7 +468,9 @@ message("corr_matrix")
     my_palette <- colorRampPalette(c("blue", "white", "red"))(n = 100)
 
     # Heatmap
-    png(file = paste0(output_dir, "modules_correlation_heatmap", extension_plot))
+    if (extension_plot == ".png") png(file = file.path(output_dir, "modules_correlation_heatmap.png"))
+    else if (extension_plot == ".svg") svg(file = file.path(output_dir, "modules_correlation_heatmap.svg"))
+    # png(file = paste0(output_dir, "modules_correlation_heatmap", extension_plot))
     heatmap(cor_matrix)
     dev.off()
     message("plot saved in: ", output_dir, "modules_correlation_heatmap", extension_plot)
