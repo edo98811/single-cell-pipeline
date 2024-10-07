@@ -336,12 +336,12 @@ The settings file stores the default parameters for each pipeline that is run. A
 
 ### Available other methods
 
-  - `paper`: 
-  - `heatmap`: 
-  - `other_plots_from_df`: 
-  - `volcano`: 
+  - `plots_misc`: a variety of plotting methods for properties of the object
+  - `heatmap`: heatmap of the expression of a predefined list of genes
+  - `other_plots_from_df`: heatmap and feature plots from an external gene list 
+  - `volcano`: creates a volcano plot in a folder with a deg results table
 
-### Available plotting options in paper
+### Available plotting options in plots_misc
 
   - `numberofcell_barplot`:  
   - `numberofcell_pie_chart`: 
@@ -350,6 +350,7 @@ The settings file stores the default parameters for each pipeline that is run. A
   - `numberofcell_pie_chart_cluster_subject`:
   - `numberofcell_pie_chart_cluster_pathology`: 
   - `feature_plot`: plots the feature plots with the given markers
+  - `ridge_plots`: plots the ridge plots of the expresison of the given markers
 
 ## Own Script
 

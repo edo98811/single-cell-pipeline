@@ -414,7 +414,7 @@ correlation_avglog2fc_scatter  <- function(bwnet, norm_counts, column_data, clus
     heatmap_data <- bwnet$MEs %>%
         merge(traits, by = "row.names") %>%
         tibble::column_to_rownames(var = "Row.names")
-    browser()
+
     correlation <- WGCNA::corAndPvalue(
         y = heatmap_data[, (length(heatmap_data) - ncol(traits) + 1):length(heatmap_data)],
         x = heatmap_data[, 1:(length(heatmap_data) - ncol(traits))])$cor
@@ -425,7 +425,7 @@ correlation_avglog2fc_scatter  <- function(bwnet, norm_counts, column_data, clus
         by = "row.names", all = FALSE), var = "Row.names")
     plot_df[["gene"]] <- rownames(plot_df)
 
-    avg_log2fc_scores <- sapply(unique(bwnet$colors), compute_avg_log2fc(module))
+    avg_log2fc_scores <- sapply(unique(bwnet$colors), function(module) compute_avg_log2fc(module))
     
     for (region in colnames(correlation)) {
         submod <- data.frame(abs(correlation[, region]), avg_log2fc_scores)

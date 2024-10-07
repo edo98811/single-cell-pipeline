@@ -541,7 +541,8 @@ enrichment <- function(env_variables, enrichment_settings) {
         
         try(do.call(enrichment_analysis, c(list(
                                     names(enrichment_settings)[enrichment], 
-                                    parameters$markers_path), 
+                                    parameters$markers_path,
+                                    extension_plot = extension_plot), 
                                     parameters[names(parameters) != "markers_path"])))
     } 
 } 

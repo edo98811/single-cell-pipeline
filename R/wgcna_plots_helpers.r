@@ -74,7 +74,7 @@ write_on_excel <- function(sheet_name, data, wb = NULL, mode = "", small_cells =
 # anche senza fare in modo che funzioni per i clusters, magari pensare ad un
 # mod di aggiungerlo, ma non priorita
 load_log2fc <- function(
-    markers_analysis = "microglia_control_vs_pd_nogenetic",
+    markers_analysis = "",
     cluster = FALSE, ...) {
     
     tryCatch({
@@ -127,6 +127,8 @@ load_mri_traits <- function(wgcna_subjects = list(), regions = c(), type = "zsco
         traits <- mri_for_wgcna(data_source_mri, regions, wgcna_subjects)
     } else stop("in wgcna plot load significance wrong load type")
 
+    if (nrow(traits) == 0) stop ("mri features were not correctly loaded")
+
     return(traits)
 }
 
@@ -169,7 +171,7 @@ make_heatmap <- function(bwnet, excel_filename, traits) {
     # save correlation results
     res <- WGCNA::corAndPvalue(
         y = heatmap_data[, (length(heatmap_data) - ncol(traits) + 1):length(heatmap_data)],
-        x = heatmap_data[, 1:(length(heatmap_data) - ncol(traits))], method = "kendall")
+        x = heatmap_data[, 1:(length(heatmap_data) - ncol(traits))])
 
     wb <- write_on_excel("correlation", as.data.frame(res$cor), mode = "colorscale")
     wb <- write_on_excel("p.value", as.data.frame(res$p), wb = wb, mode = "pvalue")

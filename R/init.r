@@ -10,7 +10,7 @@ source("R/helper_functions.r")
 library("dplyr")
 
 
-DEFAULT_SETTINGS <- "C:/Users/Edoardo/Desktop/single-cell-pipeline/settings/settings.json"
+DEFAULT_SETTINGS <- "/settings/settings.json"
 #' Main Function to run the Pipeline
 #'
 #' It reads a configuration file in JSON format and runs the specified steps, including preprocessing, 

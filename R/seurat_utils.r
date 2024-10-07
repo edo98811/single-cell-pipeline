@@ -2511,7 +2511,6 @@ cellchat_function <- function(seurat_object, cluster_column = "microglia_cluster
     ht1 + ht2
     dev.off()
     message("plot saved in:", file.path(output_dir,  paste0(name, extension_plot)))
-    browser()
     # svg(file = file.path(output_dir, paste0("heatmap_signaling_role", ".svg")))
       
     # # Plot

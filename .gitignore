@@ -14,6 +14,7 @@
 
 R/mri_others.r
 R/mri_old.r
+R/main.r
 dockerfile
 own_script.r
 
