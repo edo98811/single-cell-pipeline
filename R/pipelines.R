@@ -518,10 +518,15 @@ wgcna <- function(env_variables, wgcna_settings) {
 }
 
 own_script <- function(env_variables, own_path) {
+    
     create_variables(.update_parameters(env_variables,  load_settings(settings_path
     )$global_variables))
 
     message("opening personalized script in location: ", own_path)
+    # Check if the path exists
+    if (!file.exists(own_path)) {
+        stop(paste("Error: The path", own_path, "does not exist."))
+    }
     source(own_path)
 }
 
@@ -638,19 +643,22 @@ plot_info <- function() {
 
 .update_parameters <- function(parameters, default) { 
 
+    # Parameters thatare not defined in the pipeline file are loaded from the settings file
+    # if a parameter is defined in th epipeline file and not in the setting file it is kept
+
     message("setting parameters")
     for (parameter in names(default)) {
 
         # If the value is not present in the parameters given it is added from defaults
         if (!parameter %in% names(parameters)) {
 
-            # If the default parameter is null stop the program (it is required)
+            # If the default parameter is null stop the program (parameter is required)
             if (is.null(default[[parameter]])) stop(parameter, " required parameter")
 
             # Else add it 
             parameters[[parameter]] <- default[[parameter]]
         }        
-        # message("   parameter ", parameter, ": ", parameters[[parameter]])
+        # Print the parameter value
         message("   parameter ", parameter, ": ", 
             ifelse(is.vector(parameters[[parameter]]), 
             paste(parameters[[parameter]], collapse = ", "), 
