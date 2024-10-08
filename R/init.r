@@ -3,12 +3,9 @@
 
 # for debugging (error when using do.call and browser)
 # https://stackoverflow.com/questions/44608323/crash-of-debugging-browser-in-r-rstudio-when-called-from-inside-do-call
-options(deparse.max.lines = 10)
+options(deparse.max.lines = 100)
 # install.packages("devtools")
-if (!"presto" %in% rownames(installed.packages())) {devtools::install_github("immunogenomics/presto")}
 source("R/helper_functions.r")
-library("dplyr")
-
 
 DEFAULT_SETTINGS <- "/settings/settings.json"
 #' Main Function to run the Pipeline
@@ -41,6 +38,7 @@ DEFAULT_SETTINGS <- "/settings/settings.json"
 #' @export
 main <- function(pipeline_file) {
     source("R/pipelines.r", local = TRUE)
+    if (!"presto" %in% rownames(installed.packages())) {devtools::install_github("immunogenomics/presto")}
     # nota: null means required
 
     # Load settings

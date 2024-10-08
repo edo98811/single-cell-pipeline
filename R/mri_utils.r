@@ -100,8 +100,8 @@ remove_outliers <- function(df, column, n = 0) {
     column_to_test <- column_to_test[column_to_test < (mean(column_to_test) + outlier_threshold)]
 
     # Prints the rownames of the deleted outliers
-    names1 <- rownames(df[df[, column] < (mean(df[, column]) - outlier_threshold),])
-    names2 <- rownames(df[df[, column] > (mean(df[, column]) + outlier_threshold),])
+    names1 <- rownames(df[df[, column] < (mean(df[, column]) - outlier_threshold), ])
+    names2 <- rownames(df[df[, column] > (mean(df[, column]) + outlier_threshold), ])
 
     message("ouliers for column ", column, ": ", paste(names1, names2, collapse = ", "))
 

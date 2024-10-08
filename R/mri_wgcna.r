@@ -33,7 +33,7 @@ mri_for_wgcna <- function(data_source = "aparc", regions = c(), wgcna_subjects =
     }
 
     # Selecting only files present in wgcna analysis
-    data <- data[rownames(data) %in% wgcna_subjects,]
+    data <- data[rownames(data) %in% wgcna_subjects, ]
     rownames(data) <- sapply(rownames(data), function(name) {return(names(wgcna_subjects[wgcna_subjects == name]))})
     return(data)
 
@@ -79,7 +79,7 @@ zscore_for_wgcna <- function(data_source = "aparc", regions = c(), wgcna_subject
     # }))
 
     # Selecting only files present in wgcna analysis
-    corrected_data <- corrected_data[rownames(corrected_data) %in% wgcna_subjects,]
+    corrected_data <- corrected_data[rownames(corrected_data) %in% wgcna_subjects, ]
     rownames(corrected_data) <- sapply(rownames(corrected_data), function(name) {return(names(wgcna_subjects[wgcna_subjects == name]))})
     return(corrected_data)
 

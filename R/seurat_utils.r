@@ -441,7 +441,7 @@ violin_plot <- function(seurat_object,
 
   # Load DEGs table
   if (isFALSE(markers_analysis)) {
-    if(!isFALSE(gene_list)) message("gene_list AND marker source given, gene_list overridden by source")
+    if (!isFALSE(gene_list)) message("gene_list AND marker source given, gene_list overridden by source")
     tryCatch({
         if (isFALSE(cluster)) {
             message(paste0("loading... ", output_folder, "markers_", markers_analysis,
@@ -1318,7 +1318,7 @@ plot_markers_from_df_old <- function(seurat_object,
     max_feature_plots = 11, 
     max_genes_plot_heatmap = 100,
     column_list = FALSE, 
-    assay ="RNA") {
+    assay = "RNA") {
   
   
   # Messages 
@@ -2218,7 +2218,7 @@ trajectory_analysis <- function(seurat_object, extension_plot = ".png", name = "
   save_plot(plot_cells(cds, color_cells_by = "pseudotime", show_trajectory_graph = FALSE), 
             paste0(output_dir, "pseudotime", extension_plot))
             
-  detach("package:openxlsx", unload=TRUE)
+  detach("package:openxlsx", unload = TRUE)
 }
 
 #' Run CellChat Analysis on Seurat Object

@@ -480,7 +480,7 @@ run_asyncronously <- function(func, ..., output_file = "output.txt") {
   sink(output_file)
   
   # Se max object limit
-  options(future.globals.maxSize= 4194304000)
+  options(future.globals.maxSize = 4194304000)
   
   # Plan to use a multicore backend for futures
   plan(multicore)
