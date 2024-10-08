@@ -59,6 +59,7 @@ Clusters can be annotated either automatically using `scType` or manually using 
 - **auto**: `[true | false]` — When `true`, clusters are automatically annotated with `scType`. If no manual annotation is provided via the `to_annotate` parameter, this must be set to `true`.
 - **to_annotate**: Mapping of existing cluster names to new names, saved in the `annotation_column`.  Defined as r list, (like python dictionary), in JSON as a standard object.
 - **annotation_column**: The column where annotations are saved (applies to both automatic and manual annotations).
+- **corrected_annotation_column**: The column where the corrected annotations are saved, if it is not given the annotation_column is updated
 - **cluster_column**: The source column for clustering results, used in both automatic and manual annotation. Defaults to the global `c` parameter.
 - **save**: Whether to save the resulting object.
 - **save_name**: The name under which the object will be saved.
@@ -156,6 +157,7 @@ The possible methods are:
 4. **panther**: using rbioapi
 
 ClusterProfiler: https://bioconductor.org/packages/release/bioc/html/clusterProfiler.html
+
 rbioapi: https://cran.r-project.org/web/packages/rbioapi/vignettes/rbioapi.html
 
 ## The settings
@@ -189,6 +191,8 @@ example:
 # Settings File
 
 The settings file stores the default parameters for each pipeline that is run. All the parameters specified in the pipeline files are overwritten when the pipeline is run. This file can serve as template when creating a pipeline file. 
+
+- **`parameter`** [type] - `default (example)`
 
 ## General
 
@@ -226,34 +230,27 @@ The settings file stores the default parameters for each pipeline that is run. A
 - **`save_name`** [string] - `"after_integration.rds"`
 - **`method`** [string] - `"harmony"`
 
-## Annotation
+## Main Pipeline
 
-- **`annotate`** [boolean] - `true`
-- **`annotation_plots`** [boolean] - `true`
-- **`annotation_column`** [string] - `"scType_annotation"`
-- **`corrected_annotation`** [object] - `{ "13": "Border macrophages" }`
-- **`corrected_annotation_column`** [string] - `"scType_annotation_corrected"`
-- **`correct`** [boolean] - `false`
-- **`corrected_annotation_plots`** [boolean] - `true`
-- **`save`** [boolean] - `true`
-- **`save_name`** [string] - `"after_annotation.rds"`
+- **`method`** [string|null] - `null`
+- **`auto_annotation`** [boolean] - `false`
+- **`annotation_column`** [string|boolean] - `"column_annotation"` (can be also set to false to use the value in the global settings)
+- **`correct_annotation`** [boolean] - `false`
+- **`correct_annotation_column`** [string|boolean] - `"column_correct_annotation"` (can be also set to false to use the value in the global settings)
+- **`to_correct`** [boolean] - `false`
+- **`cluster_column`** [string|boolean] - `"column_cluster"` (can be also set to false to use the value in the global settings)
+- **`resolution`** [boolean] - `false`
+- **`explained_variance`** [boolean] - `false`
+- **`reduction`** [boolean] - `false`
+- **`umap_name`** [string|boolean] - `"harmony_umap"` (can be also set to false to use the value in the global settings)
+- **`compute_umap`** [boolean] - `false`
+- **`save`** [boolean] - `false`
+- **`save_name`** [string] - `"main_pipeline_default.rds"`
 
-## Clustering
-
-- **`create_subset`** [boolean] - `false`
-- **`cluster_column`** [string] - `"clusters"`
-- **`subset`** [array] - `[]`
-- **`clustering`** [boolean] - `false`
-- **`clustering_plot`** [boolean] - `true`
-- **`rename_clusters`** [boolean] - `false`
-- **`to_correct`** [array] - `[]`
-- **`name`** [string] - `"open_data"`
-- **`save`** [boolean] - `true`
-- **`save_name`** [string] - `"after_clustering"`
 
 ## Enrichment
 
-- **`markers_path`** [string | null] - `null`
+- **`markers_path`** [string|null] - `null`
 - **`count_threshold`** [integer] - `0`
 - **`wgcna_folder`** [boolean] - `false`
 - **`wgcna_module`** [boolean] - `false`
@@ -263,7 +260,7 @@ The settings file stores the default parameters for each pipeline that is run. A
 - **`cluster`** [boolean] - `false`
 - **`minGSsize`** [integer] - `15`
 - **`maxGSsize`** [integer] - `500`
-- **`organism`** [string] - `"9606"`
+- **`organism`** [string] - `"9606"` [taxonomy](https://www.ebi.ac.uk/interpro/taxonomy/uniprot/9606/)
 - **`num_tries`** [integer] - `3`
 - **`raw`** [boolean] - `false`
 - **`extension_plot`** [string] - `".png"`
@@ -273,7 +270,7 @@ The settings file stores the default parameters for each pipeline that is run. A
 ## WGCNA
 
 - **`method`** [string] - `"WGCNA"`
-- **`cluster`** [list] - `false`
+- **`cluster`** [list|false] - `false`
 - **`wgcna_file`** [string] - `"bwnet.rds"`
 - **`save_net`** [boolean] - `false`
 - **`load_net`** [boolean] - `false`
@@ -281,15 +278,14 @@ The settings file stores the default parameters for each pipeline that is run. A
 - **`subject_pathology_column`** [string] - `"subject_pathology"`
 - **`subject_column`** [string] - `"subject"`
 - **`extension_plot`** [string] - `".png"`
-- **`markers_analysis_pd`** [string] - `"microglia_control_vs_pd_clusters"`
-- **`markers_analysis_gpd`** [string] - `false`
+- **`markers_analysis`** [string] - `"group1_group2"`
 - **`hub_gene_threshold`** [array] - `[0.3, 1]`
 - **`which`** [array] - `[]`
 - **`type`** [string] - `"unsigned"`
 - **`TOMType`** [string] - `"unsigned"`
 - **`mergeCutHeight`** [float] - `0.25`
 - **`minModuleSize`** [integer] - `50`
-- **`wgcna_subjects`** [object] - `{ "PD_001": "02_082",}`
+- **`wgcna_subjects`** [object] - `{ "PD_001": "02_082" }`
 - **`regions`** [array] - `["superiorfrontal", "caudalmiddlefrontal", "rostralmiddlefrontal"]`
 - **`regions_plot`** [array] - `[]`
 - **`data_source_mri`** [string] - `"aparc"`
@@ -314,16 +310,27 @@ The settings file stores the default parameters for each pipeline that is run. A
 
 - **`save_data`** [boolean] - `true`
 - **`cluster_column`** [string] - `"harmony_clusters"`
-- **`assay`** [string] - `"RNA"`
 - **`method`** [string] - `"default"`
 - **`subset_id`** [string] - `"control"`
-- **`o2`** [string] - `"NA"`
-- **`condition`** [string] - `"PD"`
+- **`condition`** [string] - `"group1"`
 - **`nothreshold`** [boolean] - `false`
-- **`control`** [string] - `"non_PD"`
+- **`control`** [string] - `"control"`
 - **`condition_column`** [string] - `"subject_pathology"`
-- **`extension_plot`** [string] - `".png"`
 - **`folder`** [boolean] - `false`
+- **`umap_name`** [boolean] - `false`
+- **`modules_significance_table`** [boolean] - `false`
+- **`markers`** [boolean] - `false`
+- **`heatmap`** [boolean] - `true`
+- **`feature_plot`** [boolean] - `false`
+- **`heatmap_by_column`** [boolean] - `false`
+- **`subplot_n`** [integer] - `9`
+- **`max_feature_plots`** [integer] - `11`
+- **`max_genes_heatmap`** [integer] - `100`
+- **`column_list`** [array] - `[]`
+- **`sorting_method`** [string] - `"abs"`
+- **`feature_plots_top9_deg`** [boolean] - `false`
+- **`cluster`** [boolean] - `false`
+- **`markers_analysis`** [string] - `"group1_group2"`
 
 ### Available metods for deg
 
