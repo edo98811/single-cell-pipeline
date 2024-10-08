@@ -172,8 +172,8 @@ make_heatmap <- function(bwnet, excel_filename, traits) {
     res <- WGCNA::corAndPvalue(
         y = heatmap_data[, (length(heatmap_data) - ncol(traits) + 1):length(heatmap_data)],
         x = heatmap_data[, 1:(length(heatmap_data) - ncol(traits))])
-
-    wb <- write_on_excel("correlation", as.data.frame(res$cor), mode = "colorscale")
+        
+    wb <- write_on_excel("correlation", as.data.frame(res$cor), mode = "colorscale", small_cells = TRUE)
     wb <- write_on_excel("p.value", as.data.frame(res$p), wb = wb, mode = "pvalue")
     wb <- write_on_excel("t.statistic", as.data.frame(res$t), wb = wb)
     openxlsx::saveWorkbook(wb, excel_filename, overwrite = TRUE)
